@@ -1,0 +1,1009 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TrajAI-Defense</title>
+<meta name="description" content="레이더 초기 관측 구간만으로 비행체의 전 궤도·탄착점(IP)·탄착 시각(ToT)·CEP를 추론하는 물리 제약 신경망(PINN) 기반 궤도 예측 시스템 기술 문서.">
+<meta property="og:title" content="TrajAI-Defense">
+<meta property="og:description" content="Physics-Informed Neural Network 기반 실시간 탄도 궤도 예측 및 위협 평가 시스템">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#14233a">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%2314233a'/%3E%3Cpath d='M4 26 Q14 2 28 26' fill='none' stroke='%23f08a3e' stroke-width='2.5' stroke-dasharray='4 3'/%3E%3Ccircle cx='28' cy='26' r='2.5' fill='%23f08a3e'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=STIX+Two+Text:ital,wght@0,400;0,600;1,400&display=swap">
+<style>
+/* Layout: technical report. Sticky masthead, left table of contents on wide screens, numbered sections, figures with captions.
+   Ink-navy on cool paper; teal = measurement, amber = prediction. */
+:root{
+  --paper:#f3f5f8; --sheet:#ffffff; --ink:#14233a; --ink-2:#4b5b71; --ink-3:#7a8798; --rule:#d3dae3; --grid:#e6ebf1;
+  --obs:#17806f; --pred:#cf5f14; --pred-a:rgba(207,95,20,.13); --pred-line:rgba(207,95,20,.28); --truth:#7d8a9c; --hl:#fff4e8;
+  --font-sans:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+  --font-math:"STIX Two Text","Cambria Math","Times New Roman",serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --paper:#0d1521; --sheet:#131e2e; --ink:#e2e8f0; --ink-2:#9fadbf; --ink-3:#6c7b8f; --rule:#26354a; --grid:#1a2738;
+  --obs:#47c1a6; --pred:#f2903f; --pred-a:rgba(242,144,63,.14); --pred-line:rgba(242,144,63,.30); --truth:#62718a; --hl:#2a2116; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --paper:#0d1521; --sheet:#131e2e; --ink:#e2e8f0; --ink-2:#9fadbf; --ink-3:#6c7b8f; --rule:#26354a; --grid:#1a2738;
+  --obs:#47c1a6; --pred:#f2903f; --pred-a:rgba(242,144,63,.14); --pred-line:rgba(242,144,63,.30); --truth:#62718a; --hl:#2a2116; color-scheme:dark}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth; scroll-padding-top:72px}
+body{margin:0; background:var(--paper); color:var(--ink); font-family:var(--font-sans); font-size:16px; line-height:1.75; -webkit-text-size-adjust:100%}
+h1,h2,h3,h4{text-wrap:balance; line-height:1.3; margin:0}
+p{margin:0}
+a{color:inherit}
+sub,sup{line-height:0}
+.mono{font-family:var(--font-mono); font-variant-numeric:tabular-nums}
+.label{font-family:var(--font-mono); font-size:11.5px; letter-spacing:.09em; text-transform:uppercase; color:var(--ink-2)}
+.m{font-family:var(--font-math); font-style:italic; font-size:1.06em}
+.m b, .m .r{font-style:normal}
+
+/* masthead */
+body::before{content:""; position:fixed; inset:0 0 auto; height:env(safe-area-inset-top,0px); z-index:30; background:var(--ink)}
+.mast{position:sticky; top:env(safe-area-inset-top,0px); z-index:20; background:var(--ink); color:var(--paper);
+  padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px))}
+.mast-in{max-width:1240px; margin:0 auto; height:52px; display:flex; align-items:center; gap:20px}
+.mast .brand{font-weight:700; letter-spacing:-.01em; white-space:nowrap}
+.mast .brand i{font-style:normal; color:var(--pred)}
+.mast .doc{font-family:var(--font-mono); font-size:12px; opacity:.7; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0}
+.mast .sp{flex:1}
+.mast a.gh{font-family:var(--font-mono); font-size:12px; text-decoration:none; border:1px solid rgba(255,255,255,.35); padding:4px 10px; border-radius:3px; white-space:nowrap}
+.mast a.gh:hover{border-color:var(--pred); color:var(--pred)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .mast, :root:not([data-theme="light"]) body::before{background:#08101a}}
+:root[data-theme="dark"] .mast, :root[data-theme="dark"] body::before{background:#08101a}
+
+/* frame */
+.frame{max-width:1240px; margin:0 auto; display:grid; grid-template-columns:220px minmax(0,1fr); gap:48px;
+  padding-left:max(16px,env(safe-area-inset-left,0px)); padding-right:max(16px,env(safe-area-inset-right,0px)); padding-block:40px 80px}
+nav.toc{position:sticky; top:calc(env(safe-area-inset-top,0px) + 76px); align-self:start; font-size:13.5px; max-height:calc(100vh - 100px); overflow:auto}
+nav.toc ol{list-style:none; margin:10px 0 0; padding:0; display:flex; flex-direction:column; gap:2px; counter-reset:t}
+nav.toc a{display:flex; gap:10px; text-decoration:none; color:var(--ink-2); padding:4px 0 4px 10px; border-left:2px solid var(--rule)}
+nav.toc a span{font-family:var(--font-mono); font-size:12px; color:var(--ink-3); min-width:18px}
+nav.toc a:hover, nav.toc a.on{color:var(--ink); border-left-color:var(--pred)}
+main{min-width:0; display:flex; flex-direction:column; gap:80px}
+
+/* cover */
+.cover{display:flex; flex-direction:column; gap:22px; padding-bottom:8px}
+.cover .kicker{display:flex; flex-wrap:wrap; gap:8px 14px; align-items:center}
+.chip{font-family:var(--font-mono); font-size:12px; padding:2px 8px; border:1px solid var(--rule); border-radius:2px; color:var(--ink-2); background:var(--sheet)}
+.chip.acc{border-color:var(--pred); color:var(--pred)}
+.cover h1{font-size:clamp(38px,6vw,64px); font-weight:700; letter-spacing:-.025em}
+.cover h1 i{font-style:normal; color:var(--pred)}
+.cover .sub{font-size:clamp(17px,2vw,21px); font-weight:500; color:var(--ink-2); max-width:44ch}
+.abstract{border-left:3px solid var(--ink); padding:4px 0 4px 20px; max-width:78ch}
+.abstract p{font-size:15.5px}
+.abstract p + p{margin-top:10px}
+.meta{display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); border-top:1px solid var(--rule); border-bottom:1px solid var(--rule)}
+.meta div{padding:12px 16px 12px 0; display:flex; flex-direction:column; gap:2px; min-width:0}
+.meta div + div{padding-left:16px; border-left:1px solid var(--rule)}
+.meta b{font-weight:500; font-size:14.5px}
+
+/* sections */
+section{display:flex; flex-direction:column; gap:22px}
+.sh{display:flex; flex-direction:column; gap:6px; max-width:78ch}
+.sh .no{font-family:var(--font-mono); font-size:13px; color:var(--pred); font-weight:600}
+.sh h2{font-size:clamp(23px,2.8vw,30px); font-weight:700; letter-spacing:-.01em}
+.prose{max-width:76ch; display:flex; flex-direction:column; gap:12px; color:var(--ink)}
+.prose p{font-size:15.5px}
+h3.sub{font-size:18px; font-weight:600; margin-top:10px; display:flex; gap:10px; align-items:baseline}
+h3.sub .no{font-family:var(--font-mono); font-size:13px; color:var(--ink-3); font-weight:500}
+.sheet{background:var(--sheet); border:1px solid var(--rule); border-radius:3px}
+figure{margin:0; display:flex; flex-direction:column; gap:10px; min-width:0}
+figcaption{font-size:13.5px; color:var(--ink-2); max-width:90ch}
+figcaption b{color:var(--ink); font-weight:600; font-family:var(--font-mono); font-size:12.5px; margin-right:6px}
+.callout{background:var(--hl); border:1px solid var(--rule); border-left:3px solid var(--pred); padding:14px 18px; font-size:14.5px; max-width:84ch; border-radius:2px}
+.callout b{font-weight:600}
+
+/* tables */
+.tw{overflow-x:auto; -webkit-overflow-scrolling:touch}
+table{border-collapse:collapse; width:100%; font-size:14px; background:var(--sheet)}
+caption{caption-side:top; text-align:left; font-size:13.5px; color:var(--ink-2); padding:0 0 8px}
+caption b{color:var(--ink); font-family:var(--font-mono); font-size:12.5px; margin-right:6px}
+th,td{text-align:left; padding:9px 12px; border-bottom:1px solid var(--rule); vertical-align:top}
+thead th{font-family:var(--font-mono); font-weight:500; font-size:11.5px; letter-spacing:.07em; text-transform:uppercase; color:var(--ink-2); border-bottom:1.5px solid var(--ink); white-space:nowrap; background:var(--sheet)}
+td.n,td.c{font-family:var(--font-mono); font-variant-numeric:tabular-nums; white-space:nowrap}
+td.id{font-family:var(--font-mono); font-size:12.5px; color:var(--ink-2); white-space:nowrap}
+td .m{white-space:nowrap}
+tr.prop td{background:var(--hl)}
+.vm{display:inline-block; font-family:var(--font-mono); font-size:11.5px; padding:0 6px; border:1px solid var(--ink-3); border-radius:2px; color:var(--ink-2)}
+
+/* equations */
+.eqs{display:flex; flex-direction:column; gap:0; padding:8px 0}
+.eq{display:grid; grid-template-columns:minmax(0,1fr) 56px; align-items:center; padding:10px 22px; overflow-x:auto}
+.eq .e{font-family:var(--font-math); font-size:clamp(16px,2vw,20px); white-space:nowrap}
+.eq .e i{font-style:italic}
+.eq .e .op{padding:0 .28em}
+.eq .tag{font-family:var(--font-mono); font-size:12.5px; color:var(--ink-3); text-align:right}
+.frac{display:inline-flex; flex-direction:column; vertical-align:middle; text-align:center; margin:0 .15em; font-size:.92em}
+.frac > span:first-child{border-bottom:1px solid currentColor; padding:0 .2em}
+.frac > span:last-child{padding:0 .2em}
+.vec{font-weight:600; font-style:normal !important}
+.hat{position:relative}
+.nom{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:0 32px}
+.nom table{background:transparent}
+
+/* demo */
+.demo{display:flex; flex-direction:column}
+.demo-top{display:flex; flex-wrap:wrap; gap:16px 28px; align-items:flex-end; padding:16px 18px; border-bottom:1px solid var(--rule)}
+.ctl{display:flex; flex-direction:column; gap:4px; min-width:200px; flex:1}
+.ctl label{display:flex; justify-content:space-between; gap:8px; font-size:13.5px; color:var(--ink-2)}
+.ctl label .mono{color:var(--ink)}
+input[type=range]{width:100%; accent-color:var(--pred); margin:6px 0 0}
+.btn{font:inherit; font-size:13.5px; font-weight:600; color:var(--paper); background:var(--ink); border:0; border-radius:3px; padding:9px 14px; cursor:pointer; white-space:nowrap}
+.btn:hover{background:var(--pred)}
+.btn:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--pred); outline-offset:2px}
+canvas{display:block; width:100%; height:auto; max-width:100%}
+#cv-main{aspect-ratio:2/1}
+.demo-bot{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1.05fr); border-top:1px solid var(--rule)}
+.demo-bot > *{min-width:0}
+.demo-bot > * + *{border-left:1px solid var(--rule)}
+.pane-h{display:flex; justify-content:space-between; align-items:baseline; gap:8px; padding:10px 14px 0}
+#cv-fp,#cv-beta{aspect-ratio:4/3}
+.ro{display:flex; flex-direction:column; padding:6px 16px 12px}
+.ro div{display:flex; justify-content:space-between; align-items:baseline; gap:10px; padding:7px 0; border-bottom:1px dashed var(--rule); font-size:13.5px}
+.ro div:last-child{border-bottom:0}
+.ro span:first-child{color:var(--ink-2)}
+.ro .v{font-family:var(--font-mono); font-variant-numeric:tabular-nums; font-weight:600; text-align:right}
+.ro .v small{font-weight:400; color:var(--ink-3)}
+.ro .v.acc{color:var(--pred)}
+.legend{display:flex; flex-wrap:wrap; gap:4px 18px; padding:10px 18px; font-size:12.5px; color:var(--ink-2); border-top:1px solid var(--rule)}
+.legend span{display:inline-flex; align-items:center; gap:7px}
+.sw{display:inline-block; width:20px; height:0; border-top:2px solid}
+.sw.o{border-color:var(--obs)} .sw.p{border-color:var(--pred); border-top-style:dashed} .sw.t{border-color:var(--truth); border-top-style:dotted} .sw.e{border-color:var(--pred-line)}
+.dot{width:7px; height:7px; border-radius:50%; background:var(--obs); display:inline-block}
+
+/* phases */
+.phase{display:grid; grid-template-columns:1.1fr 2.6fr 1.3fr; border:1px solid var(--rule); border-radius:3px; overflow:hidden; background:var(--sheet)}
+.phase > div{padding:14px 16px; display:flex; flex-direction:column; gap:6px; min-width:0}
+.phase > div + div{border-left:1px solid var(--rule)}
+.phase h4{font-size:15px}
+.phase p{font-size:13.5px; color:var(--ink-2); line-height:1.6}
+.phase .bar{height:6px; border-radius:1px; background:var(--rule)}
+.phase .bar.o{background:var(--obs)} .phase .bar.p{background:repeating-linear-gradient(90deg,var(--pred) 0 10px,transparent 10px 16px)}
+
+/* architecture */
+.arch{overflow-x:auto}
+.arch svg{display:block; min-width:820px; width:100%; height:auto}
+.arch .bx rect{fill:var(--sheet); stroke:var(--ink); stroke-width:1.2}
+.arch .bx.hl rect{fill:var(--hl); stroke:var(--pred); stroke-width:2}
+.arch .bx.ghost rect{stroke-dasharray:5 4; stroke:var(--ink-3)}
+.arch text{fill:var(--ink); font-family:var(--font-sans); font-size:13px}
+.arch text.t{font-weight:600; font-size:13.5px}
+.arch text.s{fill:var(--ink-2); font-family:var(--font-mono); font-size:11px}
+.arch text.lane{fill:var(--ink-3); font-family:var(--font-mono); font-size:11px; letter-spacing:.08em}
+.arch .ln{stroke:var(--ink-2); stroke-width:1.4; fill:none}
+.arch .ln.p{stroke:var(--pred); stroke-dasharray:6 4}
+.arch .ah{fill:var(--ink-2)}
+.arch .ah.p{fill:var(--pred)}
+.arch .lanebg{fill:var(--paper); stroke:var(--rule)}
+
+/* gantt */
+.gantt{display:grid; grid-template-columns:150px repeat(7,minmax(46px,1fr)); min-width:640px; background:var(--sheet); border:1px solid var(--rule); border-radius:3px}
+.gantt > div{padding:8px 10px; border-bottom:1px solid var(--rule); font-size:13.5px; min-width:0}
+.gantt .hd{font-family:var(--font-mono); font-size:11.5px; color:var(--ink-2); text-align:center; border-bottom:1.5px solid var(--ink)}
+.gantt .hd.l{text-align:left}
+.gantt .tk{font-weight:500}
+.gantt .bar{display:flex; align-items:center; padding:6px 4px}
+.gantt .bar span{display:block; width:100%; background:var(--ink); color:var(--paper); font-size:12px; padding:3px 8px; border-radius:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
+.gantt .bar.acc span{background:var(--pred)}
+.gantt .last{border-bottom:0}
+
+/* refs */
+ol.refs{margin:0; padding-left:28px; display:flex; flex-direction:column; gap:8px; font-size:14px; color:var(--ink-2); max-width:92ch}
+ol.refs li::marker{font-family:var(--font-mono); color:var(--ink-3)}
+ol.refs i{color:var(--ink)}
+
+footer{display:flex; flex-wrap:wrap; justify-content:space-between; gap:10px 24px; padding-top:18px; border-top:1.5px solid var(--ink); font-size:13.5px; color:var(--ink-2)}
+footer b{color:var(--ink); font-weight:600}
+
+@media (max-width:1060px){
+  .frame{grid-template-columns:minmax(0,1fr)}
+  nav.toc{display:none}
+  .demo-bot{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+  .demo-bot .ro-pane{grid-column:1/-1; border-left:0; border-top:1px solid var(--rule)}
+}
+@media (max-width:720px){
+  .meta{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .meta div:nth-child(3){padding-left:0; border-left:0}
+  .meta div:nth-child(n+3){border-top:1px solid var(--rule)}
+  .phase{grid-template-columns:1fr}
+  .phase > div + div{border-left:0; border-top:1px solid var(--rule)}
+  .nom{grid-template-columns:1fr}
+  .demo-bot{grid-template-columns:1fr}
+  .demo-bot > * + *{border-left:0; border-top:1px solid var(--rule)}
+  .mast .doc{display:none}
+  .eq{padding:10px 14px}
+}
+@media (prefers-reduced-motion:reduce){html{scroll-behavior:auto}}
+</style>
+</head>
+<body>
+
+<header class="mast">
+  <div class="mast-in">
+    <span class="brand">TrajAI<i>-</i>Defense</span>
+    <span class="doc">TAD-TR-001 · Rev 1.0 · 2026-10</span>
+    <span class="sp"></span>
+    <a class="gh" href="https://github.com/ljw22112/TrajAI-Defense" target="_blank" rel="noopener">GitHub</a>
+  </div>
+</header>
+
+<div class="frame">
+<nav class="toc" aria-label="목차">
+  <span class="label">Contents</span>
+  <ol>
+    <li><a href="#sec-demo"><span>1</span>궤도 추정 시연</a></li>
+    <li><a href="#sec-conops"><span>2</span>운용 개념과 문제 정의</a></li>
+    <li><a href="#sec-req"><span>3</span>요구 성능</a></li>
+    <li><a href="#sec-arch"><span>4</span>시스템 아키텍처</a></li>
+    <li><a href="#sec-dyn"><span>5</span>비행 동역학 모델</a></li>
+    <li><a href="#sec-est"><span>6</span>관측 모델과 칼만 필터</a></li>
+    <li><a href="#sec-pinn"><span>7</span>PINN 설계</a></li>
+    <li><a href="#sec-data"><span>8</span>합성 데이터셋</a></li>
+    <li><a href="#sec-vv"><span>9</span>검증 계획</a></li>
+    <li><a href="#sec-impl"><span>10</span>구현 현황</a></li>
+    <li><a href="#sec-plan"><span>11</span>일정과 위험 관리</a></li>
+    <li><a href="#sec-ref"><span>12</span>참고문헌</a></li>
+  </ol>
+</nav>
+
+<main>
+
+<div class="cover">
+  <div class="kicker">
+    <span class="chip acc">Technical Report</span>
+    <span class="chip">Physics-Informed ML</span>
+    <span class="chip">Trajectory Estimation</span>
+    <span class="chip">Air &amp; Missile Defense M&amp;S</span>
+  </div>
+  <h1>TrajAI<i>-</i>Defense</h1>
+  <p class="sub">물리 제약 신경망 기반 실시간 탄도 궤도 예측 및 위협 평가 시스템</p>
+  <div class="abstract">
+    <p>요격 체계의 교전 판단은 표적의 탄착점(IP)과 탄착 시각(ToT)을 얼마나 빨리, 얼마나 믿을 수 있게 아느냐에 달려 있습니다. 확장 칼만 필터(EKF)나 수치 적분 기반 예측은 대기 밀도 변화, 마하수에 따른 항력 변화, 기동이 있으면 연산 비용과 추정 오차가 함께 커집니다. 순수 데이터 기반 신경망은 빠르지만 관측이 적은 초기 구간에서 운동 방정식을 위반하는 궤적을 출력할 수 있습니다.</p>
+    <p>TrajAI-Defense는 비행 초기 10~15% 구간의 레이더 트랙을 시계열 인코더(Transformer / Bi-LSTM)로 요약하고, 운동 방정식 잔차를 손실에 포함한 물리 제약 신경망(PINN)으로 잔여 궤적, IP, ToT, CEP를 추론합니다. 목표는 단일 표적 추론 50 ms 이하, 기존 대비 CEP 추정 오차 40% 감소입니다. 이 문서는 운용 개념, 동역학 모델, 추정 문제 정식화, 학습 설계, 데이터셋, 검증 계획을 정리합니다.</p>
+  </div>
+  <div class="meta">
+    <div><span class="label">과제</span><b>AI 서비스 프로젝트</b></div>
+    <div><span class="label">팀</span><b>인공지능 프론티어</b></div>
+    <div><span class="label">작성</span><b>이정원 (23012146)</b></div>
+    <div><span class="label">분야</span><b>방위산업 · 공공/교통</b></div>
+  </div>
+</div>
+
+<!-- 1 DEMO -->
+<section id="sec-demo">
+  <div class="sh"><span class="no">§1</span><h2>궤도 추정 시연: 물리 기반 Baseline</h2></div>
+  <div class="prose">
+    <p>아래 시연은 PINN이 대체하려는 기준 문제를 브라우저에서 직접 계산합니다. 7차원 상태(위치, 속도, ln <span class="m">β</span>)의 확장 칼만 필터(EKF)가 잡음 섞인 레이더 트랙을 순차 처리해 관측 종료 시점의 상태와 공분산을 추정하고, 그 사후분포에서 표본을 뽑아 Monte Carlo로 IP 분포와 CEP를 구합니다. 관측 구간을 줄이거나 센서 잡음을 키우면 분산이 어떻게 커지는지 확인할 수 있습니다.</p>
+  </div>
+  <figure>
+    <div class="sheet demo">
+      <div class="demo-top">
+        <div class="ctl"><label for="in-obs">관측 구간 (전체 비행시간 대비) <span class="mono" id="v-obs">12 %</span></label><input type="range" id="in-obs" min="4" max="60" step="1" value="12"></div>
+        <div class="ctl"><label for="in-sig">레이더 위치 잡음 1σ <span class="mono" id="v-sig">40 m</span></label><input type="range" id="in-sig" min="5" max="150" step="5" value="40"></div>
+        <div class="ctl"><label for="in-beta">실제 탄도계수 β <span class="mono" id="v-beta">2,500 kg/m²</span></label><input type="range" id="in-beta" min="0" max="100" step="1" value="50"></div>
+        <button class="btn" id="btn-seed" type="button">새 잡음 표본</button>
+      </div>
+      <canvas id="cv-main" width="1600" height="800" aria-label="고도-하향거리 궤적 플롯"></canvas>
+      <div class="legend">
+        <span><i class="dot"></i>레이더 측정</span>
+        <span><i class="sw o"></i>관측 구간 실제 궤적</span>
+        <span><i class="sw t"></i>실제 잔여 궤적 (검증용)</span>
+        <span><i class="sw p"></i>MAP 예측 궤적</span>
+        <span><i class="sw e"></i>Monte Carlo 앙상블</span>
+      </div>
+      <div class="demo-bot">
+        <div>
+          <div class="pane-h"><span class="label">탄착 분포 (지면 투영)</span><span class="label" id="fp-n"></span></div>
+          <canvas id="cv-fp" width="800" height="600" aria-label="탄착점 산포도"></canvas>
+        </div>
+        <div>
+          <div class="pane-h"><span class="label">EKF β 추정 수렴</span><span class="label">log scale</span></div>
+          <canvas id="cv-beta" width="800" height="600" aria-label="탄도계수 사후분포"></canvas>
+        </div>
+        <div class="ro-pane">
+          <div class="pane-h"><span class="label">추정 결과</span></div>
+          <div class="ro">
+            <div><span>관측 종료 시각 <span class="m">t<sub>c</sub></span></span><span class="v" id="r-tc">—</span></div>
+            <div><span>EKF 추정 β̂</span><span class="v" id="r-beta">—</span></div>
+            <div><span>평균 NIS (χ²₃)</span><span class="v" id="r-nis">—</span></div>
+            <div><span>예측 ToT ± 1σ</span><span class="v acc" id="r-tot">—</span></div>
+            <div><span>IP 오차 (MPI 기준)</span><span class="v" id="r-miss">—</span></div>
+            <div><span>CEP<sub>50</sub></span><span class="v acc" id="r-cep">—</span></div>
+            <div><span>실제 IP 포함 여부</span><span class="v" id="r-cov">—</span></div>
+            <div><span>Baseline 연산 시간</span><span class="v" id="r-ms">—</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <figcaption><b>Fig. 1</b>연소 종료 후 탄도 비행 구간의 수직면 궤적. 3-DOF 점질량, RK4 적분, 고도 의존 중력 <span class="m">g(h)</span>, 지수 대기 밀도, ISA 온도 분포 기반 음속, 마하수 의존 항력 계수를 사용합니다. 초기 조건: 고도 15 km, 속도 1.4 km/s, 경로각 45°, 측방 속도 6 m/s. EKF 측정 주기 0.5 s, 예측 앙상블 <span class="m">N</span> = 160 표본입니다. 표시된 연산 시간은 필터링과 분산 전파를 합쳐 이 브라우저에서 실제로 측정한 값입니다. 평균 NIS가 3 근처면 필터가 잡음 통계와 일관된 것입니다.</figcaption>
+  </figure>
+  <div class="callout"><b>관찰 포인트.</b> 대기 밀도가 높은 상승 초기에는 항력 감속이 측정되어 EKF의 <span class="m">β</span> 공분산이 빠르게 줄어듭니다(가운데 그래프). 고도가 올라가 항력 가속도가 잡음 수준 아래로 떨어지면 <span class="m">β</span>를 관측할 수 없게 되어 공분산이 더 줄지 않고, 이 불확실성이 재진입 구간에서 하향거리 분산으로 증폭됩니다. 짧은 관측에서 학습된 사전정보로 이 공백을 메우는 것이 PINN의 역할입니다.</div>
+</section>
+
+<!-- 2 CONOPS -->
+<section id="sec-conops">
+  <div class="sh"><span class="no">§2</span><h2>운용 개념과 문제 정의</h2></div>
+  <figure>
+    <div class="phase">
+      <div><span class="label">Phase I</span><h4>추진 · 상승</h4><div class="bar o"></div><p>탐지와 초기 추적. 시스템 입력은 이 구간과 중간 비행 초입까지의 트랙(전체의 10~15%)입니다.</p></div>
+      <div><span class="label">Phase II</span><h4>중간 비행</h4><div class="bar p"></div><p>고고도에서는 항력이 작아 <span class="m">β</span>를 관측하기 어렵습니다. 변칙 활공 비행체(HGV)는 이 구간에서 양력 기동으로 탄도 궤적을 벗어납니다.</p></div>
+      <div><span class="label">Phase III</span><h4>종말 · 재진입</h4><div class="bar p"></div><p>항력이 지배적이 되어 <span class="m">β</span> 오차가 하향거리 IP 오차로 크게 증폭됩니다.</p></div>
+    </div>
+    <figcaption><b>Fig. 2</b>비행 단계별 관측 가능성. 실선은 관측 입력 구간, 점선은 예측 대상 구간입니다.</figcaption>
+  </figure>
+  <div class="tw">
+    <table>
+      <caption><b>Table 1</b>기존 접근의 한계와 본 시스템의 대응</caption>
+      <thead><tr><th>접근</th><th>한계</th><th>TrajAI-Defense의 대응</th></tr></thead>
+      <tbody>
+        <tr><td>EKF / 수치 적분 예측</td><td>비선형 동역학을 반복 선형화·적분하므로 연산이 초 단위로 늘어남. 모델 불일치(대기 외란, 질량 변화)가 있으면 필터가 발산</td><td>추론을 단일 순전파로 대체해 지연을 상수 시간으로 묶음</td></tr>
+        <tr><td>순수 데이터 기반 시계열 모델</td><td>짧은 관측에서 음의 가속도나 비물리적 급선회 같은 궤적을 출력. 학습 분포 밖에서 일반화가 약함</td><td>운동 방정식 잔차를 손실에 넣어 해 공간을 물리적으로 허용되는 궤적으로 제한</td></tr>
+        <tr><td>단일 점 예측</td><td>교전 판단에 필요한 불확실성(CEP, ToT 분산)을 제공하지 않음</td><td>앙상블과 <span class="m">β</span> 사후 표본으로 IP 분포를 추정하고 CEP를 함께 출력</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="prose">
+    <p>주 사용자는 국방 연구기관의 M&amp;S 연구원, 공군·해군 탄도탄 작전 통제관, 방산업체 시뮬레이션 분석관입니다. 표적 탐지 후 시스템이 트랙 스트림을 받아 50 ms 안에 IP, ToT, CEP, 위협 등급을 산출하고, 통제관은 3D 상황도에서 예측 궤적과 최적 요격점(PIP)을 확인한 뒤 요격 포대 배정을 승인합니다.</p>
+  </div>
+</section>
+
+<!-- 3 REQ -->
+<section id="sec-req">
+  <div class="sh"><span class="no">§3</span><h2>요구 성능</h2></div>
+  <div class="tw">
+    <table>
+      <caption><b>Table 2</b>시스템 요구사항. 검증 방법: T 시험, A 분석, D 시연, I 검사</caption>
+      <thead><tr><th>ID</th><th>요구사항</th><th>목표값</th><th>검증</th></tr></thead>
+      <tbody>
+        <tr><td class="id">REQ-F-01</td><td>초기 관측 구간만으로 탄착까지의 전 궤적 예측</td><td class="c">관측 ≤ 15 %</td><td><span class="vm">T</span></td></tr>
+        <tr><td class="id">REQ-F-02</td><td>IP, ToT, CEP<sub>50</sub> 동시 출력</td><td class="c">3종 + 1σ</td><td><span class="vm">D</span></td></tr>
+        <tr><td class="id">REQ-F-03</td><td>예측 궤적의 물리 일관성 (운동 방정식 잔차)</td><td class="c">잔차 RMS ≤ 0.05 g</td><td><span class="vm">A</span></td></tr>
+        <tr><td class="id">REQ-F-04</td><td>보호 자산 DB 대비 위협 등급과 요격 고도 창 산출</td><td class="c">5단계</td><td><span class="vm">D</span></td></tr>
+        <tr><td class="id">REQ-P-01</td><td>단일 표적 추론 지연 (전처리 제외, p99)</td><td class="c">≤ 50 ms</td><td><span class="vm">T</span></td></tr>
+        <tr><td class="id">REQ-P-02</td><td>CEP 추정 오차, 수치해석/EKF baseline 대비</td><td class="c">−40 %</td><td><span class="vm">T</span></td></tr>
+        <tr><td class="id">REQ-P-03</td><td>교전 판단 가용 시간 증가</td><td class="c">+25 s</td><td><span class="vm">A</span></td></tr>
+        <tr><td class="id">REQ-I-01</td><td>센서 트랙 스트리밍 입력 (gRPC / Socket)</td><td class="c">≥ 20 Hz</td><td><span class="vm">I</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="prose"><p>REQ-P-01은 기획서의 추론 시간 목표(약 3 s에서 0.05 s로, 95% 단축)에서 나왔습니다. REQ-F-03의 잔차 기준은 §7의 물리 손실과 같은 식으로 계산하며, 정확한 수치는 baseline 학습 후 확정합니다.</p></div>
+</section>
+
+<!-- 4 ARCH -->
+<section id="sec-arch">
+  <div class="sh"><span class="no">§4</span><h2>시스템 아키텍처</h2></div>
+  <figure>
+    <div class="sheet arch">
+      <svg viewBox="0 0 1060 400" role="img" aria-label="온라인 추론 경로와 오프라인 학습 경로로 구성된 시스템 블록도">
+        <defs>
+          <marker id="a1" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0 0 L10 5 L0 10 z"/></marker>
+          <marker id="a2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah p" d="M0 0 L10 5 L0 10 z"/></marker>
+        </defs>
+        <rect class="lanebg" x="10" y="16" width="1040" height="168" rx="3"/>
+        <rect class="lanebg" x="10" y="216" width="1040" height="168" rx="3"/>
+        <text class="lane" x="24" y="38">ONLINE · 실시간 추론 경로</text>
+        <text class="lane" x="24" y="238">OFFLINE · 학습 및 배포 경로</text>
+
+        <g class="bx"><rect x="24" y="66" width="150" height="76" rx="2"/><text class="t" x="99" y="96" text-anchor="middle">센서</text><text class="s" x="99" y="116" text-anchor="middle">Radar · EO/IR</text><text class="s" x="99" y="131" text-anchor="middle">R, Az, El</text></g>
+        <g class="bx"><rect x="198" y="66" width="150" height="76" rx="2"/><text class="t" x="273" y="96" text-anchor="middle">수집</text><text class="s" x="273" y="116" text-anchor="middle">gRPC stream</text><text class="s" x="273" y="131" text-anchor="middle">≥ 20 Hz</text></g>
+        <g class="bx"><rect x="372" y="66" width="150" height="76" rx="2"/><text class="t" x="447" y="96" text-anchor="middle">전처리</text><text class="s" x="447" y="116" text-anchor="middle">polar → ENU</text><text class="s" x="447" y="131" text-anchor="middle">EKF · RTS smoother</text></g>
+        <g class="bx hl"><rect x="546" y="56" width="170" height="96" rx="2"/><text class="t" x="631" y="86" text-anchor="middle">추론 엔진</text><text class="s" x="631" y="106" text-anchor="middle">Transformer / Bi-LSTM</text><text class="s" x="631" y="121" text-anchor="middle">+ PINN decoder</text><text class="s" x="631" y="136" text-anchor="middle">ensemble M = 5</text></g>
+        <g class="bx"><rect x="740" y="66" width="140" height="76" rx="2"/><text class="t" x="810" y="96" text-anchor="middle">위협 평가</text><text class="s" x="810" y="116" text-anchor="middle">IP · CEP · ToT</text><text class="s" x="810" y="131" text-anchor="middle">PIP · 등급 1–5</text></g>
+        <g class="bx"><rect x="904" y="66" width="132" height="76" rx="2"/><text class="t" x="970" y="96" text-anchor="middle">C2 상황도</text><text class="s" x="970" y="116" text-anchor="middle">CesiumJS</text><text class="s" x="970" y="131" text-anchor="middle">1-click 승인</text></g>
+        <path class="ln" d="M174 104 H196" marker-end="url(#a1)"/>
+        <path class="ln" d="M348 104 H370" marker-end="url(#a1)"/>
+        <path class="ln" d="M522 104 H544" marker-end="url(#a1)"/>
+        <path class="ln" d="M716 104 H738" marker-end="url(#a1)"/>
+        <path class="ln" d="M880 104 H902" marker-end="url(#a1)"/>
+
+        <g class="bx"><rect x="198" y="266" width="150" height="76" rx="2"/><text class="t" x="273" y="296" text-anchor="middle">비행 시뮬레이터</text><text class="s" x="273" y="316" text-anchor="middle">3-DOF → 6-DOF</text><text class="s" x="273" y="331" text-anchor="middle">Monte Carlo</text></g>
+        <g class="bx"><rect x="372" y="266" width="150" height="76" rx="2"/><text class="t" x="447" y="296" text-anchor="middle">합성 데이터셋</text><text class="s" x="447" y="316" text-anchor="middle">목표 10⁶ 궤적</text><text class="s" x="447" y="331" text-anchor="middle">ID / OOD split</text></g>
+        <g class="bx"><rect x="546" y="266" width="170" height="76" rx="2"/><text class="t" x="631" y="296" text-anchor="middle">학습</text><text class="s" x="631" y="316" text-anchor="middle">L_data + λ·L_phys</text><text class="s" x="631" y="331" text-anchor="middle">λ curriculum</text></g>
+        <g class="bx"><rect x="740" y="266" width="140" height="76" rx="2"/><text class="t" x="810" y="296" text-anchor="middle">경량화</text><text class="s" x="810" y="316" text-anchor="middle">ONNX → TensorRT</text><text class="s" x="810" y="331" text-anchor="middle">FP16 / INT8</text></g>
+        <g class="bx ghost"><rect x="24" y="266" width="150" height="76" rx="2"/><text class="t" x="99" y="296" text-anchor="middle">대기 · 중력 모델</text><text class="s" x="99" y="316" text-anchor="middle">USSA-1976</text><text class="s" x="99" y="331" text-anchor="middle">g(h), Cd(M)</text></g>
+        <path class="ln" d="M174 304 H196" marker-end="url(#a1)"/>
+        <path class="ln" d="M348 304 H370" marker-end="url(#a1)"/>
+        <path class="ln" d="M522 304 H544" marker-end="url(#a1)"/>
+        <path class="ln" d="M716 304 H738" marker-end="url(#a1)"/>
+        <path class="ln p" d="M810 266 V200 H660 V154" marker-end="url(#a2)"/>
+        <text class="s" x="676" y="194">가중치 배포</text>
+        <path class="ln p" d="M99 266 V230 H580 V154" marker-end="url(#a2)" opacity=".6"/>
+        <text class="s" x="300" y="226">물리 잔차 항 (같은 모델 공유)</text>
+      </svg>
+    </div>
+    <figcaption><b>Fig. 3</b>블록도. 학습과 추론이 같은 대기·중력·항력 모델을 공유하므로, 시뮬레이터로 만든 데이터와 PINN 물리 잔차가 서로 다른 물리를 가정하는 일이 생기지 않습니다.</figcaption>
+  </figure>
+  <div class="tw">
+    <table>
+      <caption><b>Table 3</b>계층별 구성과 개발 환경</caption>
+      <thead><tr><th>계층</th><th>역할</th><th>기술</th></tr></thead>
+      <tbody>
+        <tr><td>Data</td><td>비행 시뮬레이션, Monte Carlo 파라미터 표본 추출, 센서 잡음 주입</td><td class="c">Python 3.10 · NumPy · pandas · OpenRocket</td></tr>
+        <tr><td>AI Engine</td><td>시계열 인코딩, PINN 디코딩, 앙상블 불확실성, 추론 서빙</td><td class="c">PyTorch · ONNX · TensorRT</td></tr>
+        <tr><td>Presentation</td><td>3D 상황도, CEP 타원, PIP, 위협 평가 패널</td><td class="c">CesiumJS · Three.js · Plotly</td></tr>
+        <tr><td>환경</td><td>개발 및 학습</td><td class="c">Ubuntu 22.04 / Windows 11 · VS Code · Colab</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- 5 DYNAMICS -->
+<section id="sec-dyn">
+  <div class="sh"><span class="no">§5</span><h2>비행 동역학 모델</h2></div>
+  <div class="prose">
+    <p>기준 모델은 국소 평면 지구(ENU) 좌표계의 3자유도 가변질량 점질량 모델입니다. 수백 km 이하 사거리에서는 지구 곡률과 코리올리 효과가 IP에 주는 영향이 2차 오차이므로 1단계에서는 무시하고, 6-DOF 확장 시 WGS-84 회전 지구 모델로 바꿉니다.</p>
+  </div>
+  <div class="sheet eqs">
+    <div class="eq"><span class="e"><span class="frac"><span>d<b class="vec">r</b></span><span>d<i>t</i></span></span><span class="op">=</span><b class="vec">v</b></span><span class="tag">(5.1)</span></div>
+    <div class="eq"><span class="e"><i>m</i><span class="frac"><span>d<b class="vec">v</b></span><span>d<i>t</i></span></span><span class="op">=</span><i>T</i>(<i>t</i>) <b class="vec">v̂</b><span class="op">−</span><span class="frac"><span>1</span><span>2</span></span><i>ρ</i>(<i>h</i>) <i>C<sub>D</sub></i>(<i>M</i>) <i>A</i> ‖<b class="vec">v</b>‖ <b class="vec">v</b><span class="op">−</span><i>m</i> <i>g</i>(<i>h</i>) <b class="vec">e</b><sub><i>z</i></sub></span><span class="tag">(5.2)</span></div>
+    <div class="eq"><span class="e"><span class="frac"><span>d<i>m</i></span><span>d<i>t</i></span></span><span class="op">=</span>−<span class="frac"><span><i>T</i>(<i>t</i>)</span><span><i>g</i><sub>0</sub> <i>I</i><sub>sp</sub></span></span>,&nbsp;&nbsp; <i>t</i> ≤ <i>t</i><sub>b</sub></span><span class="tag">(5.3)</span></div>
+    <div class="eq"><span class="e"><i>g</i>(<i>h</i>)<span class="op">=</span><i>g</i><sub>0</sub> <span class="frac"><span><i>R</i><sub>e</sub><sup>2</sup></span><span>(<i>R</i><sub>e</sub> + <i>h</i>)<sup>2</sup></span></span>,&nbsp;&nbsp; <i>ρ</i>(<i>h</i>)<span class="op">=</span><i>ρ</i><sub>0</sub> exp(−<i>h</i>/<i>H</i>),&nbsp;&nbsp; <i>M</i><span class="op">=</span><span class="frac"><span>‖<b class="vec">v</b>‖</span><span><i>a</i>(<i>h</i>)</span></span></span><span class="tag">(5.4)</span></div>
+    <div class="eq"><span class="e">연소 종료 후 (<i>T</i> = 0):&nbsp;&nbsp; <span class="frac"><span>d<b class="vec">v</b></span><span>d<i>t</i></span></span><span class="op">=</span>−<span class="frac"><span><i>ρ</i>(<i>h</i>) ‖<b class="vec">v</b>‖ <b class="vec">v</b></span><span>2<i>β</i></span></span> <span class="frac"><span><i>C<sub>D</sub></i>(<i>M</i>)</span><span><i>C</i><sub><i>D</i>,ref</sub></span></span><span class="op">−</span><i>g</i>(<i>h</i>) <b class="vec">e</b><sub><i>z</i></sub>,&nbsp;&nbsp; <i>β</i> ≡ <span class="frac"><span><i>m</i></span><span><i>C</i><sub><i>D</i>,ref</sub> <i>A</i></span></span></span><span class="tag">(5.5)</span></div>
+  </div>
+  <div class="prose">
+    <p>식 (5.5)에서 보듯 탄도 비행 구간의 궤적은 질량, 형상, 항력을 묶은 탄도계수 <span class="m">β</span> 하나로 매개화됩니다. 따라서 IP 예측 문제는 사실상 "초기 상태와 <span class="m">β</span>를 얼마나 정확히 아느냐"의 문제가 됩니다. 수치 적분은 4차 Runge–Kutta(RK4)를 쓰며, <span class="m">Δt</span> = 0.05 s에서 전역 오차는 <span class="m">O(Δt<sup>4</sup>)</span>입니다. 현재 생성기의 명시적 Euler(1차)보다 같은 정확도에서 훨씬 큰 시간 간격을 쓸 수 있습니다.</p>
+  </div>
+  <div class="nom">
+    <div class="tw"><table>
+      <caption><b>Table 4a</b>기호</caption>
+      <thead><tr><th>기호</th><th>정의</th><th>단위</th></tr></thead>
+      <tbody>
+        <tr><td><span class="m"><b class="vec">r</b>, <b class="vec">v</b></span></td><td>ENU 위치, 속도</td><td class="c">m, m/s</td></tr>
+        <tr><td><span class="m">h</span></td><td>고도 (= <span class="m">z</span>)</td><td class="c">m</td></tr>
+        <tr><td><span class="m">m</span>, <span class="m">A</span></td><td>질량, 기준 단면적</td><td class="c">kg, m²</td></tr>
+        <tr><td><span class="m">C<sub>D</sub>(M)</span></td><td>마하수 의존 항력 계수</td><td class="c">—</td></tr>
+        <tr><td><span class="m">β</span></td><td>탄도계수</td><td class="c">kg/m²</td></tr>
+        <tr><td><span class="m">T</span>, <span class="m">I<sub>sp</sub></span>, <span class="m">t<sub>b</sub></span></td><td>추력, 비추력, 연소 시간</td><td class="c">N, s, s</td></tr>
+      </tbody>
+    </table></div>
+    <div class="tw"><table>
+      <caption><b>Table 4b</b>상수 및 대기 모델</caption>
+      <thead><tr><th>기호</th><th>값</th><th>비고</th></tr></thead>
+      <tbody>
+        <tr><td><span class="m">g<sub>0</sub></span></td><td class="c">9.80665 m/s²</td><td>표준 중력</td></tr>
+        <tr><td><span class="m">R<sub>e</sub></span></td><td class="c">6,371 km</td><td>평균 지구 반경</td></tr>
+        <tr><td><span class="m">ρ<sub>0</sub></span>, <span class="m">H</span></td><td class="c">1.225 kg/m³, 8.5 km</td><td>지수 대기 근사</td></tr>
+        <tr><td><span class="m">a(h)</span></td><td class="c">√(γ R T(h))</td><td>USSA-1976 온도 분포</td></tr>
+        <tr><td><span class="m">γ</span>, <span class="m">R</span></td><td class="c">1.4, 287.05 J/kg·K</td><td>건조 공기</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</section>
+
+<!-- 6 ESTIMATION -->
+<section id="sec-est">
+  <div class="sh"><span class="no">§6</span><h2>관측 모델과 칼만 필터</h2></div>
+  <div class="sheet eqs">
+    <div class="eq"><span class="e"><b class="vec">z</b><sub><i>k</i></sub><span class="op">=</span>[ <i>R<sub>k</sub></i>, <i>θ<sub>k</sub></i>, <i>φ<sub>k</sub></i> ]<sup>T</sup><span class="op">=</span><b class="vec">h</b>(<b class="vec">r</b><sub><i>k</i></sub> − <b class="vec">r</b><sub>s</sub>) + <b class="vec">w</b><sub><i>k</i></sub>,&nbsp;&nbsp; <b class="vec">w</b><sub><i>k</i></sub> ~ 𝒩(0, diag(<i>σ<sub>R</sub></i><sup>2</sup>, <i>σ<sub>θ</sub></i><sup>2</sup>, <i>σ<sub>φ</sub></i><sup>2</sup>))</span><span class="tag">(6.1)</span></div>
+    <div class="eq"><span class="e"><i>σ</i><sub>⊥</sub> ≈ <i>R</i> · <i>σ<sub>θ</sub></i></span><span class="tag">(6.2)</span></div>
+    <div class="eq"><span class="e"><b class="vec">x</b><span class="op">=</span>[ <b class="vec">r</b><sup>T</sup>, <b class="vec">v</b><sup>T</sup>, ln <i>β</i> ]<sup>T</sup> ∈ ℝ<sup>7</sup>,&nbsp;&nbsp; <i>p</i>(ln <i>β</i> | <b class="vec">z</b><sub>1:<i>k</i></sub>) ∝ <i>p</i>(<b class="vec">z</b><sub>1:<i>k</i></sub> | <i>β</i>) <i>p</i>(ln <i>β</i>)</span><span class="tag">(6.3)</span></div>
+  </div>
+  <div class="prose">
+    <p>레이더는 거리, 방위각, 고각을 측정하므로 직교 좌표에서의 잡음은 등방성이 아닙니다. 식 (6.2)처럼 횡방향 오차는 거리에 비례해 커지며, 같은 각도 정밀도라도 원거리 표적일수록 측방 위치가 불확실합니다. 전처리 단계는 극좌표 측정을 ENU로 변환하고(변환 편향 보정 포함) Rauch–Tung–Striebel(RTS) 고정 구간 평활기로 관측 구간 전체를 평활해 학습 입력과 같은 분포로 맞춥니다.</p>
+    <p>탄도계수는 상태에 ln <span class="m">β</span>로 확장해 추정합니다. 로그 매개화는 <span class="m">β</span> &gt; 0을 보장하고 수 배 범위에 걸친 사전분포를 다루기 쉽게 합니다. 항력 가속도 <span class="m">ρv²/2β</span>가 측정 잡음이 만드는 가속도 불확실성보다 작으면 <span class="m">β</span>는 관측 불가능합니다.</p>
+  </div>
+
+  <h3 class="sub"><span class="no">6.1</span>확장 칼만 필터 (EKF)</h3>
+  <div class="prose"><p>비선형 동역학 (5.5)를 측정 간격마다 RK4로 전파하고, 상태 전이 야코비안으로 공분산을 선형 전파합니다. 시연(Fig. 1)과 비교 baseline(Table 11)이 이 필터를 그대로 씁니다.</p></div>
+  <div class="sheet eqs">
+    <div class="eq"><span class="e"><b class="vec">x̂</b><sub><i>k</i>|<i>k</i>−1</sub><span class="op">=</span><b class="vec">Φ</b>(<b class="vec">x̂</b><sub><i>k</i>−1|<i>k</i>−1</sub>; Δ<i>t</i>),&nbsp;&nbsp; <b class="vec">F</b><sub><i>k</i></sub><span class="op">=</span><span class="frac"><span>∂<b class="vec">Φ</b></span><span>∂<b class="vec">x</b></span></span>|<sub><b class="vec">x̂</b><sub><i>k</i>−1|<i>k</i>−1</sub></sub></span><span class="tag">(6.4)</span></div>
+    <div class="eq"><span class="e"><b class="vec">P</b><sub><i>k</i>|<i>k</i>−1</sub><span class="op">=</span><b class="vec">F</b><sub><i>k</i></sub> <b class="vec">P</b><sub><i>k</i>−1|<i>k</i>−1</sub> <b class="vec">F</b><sub><i>k</i></sub><sup>T</sup><span class="op">+</span><b class="vec">Q</b><sub><i>k</i></sub>,&nbsp;&nbsp; <b class="vec">Q</b><sub><i>k</i></sub><span class="op">=</span>blkdiag( <i>q</i><sub>a</sub>[ Δ<i>t</i><sup>3</sup>/3, Δ<i>t</i><sup>2</sup>/2 ; Δ<i>t</i><sup>2</sup>/2, Δ<i>t</i> ] ⊗ <b class="vec">I</b><sub>3</sub>, <i>q</i><sub>β</sub>Δ<i>t</i> )</span><span class="tag">(6.5)</span></div>
+    <div class="eq"><span class="e"><b class="vec">ν</b><sub><i>k</i></sub><span class="op">=</span><b class="vec">z</b><sub><i>k</i></sub> − <b class="vec">H</b><b class="vec">x̂</b><sub><i>k</i>|<i>k</i>−1</sub>,&nbsp;&nbsp; <b class="vec">S</b><sub><i>k</i></sub><span class="op">=</span><b class="vec">H</b><b class="vec">P</b><sub><i>k</i>|<i>k</i>−1</sub><b class="vec">H</b><sup>T</sup> + <b class="vec">R</b>,&nbsp;&nbsp; <b class="vec">K</b><sub><i>k</i></sub><span class="op">=</span><b class="vec">P</b><sub><i>k</i>|<i>k</i>−1</sub><b class="vec">H</b><sup>T</sup><b class="vec">S</b><sub><i>k</i></sub><sup>−1</sup></span><span class="tag">(6.6)</span></div>
+    <div class="eq"><span class="e"><b class="vec">x̂</b><sub><i>k</i>|<i>k</i></sub><span class="op">=</span><b class="vec">x̂</b><sub><i>k</i>|<i>k</i>−1</sub> + <b class="vec">K</b><sub><i>k</i></sub><b class="vec">ν</b><sub><i>k</i></sub>,&nbsp;&nbsp; <b class="vec">P</b><sub><i>k</i>|<i>k</i></sub><span class="op">=</span>(<b class="vec">I</b> − <b class="vec">K</b><sub><i>k</i></sub><b class="vec">H</b>) <b class="vec">P</b><sub><i>k</i>|<i>k</i>−1</sub> (<b class="vec">I</b> − <b class="vec">K</b><sub><i>k</i></sub><b class="vec">H</b>)<sup>T</sup> + <b class="vec">K</b><sub><i>k</i></sub><b class="vec">R</b><b class="vec">K</b><sub><i>k</i></sub><sup>T</sup></span><span class="tag">(6.7)</span></div>
+    <div class="eq"><span class="e"><i>ε</i><sub><i>k</i></sub><span class="op">=</span><b class="vec">ν</b><sub><i>k</i></sub><sup>T</sup><b class="vec">S</b><sub><i>k</i></sub><sup>−1</sup><b class="vec">ν</b><sub><i>k</i></sub> ~ <i>χ</i><sup>2</sup><sub>3</sub>,&nbsp;&nbsp; E[<i>ε</i>] = 3</span><span class="tag">(6.8)</span></div>
+  </div>
+  <div class="tw">
+    <table>
+      <caption><b>Table 5</b>EKF 구현 파라미터 (Fig. 1 시연)</caption>
+      <thead><tr><th>항목</th><th>설정</th><th>근거</th></tr></thead>
+      <tbody>
+        <tr><td>상태</td><td class="c">x = [r, v, ln β] ∈ ℝ⁷</td><td>β &gt; 0 보장, 넓은 사전 범위</td></tr>
+        <tr><td>전파 Φ</td><td class="c">RK4, Δt = 0.5 s (2 sub-step)</td><td>식 (5.5) 전체 비선형 모델</td></tr>
+        <tr><td>야코비안 F</td><td class="c">Φ의 수치 전방 차분</td><td>C<sub>D</sub>(M), g(h)까지 일관되게 선형화</td></tr>
+        <tr><td>공정 잡음</td><td class="c">q<sub>a</sub> = 0.5 m²/s³, q<sub>β</sub> = 2×10⁻⁴ s⁻¹</td><td>모델 불일치 흡수, 공분산 붕괴 방지</td></tr>
+        <tr><td>측정</td><td class="c">H = [I₃ 0], R = σ²I₃</td><td>변환 측정(converted measurement) 가정</td></tr>
+        <tr><td>초기화</td><td class="c">2점 차분, ln β₀ = ln 3000, σ = 1.2</td><td>β ≈ 300–30,000 kg/m² (±2σ)</td></tr>
+        <tr><td>공분산 갱신</td><td class="c">Joseph 형식 + 대칭화</td><td>수치적 양정치성 유지</td></tr>
+        <tr><td>일관성 검정</td><td class="c">평균 NIS vs χ²₃</td><td>과신·과소신 진단</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="prose">
+    <p>실제 레이더의 측정은 극좌표이므로 운용 버전은 <span class="m">H</span> 대신 식 (6.1)의 <span class="m">h(x)</span>와 그 야코비안을 쓰는 EKF 갱신, 또는 시그마 포인트로 비선형 측정을 다루는 UKF를 씁니다. 선형화 오차가 큰 초기 구간(공분산이 큰 구간)에서는 UKF가 EKF보다 일관성이 좋다는 것이 일반적인 결과이며, 이 비교는 Table 11에 포함됩니다.</p>
+  </div>
+
+  <h3 class="sub"><span class="no">6.2</span>칼만 필터와 PINN의 결합</h3>
+  <div class="tw">
+    <table>
+      <caption><b>Table 6</b>시스템 안에서 칼만 필터가 맡는 세 가지 역할</caption>
+      <thead><tr><th>역할</th><th>방식</th><th>효과</th></tr></thead>
+      <tbody>
+        <tr><td>전처리</td><td>RTS 고정 구간 평활기로 관측 구간 트랙을 평활하고 속도·가속도 특징 생성</td><td>미분으로 증폭되는 잡음을 억제해 인코더 입력 분포를 안정화</td></tr>
+        <tr><td>Baseline</td><td>EKF / UKF + Monte Carlo 분산 전파 (Fig. 1)</td><td>같은 물리 모델 위에서 PINN의 속도·정확도 이득을 정량화</td></tr>
+        <tr class="prop"><td><b>하이브리드</b></td><td>EKF 사후 <span class="m">(x̂, P)</span>를 PINN 인코더의 추가 입력으로 넣고, PINN 예측 궤적을 다음 측정 시 EKF 예측 단계의 사전분포로 되먹임</td><td>필터가 단기 상태를, PINN이 장기 궤적과 β 사전을 담당. 새 측정마다 증분 갱신이 가능</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- 7 PINN -->
+<section id="sec-pinn">
+  <div class="sh"><span class="no">§7</span><h2>PINN 설계</h2></div>
+  <div class="prose">
+    <p>네트워크는 관측 시퀀스를 잠재 벡터로 요약하는 인코더와, 임의 시각 <span class="m">t</span>의 위치를 출력하는 연속시간 디코더로 구성됩니다. 디코더가 <span class="m">t</span>에 대해 미분 가능하므로 자동 미분으로 <span class="m">d²r̂/dt²</span>를 구해 운동 방정식 잔차를 계산할 수 있습니다. 탄도계수는 디코더의 보조 출력으로 함께 추정하는 역문제로 다룹니다.</p>
+  </div>
+  <div class="sheet eqs">
+    <div class="eq"><span class="e"><b class="vec">c</b><span class="op">=</span>E<sub><i>φ</i></sub>(<b class="vec">z</b><sub>1:<i>k</i></sub>),&nbsp;&nbsp; <b class="vec">r̂</b>(<i>t</i>)<span class="op">=</span>D<sub><i>θ</i></sub>(<i>t</i>, <b class="vec">c</b>),&nbsp;&nbsp; ln <i>β̂</i><span class="op">=</span>g<sub><i>ψ</i></sub>(<b class="vec">c</b>)</span><span class="tag">(7.1)</span></div>
+    <div class="eq"><span class="e"><b class="vec">ℛ</b>(<i>t</i>)<span class="op">=</span><span class="frac"><span>∂<sup>2</sup><b class="vec">r̂</b></span><span>∂<i>t</i><sup>2</sup></span></span><span class="op">+</span><span class="frac"><span><i>ρ</i>(<i>ĥ</i>) ‖∂<sub><i>t</i></sub><b class="vec">r̂</b>‖ ∂<sub><i>t</i></sub><b class="vec">r̂</b></span><span>2<i>β̂</i></span></span> <span class="frac"><span><i>C<sub>D</sub></i>(<i>M̂</i>)</span><span><i>C</i><sub><i>D</i>,ref</sub></span></span><span class="op">+</span><i>g</i>(<i>ĥ</i>) <b class="vec">e</b><sub><i>z</i></sub></span><span class="tag">(7.2)</span></div>
+    <div class="eq"><span class="e">ℒ<span class="op">=</span><span class="frac"><span>1</span><span><i>N<sub>d</sub></i></span></span>Σ<sub><i>i</i></sub> ‖<b class="vec">r̂</b>(<i>t<sub>i</sub></i>) − <b class="vec">r</b><sub><i>i</i></sub>‖<sup>2</sup><span class="op">+</span><i>λ</i><sub>p</sub>(<i>e</i>) <span class="frac"><span>1</span><span><i>N<sub>c</sub></i></span></span>Σ<sub><i>j</i></sub> ‖<b class="vec">ℛ</b>(<i>t<sub>j</sub></i>)‖<sup>2</sup><span class="op">+</span><i>λ</i><sub>ic</sub> ‖<b class="vec">r̂</b>(<i>t<sub>c</sub></i>) − <b class="vec">r</b><sub><i>c</i></sub>‖<sup>2</sup></span><span class="tag">(7.3)</span></div>
+  </div>
+  <div class="prose">
+    <p>데이터 항은 관측 구간과 학습용 실제 궤적에서 계산하고, 물리 항은 <span class="m">[t<sub>c</sub>, t<sub>max</sub>]</span>에서 균등 추출한 <span class="m">N<sub>c</sub></span>개의 배치점(collocation point)에서 계산합니다. 각 축은 특성 길이 <span class="m">L</span> = 100 km, 시간 <span class="m">τ</span> = 100 s로 무차원화해 잔차의 크기를 맞춥니다. PINN은 손실 항 간 기울기 불균형으로 수렴이 불안정하기 쉬우므로, <span class="m">λ<sub>p</sub>(e)</span>를 에폭에 따라 0에서 늘리는 커리큘럼과 기울기 노름 기반 적응 가중을 함께 씁니다 [5].</p>
+  </div>
+  <div class="tw">
+    <table>
+      <caption><b>Table 7</b>모델 구성. 프로토타입은 <span class="mono">pinn_model.py</span>의 현재 구현이고, 목표는 본 설계입니다</caption>
+      <thead><tr><th>구성 요소</th><th>프로토타입</th><th>목표 설계</th></tr></thead>
+      <tbody>
+        <tr><td>입력 특징</td><td class="c">9 (x,y,z,vx,vy,vz,ax,ay,az)</td><td class="c">11 (+ altitude, Mach)</td></tr>
+        <tr><td>인코더</td><td class="c">Bi-LSTM, 2 layers, h = 128</td><td class="c">Transformer, 4 layers, d = 128, 4 heads</td></tr>
+        <tr><td>디코더 / 헤드</td><td class="c">MLP 256→128→64→3, SiLU</td><td class="c">연속시간 MLP D(t, c), tanh, 6×128</td></tr>
+        <tr><td>출력</td><td class="c">다음 1-step 위치</td><td class="c">r̂(t) 전 구간, ln β̂, IP, ToT</td></tr>
+        <tr><td>물리 손실</td><td class="c">z축 등가속 1-step 잔차</td><td class="c">식 (7.2) 3축 잔차, autograd</td></tr>
+        <tr><td>λ<sub>p</sub></td><td class="c">0.05 (고정)</td><td class="c">0 → 1 커리큘럼 + 적응 가중</td></tr>
+        <tr><td>최적화</td><td class="c">Adam, lr 1e-3</td><td class="c">Adam 1e-3 → L-BFGS 미세 조정</td></tr>
+        <tr><td>불확실성</td><td class="c">—</td><td class="c">Deep ensemble M = 5 [6] + β 사후 표본</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <h3 class="sub"><span class="no">7.1</span>IP 분포와 CEP</h3>
+  <div class="sheet eqs">
+    <div class="eq"><span class="e">P( ‖<b class="vec">r</b><sub>I</sub> − <b class="vec">μ</b><sub>I</sub>‖ ≤ CEP ) = 0.5,&nbsp;&nbsp; CEP ≈ 0.5887 (<i>σ<sub>x</sub></i> + <i>σ<sub>y</sub></i>)</span><span class="tag">(7.4)</span></div>
+  </div>
+  <div class="prose"><p>앙상블 구성원과 <span class="m">β</span> 사후 표본마다 디코더를 평가해 IP 표본 집합을 얻고, 평균 탄착점(MPI) <span class="m">μ<sub>I</sub></span>에 대한 반경 거리의 중앙값을 CEP<sub>50</sub>으로 보고합니다. 식 (7.4)의 근사는 두 축의 표준편차 비가 1에 가까울 때만 정확하므로, 하향거리 분산이 우세한 재진입 표적에서는 표본 중앙값을 직접 씁니다.</p></div>
+</section>
+
+<!-- 8 DATA -->
+<section id="sec-data">
+  <div class="sh"><span class="no">§8</span><h2>합성 데이터셋</h2></div>
+  <div class="prose"><p>실측 비행 데이터는 보안상 확보할 수 없으므로 Monte Carlo로 파라미터를 표본 추출하고 §5의 모델로 적분해 합성 궤적을 만듭니다. 각 궤적에는 식 (6.1)의 센서 잡음을 주입한 관측본과 잡음 없는 정답 궤적을 함께 저장합니다.</p></div>
+  <div class="tw">
+    <table>
+      <caption><b>Table 8</b>Monte Carlo 파라미터 분포 (<span class="mono">data_generator.py</span> 기준, 균등 분포)</caption>
+      <thead><tr><th>파라미터</th><th>기호</th><th>범위</th><th>OOD 시험 범위</th></tr></thead>
+      <tbody>
+        <tr><td>초기 속도</td><td><span class="m">v<sub>0</sub></span></td><td class="n">300 – 800 m/s</td><td class="n">800 – 1,000 m/s</td></tr>
+        <tr><td>발사 각도</td><td><span class="m">γ<sub>0</sub></span></td><td class="n">30 – 75°</td><td class="n">20 – 30°, 75 – 85°</td></tr>
+        <tr><td>초기 질량</td><td><span class="m">m<sub>0</sub></span></td><td class="n">800 – 1,500 kg</td><td class="n">—</td></tr>
+        <tr><td>항력 계수</td><td><span class="m">C<sub>D</sub></span></td><td class="n">0.15 – 0.35</td><td class="n">0.35 – 0.45</td></tr>
+        <tr><td>기준 단면적</td><td><span class="m">A</span></td><td class="n">0.2 – 0.5 m²</td><td class="n">—</td></tr>
+        <tr><td>연소 시간</td><td><span class="m">t<sub>b</sub></span></td><td class="n">5 – 15 s</td><td class="n">—</td></tr>
+        <tr><td>추력</td><td><span class="m">T</span></td><td class="n">20 – 50 kN</td><td class="n">—</td></tr>
+        <tr><td>적분 간격</td><td><span class="m">Δt</span></td><td class="n">0.05 s</td><td class="n">—</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="tw">
+    <table>
+      <caption><b>Table 9</b>텐서 규격과 분할</caption>
+      <thead><tr><th>항목</th><th>규격</th></tr></thead>
+      <tbody>
+        <tr><td>입력</td><td class="c">[B, T<sub>k</sub>, F],  F = 11,  T<sub>k</sub> = 관측 10–15 % 구간</td></tr>
+        <tr><td>정답</td><td class="c">r(t), t ∈ [t<sub>c</sub>, t<sub>I</sub>];  (x<sub>I</sub>, y<sub>I</sub>);  t<sub>I</sub>;  β</td></tr>
+        <tr><td>규모</td><td class="c">목표 10<sup>6</sup> 궤적 (현재 생성기 기본값 500)</td></tr>
+        <tr><td>분할</td><td class="c">train 80 / val 10 / test-ID 10 %  +  test-OOD (Table 8)</td></tr>
+        <tr><td>정규화</td><td class="c">L = 100 km, τ = 100 s 무차원화</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- 9 V&V -->
+<section id="sec-vv">
+  <div class="sh"><span class="no">§9</span><h2>검증 계획</h2></div>
+  <div class="tw">
+    <table>
+      <caption><b>Table 10</b>평가 지표</caption>
+      <thead><tr><th>지표</th><th>정의</th><th>대응 요구</th></tr></thead>
+      <tbody>
+        <tr><td>ADE</td><td><span class="m">(1/N) Σ<sub>k</sub> ‖r̂<sub>k</sub> − r<sub>k</sub>‖</span>, 예측 구간 평균 위치 오차</td><td class="id">REQ-F-01</td></tr>
+        <tr><td>IP miss</td><td><span class="m">‖(x̂<sub>I</sub>, ŷ<sub>I</sub>) − (x<sub>I</sub>, y<sub>I</sub>)‖</span></td><td class="id">REQ-P-02</td></tr>
+        <tr><td>ToT error</td><td><span class="m">|t̂<sub>I</sub> − t<sub>I</sub>|</span></td><td class="id">REQ-F-02</td></tr>
+        <tr><td>CEP 보정도</td><td>예측 CEP<sub>50</sub> 원 안에 실제 IP가 들어간 비율. 잘 보정된 모델은 0.5</td><td class="id">REQ-F-02</td></tr>
+        <tr><td>물리 잔차</td><td><span class="m">RMS ‖ℛ(t)‖ / g<sub>0</sub></span>, 식 (7.2)</td><td class="id">REQ-F-03</td></tr>
+        <tr><td>지연</td><td>단일 표적 추론 p50 / p99, 배치 1, FP16</td><td class="id">REQ-P-01</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="tw">
+    <table>
+      <caption><b>Table 11</b>비교 모델. 같은 test-ID / test-OOD 분할과 같은 관측 비율에서 평가합니다</caption>
+      <thead><tr><th>모델</th><th>물리 모델</th><th>불확실성</th><th>비고</th></tr></thead>
+      <tbody>
+        <tr><td>EKF + Monte Carlo</td><td>식 (5.5), ln β 상태 확장</td><td>공분산 선형 전파 + 표본</td><td>고전 baseline, Fig. 1의 방식</td></tr>
+        <tr><td>UKF + Monte Carlo</td><td>식 (5.5), 극좌표 측정</td><td>시그마 포인트</td><td>선형화 오차 비교</td></tr>
+        <tr><td>IMM (CV / CA / 탄도)</td><td>다중 모델</td><td>모델 확률 혼합</td><td>기동 표적 대응 [3]</td></tr>
+        <tr><td>Bi-LSTM (data only)</td><td>—</td><td>앙상블</td><td>λ<sub>p</sub> = 0 ablation</td></tr>
+        <tr><td>Transformer (data only)</td><td>—</td><td>앙상블</td><td>λ<sub>p</sub> = 0 ablation</td></tr>
+        <tr class="prop"><td><b>PINN–Bi-LSTM</b></td><td>식 (7.2)</td><td>앙상블 + β</td><td>제안</td></tr>
+        <tr class="prop"><td><b>PINN–Transformer</b></td><td>식 (7.2)</td><td>앙상블 + β</td><td>제안 (주 모델)</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="prose"><p>Ablation은 물리 손실 유무, 관측 비율(5 / 10 / 15 / 20 %), 센서 잡음 수준(<span class="m">σ<sub>R</sub></span> = 10 / 50 / 150 m)의 3요인으로 설계합니다. 물리 제약의 이점은 관측이 짧고 OOD 조건일 때 가장 크게 나타날 것으로 예상하며, 이를 반증할 수 있도록 같은 조건의 data-only 모델과 짝지어 비교합니다.</p></div>
+</section>
+
+<!-- 10 IMPL -->
+<section id="sec-impl">
+  <div class="sh"><span class="no">§10</span><h2>구현 현황</h2></div>
+  <div class="tw">
+    <table>
+      <caption><b>Table 12</b>저장소 구성과 설계 대비 차이</caption>
+      <thead><tr><th>파일</th><th>현재 구현</th><th>다음 단계</th></tr></thead>
+      <tbody>
+        <tr><td class="id">src/data_generator.py</td><td>점질량(3-DOF, 문서상 6-DOF 표기), 명시적 Euler, 지수 대기, 상수 g, 상수 C<sub>D</sub>, 추력·질량 감소</td><td>RK4, g(h), C<sub>D</sub>(M), USSA-1976, 측방 운동과 센서 잡음 주입, 6-DOF 자세 동역학</td></tr>
+        <tr><td class="id">src/pinn_model.py</td><td>Bi-LSTM 인코더 + MLP, 1-step 위치 회귀, z축 등가속 잔차, 더미 텐서 1-step 학습 확인</td><td>연속시간 디코더, autograd 잔차 (7.2), 실제 데이터 로더, 학습 루프와 평가 스크립트</td></tr>
+        <tr><td class="id">prototype/viewer.html</td><td>Three.js 정적 곡선과 CEP 링</td><td>모델 추론 결과 연동, CesiumJS 지형 기반 상황도</td></tr>
+        <tr><td class="id">index.html</td><td>본 기술 문서, 7-상태 EKF + Monte Carlo baseline 시연 (Fig. 1)</td><td>학습된 모델 결과를 baseline과 나란히 표시</td></tr>
+        <tr><td class="id">docs/</td><td>AI 서비스 컨셉 정의서, 프로젝트 기획서 (.docx)</td><td>—</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- 11 PLAN -->
+<section id="sec-plan">
+  <div class="sh"><span class="no">§11</span><h2>일정과 위험 관리</h2></div>
+  <figure>
+    <div class="tw">
+      <div class="gantt" role="table" aria-label="7주 일정">
+        <div class="hd l">작업</div><div class="hd">W1</div><div class="hd">W2</div><div class="hd">W3</div><div class="hd">W4</div><div class="hd">W5</div><div class="hd">W6</div><div class="hd">W7</div>
+        <div class="tk">기획</div><div class="bar" style="grid-column:2/3"><span>요구사항 · 구조</span></div><div style="grid-column:3/9"></div>
+        <div class="tk">분석</div><div style="grid-column:2/3"></div><div class="bar" style="grid-column:3/4"><span>시뮬레이터 · 데이터</span></div><div style="grid-column:4/9"></div>
+        <div class="tk">설계</div><div style="grid-column:2/4"></div><div class="bar" style="grid-column:4/5"><span>모델 구조</span></div><div style="grid-column:5/9"></div>
+        <div class="tk">개발</div><div style="grid-column:2/5"></div><div class="bar acc" style="grid-column:5/7"><span>학습 · 물리 손실 · 대시보드</span></div><div style="grid-column:7/9"></div>
+        <div class="tk">시험</div><div style="grid-column:2/7"></div><div class="bar" style="grid-column:7/8"><span>지표 · 지연 최적화</span></div><div style="grid-column:8/9"></div>
+        <div class="tk last">완성</div><div class="last" style="grid-column:2/8"></div><div class="bar last" style="grid-column:8/9"><span>보고 · 발표</span></div>
+      </div>
+    </div>
+    <figcaption><b>Fig. 4</b>7주 마일스톤. 개발 단계(W4–W5)가 핵심 경로이며, PINN 수렴 위험(R-02)에 대비해 W4 초반에 data-only baseline을 먼저 확보합니다.</figcaption>
+  </figure>
+  <div class="tw">
+    <table>
+      <caption><b>Table 13</b>위험 관리</caption>
+      <thead><tr><th>ID</th><th>구분</th><th>위험</th><th>대응</th><th>대체안</th></tr></thead>
+      <tbody>
+        <tr><td class="id">R-01</td><td>개발</td><td>실측 비행 데이터 확보 불가</td><td>물리 시뮬레이터 파라미터 무작위화로 합성 데이터 구축, OOD 분할로 일반화 점검</td><td>공개 궤적 데이터로 정성 검증</td></tr>
+        <tr><td class="id">R-02</td><td>관리</td><td>PINN 학습 수렴 불안정</td><td>data-only baseline 선확보, λ<sub>p</sub> 커리큘럼, 무차원화, 적응 가중</td><td>물리 손실을 정규화 항으로 축소 적용</td></tr>
+        <tr><td class="id">R-03</td><td>상용화</td><td>실시간 추론 지연 초과</td><td>ONNX → TensorRT 변환, FP16 / INT8 양자화, 앙상블 병렬 배치</td><td>앙상블 수 M 축소</td></tr>
+        <tr><td class="id">R-04</td><td>기술</td><td>중간 비행 구간 β 관측 불가로 IP 분산 증가</td><td>β를 확률 변수로 다루고 CEP 보정도로 과신 여부 점검</td><td>관측 비율 하한 상향</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="prose"><p>확장 방향은 UAM·드론 군집 경로 추적, 우주 재진입체와 수명 말기 위성의 낙하 궤적 예측, 민간 항공기 비상 착륙 궤적 유도와 UAM 충돌 방지입니다. 모두 "짧은 관측에서 물리적으로 유효한 장기 궤적과 그 불확실성을 빠르게 추론한다"는 같은 문제 구조를 가집니다.</p></div>
+</section>
+
+<!-- 12 REF -->
+<section id="sec-ref">
+  <div class="sh"><span class="no">§12</span><h2>참고문헌</h2></div>
+  <ol class="refs">
+    <li>M. Raissi, P. Perdikaris, G. E. Karniadakis, “Physics-informed neural networks: A deep learning framework for solving forward and inverse problems involving nonlinear partial differential equations,” <i>J. Comput. Phys.</i>, vol. 378, pp. 686–707, 2019.</li>
+    <li>P. Zarchan, <i>Tactical and Strategic Missile Guidance</i>, AIAA Progress in Astronautics and Aeronautics.</li>
+    <li>X. R. Li, V. P. Jilkov, “Survey of maneuvering target tracking. Part II: Motion models of ballistic and space targets,” <i>IEEE Trans. Aerosp. Electron. Syst.</i>, vol. 46, no. 1, pp. 96–119, 2010.</li>
+    <li>H. E. Rauch, F. Tung, C. T. Striebel, “Maximum likelihood estimates of linear dynamic systems,” <i>AIAA J.</i>, vol. 3, no. 8, pp. 1445–1450, 1965.</li>
+    <li>S. Wang, Y. Teng, P. Perdikaris, “Understanding and mitigating gradient flow pathologies in physics-informed neural networks,” <i>SIAM J. Sci. Comput.</i>, vol. 43, no. 5, 2021.</li>
+    <li>B. Lakshminarayanan, A. Pritzel, C. Blundell, “Simple and scalable predictive uncertainty estimation using deep ensembles,” <i>NeurIPS</i>, 2017.</li>
+    <li>A. Vaswani et al., “Attention is all you need,” <i>NeurIPS</i>, 2017.</li>
+    <li>NOAA, NASA, USAF, <i>U.S. Standard Atmosphere, 1976</i>, NOAA-S/T 76-1562, 1976.</li>
+  </ol>
+</section>
+
+<footer>
+  <span><b>TrajAI-Defense</b> · 인공지능 프론티어 · 이정원 (23012146)</span>
+  <span>학술 목적의 개념 연구이며 모든 데이터는 공개 물리 모델로 생성한 합성 데이터입니다.</span>
+</footer>
+
+</main>
+</div>
+
+<script>
+(function(){
+"use strict";
+/* ===================== physics ===================== */
+const G0=9.80665, RE=6371000, RHO0=1.225, HS=8500, GAM=1.4, RAIR=287.053;
+function rho(h){return RHO0*Math.exp(-Math.max(0,h)/HS)}
+function sos(h){ // USSA-1976 temperature profile (to 51 km), then isothermal
+  h=Math.max(0,h); let T;
+  if(h<11000) T=288.15-0.0065*h; else if(h<20000) T=216.65; else if(h<32000) T=216.65+0.001*(h-20000);
+  else if(h<47000) T=228.65+0.0028*(h-32000); else T=270.65;
+  return Math.sqrt(GAM*RAIR*T);
+}
+function cdRatio(M){ // C_D(M)/C_D,ref : subsonic plateau, transonic rise, supersonic decay
+  if(M<0.8) return 0.75;
+  if(M<1.2) return 0.75+(M-0.8)/0.4*0.6;
+  return 0.8+0.55*Math.exp(-(M-1.2)/1.2);
+}
+function grav(h){const r=RE/(RE+h); return G0*r*r}
+function deriv(s,beta,o){ // s=[x,y,z,vx,vy,vz]
+  const vx=s[3],vy=s[4],vz=s[5], v=Math.hypot(vx,vy,vz), h=s[2];
+  const k = v>0 ? rho(h)*v*cdRatio(v/sos(h))/(2*beta) : 0;
+  o[0]=vx;o[1]=vy;o[2]=vz;o[3]=-k*vx;o[4]=-k*vy;o[5]=-k*vz-grav(h);
+}
+const k1=new Float64Array(6),k2=new Float64Array(6),k3=new Float64Array(6),k4=new Float64Array(6),tmp=new Float64Array(6);
+function rk4(s,beta,dt){
+  deriv(s,beta,k1); for(let i=0;i<6;i++) tmp[i]=s[i]+.5*dt*k1[i];
+  deriv(tmp,beta,k2); for(let i=0;i<6;i++) tmp[i]=s[i]+.5*dt*k2[i];
+  deriv(tmp,beta,k3); for(let i=0;i<6;i++) tmp[i]=s[i]+dt*k3[i];
+  deriv(tmp,beta,k4); for(let i=0;i<6;i++) s[i]+=dt/6*(k1[i]+2*k2[i]+2*k3[i]+k4[i]);
+}
+// propagate to ground; returns {t, x, y, path[]}
+function flyToGround(s0,t0,beta,dt,rec){
+  const s=Float64Array.from(s0); let t=t0; const path=rec?[[s[0],s[2]]]:null; let n=0;
+  while(t<t0+900){
+    const px=s[0],py=s[1],pz=s[2];
+    rk4(s,beta,dt); t+=dt; n++;
+    if(s[2]<=0){const f=pz/(pz-s[2]); const x=px+f*(s[0]-px), y=py+f*(s[1]-py); if(rec) path.push([x,0]); return {t:t-dt+f*dt,x,y,path}}
+    if(rec && n%rec===0) path.push([s[0],s[2]]);
+  }
+  return {t,x:s[0],y:s[1],path};
+}
+
+/* ===================== scenario ===================== */
+const H0=15000, V0=1400, GAMMA0=45*Math.PI/180, VY0=6, DT_MEAS=0.5;
+const S0=[0,0,H0,V0*Math.cos(GAMMA0),VY0,V0*Math.sin(GAMMA0)];
+const BMIN=Math.log(300), BMAX=Math.log(30000), NB=48;
+const betaFromSlider=u=>Math.exp(Math.log(500)+(Math.log(12500)-Math.log(500))*u/100);
+
+function truthTrajectory(beta){
+  const s=Float64Array.from(S0), out=[]; let t=0;
+  const sub=10, dt=DT_MEAS/sub;
+  out.push({t,x:s[0],y:s[1],z:s[2]});
+  while(true){
+    let hit=false;
+    for(let i=0;i<sub;i++){const pz=s[2],px=s[0],py=s[1]; rk4(s,beta,dt); t+=dt;
+      if(s[2]<=0){const f=pz/(pz-s[2]); out.push({t:t-dt+f*dt,x:px+f*(s[0]-px),y:py+f*(s[1]-py),z:0,impact:true}); hit=true; break}}
+    if(hit) break;
+    out.push({t,x:s[0],y:s[1],z:s[2]});
+    if(t>900) break;
+  }
+  return out;
+}
+
+/* ===================== RNG ===================== */
+function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+function gaussFn(r){let spare=null;return function(){if(spare!==null){const s=spare;spare=null;return s}let u,v,q;do{u=2*r()-1;v=2*r()-1;q=u*u+v*v}while(q>=1||q===0);const m=Math.sqrt(-2*Math.log(q)/q);spare=v*m;return u*m}}
+
+/* ===================== linear algebra (row-major arrays) ===================== */
+const NX=7; // state: x y z vx vy vz lnβ
+function mat(n,m){return Array.from({length:n},()=>new Float64Array(m))}
+function mul(A,B){const n=A.length,k=B.length,m=B[0].length,C=mat(n,m);for(let i=0;i<n;i++)for(let p=0;p<k;p++){const a=A[i][p];if(a!==0)for(let j=0;j<m;j++)C[i][j]+=a*B[p][j]}return C}
+function tr(A){const n=A.length,m=A[0].length,T=mat(m,n);for(let i=0;i<n;i++)for(let j=0;j<m;j++)T[j][i]=A[i][j];return T}
+function add(A,B){return A.map((r,i)=>r.map((v,j)=>v+B[i][j]))}
+function sym(A){const n=A.length;for(let i=0;i<n;i++)for(let j=i+1;j<n;j++){const v=.5*(A[i][j]+A[j][i]);A[i][j]=v;A[j][i]=v}return A}
+function inv3m(S){const a=S[0][0],b=S[0][1],c=S[0][2],d=S[1][0],e=S[1][1],f=S[1][2],g=S[2][0],h=S[2][1],k=S[2][2];
+  const A=e*k-f*h,B=-(d*k-f*g),C=d*h-e*g,det=a*A+b*B+c*C;
+  return [[A/det,-(b*k-c*h)/det,(b*f-c*e)/det],[B/det,(a*k-c*g)/det,-(a*f-c*d)/det],[C/det,-(a*h-b*g)/det,(a*e-b*d)/det]]}
+function chol(P){const n=P.length,L=mat(n,n);for(let i=0;i<n;i++)for(let j=0;j<=i;j++){let s=P[i][j];for(let k=0;k<j;k++)s-=L[i][k]*L[j][k];L[i][j]=i===j?Math.sqrt(Math.max(s,1e-12)):s/L[j][j]}return L}
+
+/* ===================== Extended Kalman Filter ===================== */
+const LB0=Math.log(3000), SLB0=1.2;          // prior on ln β (≈ 300 … 30,000 kg/m² at ±2σ)
+const QACC=0.5, QLB=2e-4;                     // white-noise accel PSD (m²/s³), ln β random-walk PSD (1/s)
+function phi(x,dt){ // state transition: RK4 over dt with 2 sub-steps; ln β constant
+  const s=Float64Array.from(x.slice(0,6)), beta=Math.exp(x[6]); const h=dt/2;
+  rk4(s,beta,h); rk4(s,beta,h); return [s[0],s[1],s[2],s[3],s[4],s[5],x[6]];
+}
+function jac(x,dt,fx){ // numerical Jacobian F = ∂Φ/∂x (forward differences)
+  const F=mat(NX,NX), eps=[1,1,1,0.01,0.01,0.01,1e-4];
+  for(let j=0;j<NX;j++){const xp=x.slice(); xp[j]+=eps[j]; const fp=phi(xp,dt); for(let i=0;i<NX;i++) F[i][j]=(fp[i]-fx[i])/eps[j]}
+  return F;
+}
+function Qd(dt){ const Q=mat(NX,NX), a=QACC*dt*dt*dt/3, b=QACC*dt*dt/2, c=QACC*dt;
+  for(let k=0;k<3;k++){Q[k][k]=a;Q[k][k+3]=b;Q[k+3][k]=b;Q[k+3][k+3]=c} Q[6][6]=QLB*dt; return Q }
+
+function ekf(meas,sigma){
+  const r2=sigma*sigma, dt=DT_MEAS;
+  const m0=meas[0], m1=meas[1];
+  let x=[m0.x,m0.y,m0.z,(m1.x-m0.x)/dt,(m1.y-m0.y)/dt,(m1.z-m0.z)/dt,LB0];
+  let P=mat(NX,NX); for(let k=0;k<3;k++){P[k][k]=r2; P[k+3][k+3]=2*r2/(dt*dt)+400} P[6][6]=SLB0*SLB0;
+  // start filtering from measurement index 1 (state re-anchored at t1)
+  x[0]=m1.x; x[1]=m1.y; x[2]=m1.z;
+  const hist=[{t:m1.t,lb:x[6],slb:Math.sqrt(P[6][6])}]; let nisSum=0, nisN=0;
+  const Q=Qd(dt);
+  for(let i=2;i<meas.length;i++){
+    // predict
+    const xp=phi(x,dt), F=jac(x,dt,xp);
+    let Pp=add(mul(mul(F,P),tr(F)),Q);
+    // update: z = H x + v, H = [I3 0]
+    const z=meas[i], nu=[z.x-xp[0],z.y-xp[1],z.z-xp[2]];
+    const S=[[Pp[0][0]+r2,Pp[0][1],Pp[0][2]],[Pp[1][0],Pp[1][1]+r2,Pp[1][2]],[Pp[2][0],Pp[2][1],Pp[2][2]+r2]];
+    const Si=inv3m(S);
+    const PHt=Pp.map(r=>[r[0],r[1],r[2]]);         // P Hᵀ  (7×3)
+    const K=mul(PHt,Si);                              // 7×3
+    x=xp.map((v,k)=>v+K[k][0]*nu[0]+K[k][1]*nu[1]+K[k][2]*nu[2]);
+    x[6]=Math.min(Math.log(1e5),Math.max(Math.log(100),x[6]));
+    // Joseph form: P = (I−KH) P⁻ (I−KH)ᵀ + K R Kᵀ
+    const IKH=mat(NX,NX); for(let a=0;a<NX;a++){for(let b=0;b<NX;b++) IKH[a][b]=(a===b?1:0)-(b<3?K[a][b]:0)}
+    const KRK=mul(K,tr(K)).map(r=>r.map(v=>v*r2));
+    P=sym(add(mul(mul(IKH,Pp),tr(IKH)),KRK));
+    // NIS
+    let e=0; for(let a=0;a<3;a++) for(let b=0;b<3;b++) e+=nu[a]*Si[a][b]*nu[b];
+    if(i>=6){nisSum+=e; nisN++}
+    hist.push({t:z.t,lb:x[6],slb:Math.sqrt(P[6][6])});
+  }
+  return {x,P,hist,nis:nisN?nisSum/nisN:NaN};
+}
+
+function estimate(meas,sigma,seed){
+  const t0=performance.now();
+  const tc=meas[meas.length-1].t;
+  const F=ekf(meas,sigma);
+  // Monte Carlo propagation from EKF posterior N(x̂, P)
+  const L=chol(F.P), r=mulberry(seed*7919+13), g=gaussFn(r), N=160, ens=[];
+  for(let n=0;n<N;n++){
+    const e=Array.from({length:NX},g), s=new Float64Array(6); let lb=F.x[6];
+    for(let i=0;i<NX;i++){let d=0; for(let j=0;j<=i;j++) d+=L[i][j]*e[j]; if(i<6) s[i]=F.x[i]+d; else lb+=d}
+    if(s[2]<1) s[2]=1;
+    ens.push(flyToGround(s,tc,Math.exp(Math.min(Math.log(1e5),Math.max(Math.log(100),lb))),0.25,n<48?16:0));
+  }
+  const nom=flyToGround(Float64Array.from(F.x.slice(0,6)),tc,Math.exp(F.x[6]),0.25,4);
+  const mux=ens.reduce((a,e)=>a+e.x,0)/N, muy=ens.reduce((a,e)=>a+e.y,0)/N;
+  const mt=ens.reduce((a,e)=>a+e.t,0)/N, st=Math.sqrt(ens.reduce((a,e)=>a+(e.t-mt)**2,0)/(N-1));
+  const rad=ens.map(e=>Math.hypot(e.x-mux,e.y-muy)).sort((a,b)=>a-b);
+  const cep=(rad[N/2-1]+rad[N/2])/2;
+  return {tc,hist:F.hist,lb:F.x[6],slb:Math.sqrt(F.P[6][6]),nis:F.nis,ens,nom,mux,muy,mt,st,cep,ms:performance.now()-t0};
+}
+
+/* ===================== state & UI ===================== */
+const $=id=>document.getElementById(id);
+const inObs=$('in-obs'), inSig=$('in-sig'), inBeta=$('in-beta');
+let seed=1, truth=null, truthBeta=null, R=null, meas=null;
+const fmt=(v,d=0)=>v.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
+
+function run(){
+  const beta=betaFromSlider(+inBeta.value);
+  if(beta!==truthBeta){truth=truthTrajectory(beta); truthBeta=beta}
+  const imp=truth[truth.length-1], T=imp.t;
+  const frac=+inObs.value/100, sig=+inSig.value;
+  $('v-obs').textContent=inObs.value+' %'; $('v-sig').textContent=sig+' m'; $('v-beta').textContent=fmt(Math.round(beta/10)*10)+' kg/m²';
+  const g=gaussFn(mulberry(seed*104729+sig*31+(+inObs.value)));
+  const kc=Math.max(8,Math.floor(T*frac/DT_MEAS));
+  meas=[]; for(let i=0;i<=kc && i<truth.length-1;i++){const p=truth[i]; meas.push({t:p.t,x:p.x+g()*sig,y:p.y+g()*sig,z:p.z+g()*sig})}
+  R=estimate(meas,sig,seed);
+  R.truth=imp; R.kc=kc; R.beta=beta;
+  const miss=Math.hypot(R.mux-imp.x,R.muy-imp.y), inside=Math.hypot(imp.x-R.mux,imp.y-R.muy)<=R.cep;
+  $('r-tc').innerHTML='T+'+fmt(R.tc,1)+' s <small>('+fmt(R.tc/T*100,0)+'%)</small>';
+  $('r-beta').innerHTML=fmt(Math.exp(R.lb),0)+' <small>×/÷ '+fmt(Math.exp(R.slb),2)+' · 실제 '+fmt(Math.round(beta),0)+'</small>';
+  $('r-nis').innerHTML=fmt(R.nis,2)+' <small>/ 기대값 3</small>';
+  $('r-tot').innerHTML='T+'+fmt(R.mt,1)+' ± '+fmt(R.st,1)+' s <small>/ '+fmt(T,1)+'</small>';
+  $('r-miss').textContent=fmt(miss,0)+' m';
+  $('r-cep').textContent=fmt(R.cep,0)+' m';
+  $('r-cov').textContent=inside?'포함 (CEP 안)':'미포함 (CEP 밖)';
+  $('r-ms').textContent=fmt(R.ms,1)+' ms';
+  $('fp-n').textContent='N = '+R.ens.length;
+  drawAll();
+}
+
+/* ===================== drawing ===================== */
+function C(){const s=getComputedStyle(document.documentElement);const v=n=>s.getPropertyValue(n).trim();
+  return {ink:v('--ink'),ink2:v('--ink-2'),ink3:v('--ink-3'),rule:v('--rule'),grid:v('--grid'),sheet:v('--sheet'),obs:v('--obs'),pred:v('--pred'),predA:v('--pred-a'),predL:v('--pred-line'),truth:v('--truth')}}
+function nice(range,n){const raw=range/n,p=Math.pow(10,Math.floor(Math.log10(raw))),f=raw/p;return (f<1.5?1:f<3?2:f<7?5:10)*p}
+const MONO='"IBM Plex Mono", ui-monospace, monospace', SANS='"IBM Plex Sans KR", system-ui, sans-serif';
+
+function drawMain(c){
+  const cv=$('cv-main'), x=cv.getContext('2d'), W=cv.width, H=cv.height, m={l:110,r:40,t:36,b:86};
+  x.fillStyle=c.sheet; x.fillRect(0,0,W,H);
+  const X=Math.max(R.truth.x, ...R.ens.map(e=>e.x))*1.04, Z=Math.max(...truth.map(p=>p.z))*1.15;
+  const sx=v=>m.l+v/X*(W-m.l-m.r), sz=v=>H-m.b-v/Z*(H-m.t-m.b);
+  x.lineWidth=1; x.font='24px '+MONO; x.fillStyle=c.ink2;
+  const xs=nice(X/1000,7)*1000, zs=nice(Z/1000,5)*1000;
+  for(let v=0;v<=X;v+=xs){x.strokeStyle=c.grid; x.beginPath(); x.moveTo(sx(v),m.t); x.lineTo(sx(v),H-m.b); x.stroke(); x.textAlign='center'; x.fillText(fmt(v/1000),sx(v),H-m.b+34)}
+  for(let v=0;v<=Z;v+=zs){x.strokeStyle=c.grid; x.beginPath(); x.moveTo(m.l,sz(v)); x.lineTo(W-m.r,sz(v)); x.stroke(); x.textAlign='right'; x.fillText(fmt(v/1000),m.l-16,sz(v)+8)}
+  x.strokeStyle=c.ink; x.lineWidth=2; x.beginPath(); x.moveTo(m.l,H-m.b); x.lineTo(W-m.r,H-m.b); x.moveTo(m.l,m.t); x.lineTo(m.l,H-m.b); x.stroke();
+  x.font='24px '+SANS; x.fillStyle=c.ink2; x.textAlign='center'; x.fillText('하향거리 x (km)',(m.l+W-m.r)/2,H-18);
+  x.save(); x.translate(32,(m.t+H-m.b)/2); x.rotate(-Math.PI/2); x.fillText('고도 h (km)',0,0); x.restore();
+  const line=(pts,fx,fz)=>{x.beginPath(); pts.forEach((p,i)=>{const X1=sx(fx(p)),Z1=sz(fz(p)); i?x.lineTo(X1,Z1):x.moveTo(X1,Z1)}); x.stroke()};
+  // ensemble
+  x.strokeStyle=c.predL; x.lineWidth=1.5; R.ens.forEach(e=>{if(e.path) line(e.path,p=>p[0],p=>p[1])});
+  // truth remaining
+  x.setLineDash([3,8]); x.strokeStyle=c.truth; x.lineWidth=3; line(truth.slice(R.kc),p=>p.x,p=>p.z); x.setLineDash([]);
+  // observed truth
+  x.strokeStyle=c.obs; x.lineWidth=3; line(truth.slice(0,R.kc+1),p=>p.x,p=>p.z);
+  // measurements
+  x.fillStyle=c.obs; meas.forEach(p=>{x.beginPath(); x.arc(sx(p.x),sz(Math.max(0,p.z)),3.5,0,7); x.fill()});
+  // nominal prediction
+  x.setLineDash([18,10]); x.strokeStyle=c.pred; x.lineWidth=4; line(R.nom.path,p=>p[0],p=>p[1]); x.setLineDash([]);
+  // cutoff
+  const pc=truth[R.kc]; x.strokeStyle=c.ink3; x.lineWidth=1.5; x.setLineDash([6,6]); x.beginPath(); x.moveTo(sx(pc.x),sz(pc.z)); x.lineTo(sx(pc.x),H-m.b); x.stroke(); x.setLineDash([]);
+  x.fillStyle=c.ink; x.font='600 22px '+MONO; x.textAlign='left';
+  const lbl='t_c = T+'+fmt(R.tc,1)+' s'; const lx=Math.min(sx(pc.x)+12,W-m.r-200); x.fillText(lbl,lx,Math.min(H-m.b-16,sz(pc.z)+36));
+  // apogee
+  let ap=truth[0]; truth.forEach(p=>{if(p.z>ap.z) ap=p});
+  x.fillStyle=c.ink2; x.font='20px '+MONO; x.textAlign='center'; x.fillText('apogee '+fmt(ap.z/1000,1)+' km',sx(ap.x),sz(ap.z)-16);
+  // impact markers
+  x.strokeStyle=c.ink; x.lineWidth=2.5; const ix=sx(R.truth.x), iy=H-m.b; x.beginPath(); x.moveTo(ix-11,iy); x.lineTo(ix+11,iy); x.moveTo(ix,iy-11); x.lineTo(ix,iy+11); x.stroke();
+  x.fillStyle=c.pred; x.beginPath(); x.arc(sx(R.mux),iy,7,0,7); x.fill();
+}
+
+function drawFP(c){
+  const cv=$('cv-fp'), x=cv.getContext('2d'), W=cv.width, H=cv.height, m={l:96,r:30,t:24,b:78};
+  x.fillStyle=c.sheet; x.fillRect(0,0,W,H);
+  const tx=R.truth.x, ty=R.truth.y;
+  let ext=0; R.ens.forEach(e=>{ext=Math.max(ext,Math.abs(e.x-tx),Math.abs(e.y-ty))}); ext=Math.max(ext,R.cep*1.3,50)*1.12;
+  const ar=(W-m.l-m.r)/(H-m.t-m.b), ex=ext*Math.max(1,ar), ey=ext*Math.max(1,1/ar);
+  const sx=v=>m.l+(v+ex)/(2*ex)*(W-m.l-m.r), sy=v=>H-m.b-(v+ey)/(2*ey)*(H-m.t-m.b);
+  const st=nice(ex*2,5);
+  x.font='20px '+MONO; x.fillStyle=c.ink2; x.lineWidth=1;
+  const lab=v=>Math.abs(v)>=1000?fmt(v/1000,1)+'k':fmt(v);
+  for(let v=Math.ceil(-ex/st)*st;v<=ex;v+=st){x.strokeStyle=Math.abs(v)<1e-6?c.rule:c.grid; x.beginPath(); x.moveTo(sx(v),m.t); x.lineTo(sx(v),H-m.b); x.stroke(); x.textAlign='center'; x.fillText(lab(v),sx(v),H-m.b+28)}
+  for(let v=Math.ceil(-ey/st)*st;v<=ey;v+=st){x.strokeStyle=Math.abs(v)<1e-6?c.rule:c.grid; x.beginPath(); x.moveTo(m.l,sy(v)); x.lineTo(W-m.r,sy(v)); x.stroke(); x.textAlign='right'; x.fillText(lab(v),m.l-10,sy(v)+7)}
+  x.font='20px '+SANS; x.textAlign='center'; x.fillText('하향거리 오차 Δx (m)',(m.l+W-m.r)/2,H-14);
+  x.save(); x.translate(26,(m.t+H-m.b)/2); x.rotate(-Math.PI/2); x.fillText('횡방향 Δy (m)',0,0); x.restore();
+  x.fillStyle=c.pred; x.globalAlpha=.55; R.ens.forEach(e=>{x.beginPath(); x.arc(sx(e.x-tx),sy(e.y-ty),4,0,7); x.fill()}); x.globalAlpha=1;
+  const cx=sx(R.mux-tx), cy=sy(R.muy-ty), rr=R.cep/(2*ex)*(W-m.l-m.r);
+  x.strokeStyle=c.pred; x.lineWidth=2.5; x.beginPath(); x.arc(cx,cy,rr,0,7); x.stroke();
+  x.lineWidth=2; x.beginPath(); x.moveTo(cx-9,cy-9); x.lineTo(cx+9,cy+9); x.moveTo(cx+9,cy-9); x.lineTo(cx-9,cy+9); x.stroke();
+  x.strokeStyle=c.ink; x.lineWidth=2.5; x.beginPath(); x.moveTo(sx(0)-11,sy(0)); x.lineTo(sx(0)+11,sy(0)); x.moveTo(sx(0),sy(0)-11); x.lineTo(sx(0),sy(0)+11); x.stroke();
+  x.fillStyle=c.pred; x.font='600 20px '+MONO; x.textAlign='left';
+  x.fillText('CEP '+fmt(R.cep)+' m',Math.min(cx+rr*.72+8,W-m.r-150),Math.max(m.t+18,cy-rr*.72));
+  x.fillStyle=c.ink; x.font='18px '+MONO; x.fillText('+ 실제 IP   × MPI',m.l+10,m.t+20);
+}
+
+function drawEKF(c){ // ln β estimate ± 2σ vs time, log-scaled β axis
+  const cv=$('cv-beta'), x=cv.getContext('2d'), W=cv.width, H=cv.height, m={l:90,r:30,t:24,b:78};
+  x.fillStyle=c.sheet; x.fillRect(0,0,W,H);
+  const hs=R.hist, t0=hs[0].t, t1=Math.max(hs[hs.length-1].t,t0+1);
+  const sx=t=>m.l+(t-t0)/(t1-t0)*(W-m.l-m.r), sy=lb=>H-m.b-(lb-BMIN)/(BMAX-BMIN)*(H-m.t-m.b);
+  const clampY=lb=>Math.max(BMIN,Math.min(BMAX,lb));
+  x.font='20px '+MONO; x.lineWidth=1;
+  [300,1000,3000,10000,30000].forEach(v=>{const Y=sy(Math.log(v)); x.strokeStyle=c.grid; x.beginPath(); x.moveTo(m.l,Y); x.lineTo(W-m.r,Y); x.stroke(); x.fillStyle=c.ink2; x.textAlign='right'; x.fillText(v>=1000?(v/1000)+'k':v,m.l-10,Y+7)});
+  const ts=nice(t1-t0,4);
+  for(let t=Math.ceil(t0/ts)*ts;t<=t1;t+=ts){x.fillStyle=c.ink2; x.textAlign='center'; x.fillText(fmt(t),sx(t),H-m.b+28)}
+  x.strokeStyle=c.ink; x.lineWidth=2; x.beginPath(); x.moveTo(m.l,H-m.b); x.lineTo(W-m.r,H-m.b); x.moveTo(m.l,m.t); x.lineTo(m.l,H-m.b); x.stroke();
+  // ±2σ band
+  x.fillStyle=c.predA; x.beginPath();
+  hs.forEach((h,i)=>{const X1=sx(h.t),Y=sy(clampY(h.lb+2*h.slb)); i?x.lineTo(X1,Y):x.moveTo(X1,Y)});
+  for(let i=hs.length-1;i>=0;i--){const h=hs[i]; x.lineTo(sx(h.t),sy(clampY(h.lb-2*h.slb)))}
+  x.closePath(); x.fill();
+  // estimate
+  x.strokeStyle=c.pred; x.lineWidth=3; x.beginPath(); hs.forEach((h,i)=>{const X1=sx(h.t),Y=sy(clampY(h.lb)); i?x.lineTo(X1,Y):x.moveTo(X1,Y)}); x.stroke();
+  // truth
+  const ty=sy(Math.log(R.beta)); x.strokeStyle=c.ink; x.lineWidth=2; x.setLineDash([8,6]); x.beginPath(); x.moveTo(m.l,ty); x.lineTo(W-m.r,ty); x.stroke(); x.setLineDash([]);
+  x.fillStyle=c.ink; x.font='600 18px '+MONO; x.textAlign='right'; x.fillText('실제 β',W-m.r-6,ty-10);
+  x.fillStyle=c.pred; x.textAlign='left'; x.fillText('β̂ ± 2σ',m.l+10,m.t+20);
+  x.fillStyle=c.ink2; x.font='20px '+SANS; x.textAlign='center'; x.fillText('시간 t (s)',(m.l+W-m.r)/2,H-14);
+  x.save(); x.translate(22,(m.t+H-m.b)/2); x.rotate(-Math.PI/2); x.fillText('β (kg/m²)',0,0); x.restore();
+}
+
+function sizeCanvases(){ // keep canvas text legible: fewer backing pixels on narrow screens
+  const fit=(id,maxW,minW,ratio)=>{const cv=$(id), cw=cv.clientWidth||maxW/2, w=Math.round(Math.max(minW,Math.min(maxW,cw*1.7))), h=Math.round(w*ratio);
+    if(cv.width!==w||cv.height!==h){cv.width=w; cv.height=h; cv.style.aspectRatio=w+'/'+h}};
+  const narrow=window.innerWidth<720;
+  fit('cv-main',1600,820,narrow?.78:.5); fit('cv-fp',800,620,.75); fit('cv-beta',800,620,.75);
+}
+function drawAll(){ if(!R) return; sizeCanvases(); const c=C(); drawMain(c); drawFP(c); drawEKF(c) }
+let rz=null; window.addEventListener('resize',()=>{clearTimeout(rz); rz=setTimeout(drawAll,120)});
+
+let pending=false; function schedule(){ if(pending) return; pending=true; requestAnimationFrame(()=>{pending=false; run()}) }
+[inObs,inSig,inBeta].forEach(el=>el.addEventListener('input',schedule));
+$('btn-seed').addEventListener('click',()=>{seed++; run()});
+window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',drawAll);
+new MutationObserver(drawAll).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+if(document.fonts&&document.fonts.ready) document.fonts.ready.then(drawAll);
+run();
+
+/* ===================== TOC highlight ===================== */
+const links=[...document.querySelectorAll('nav.toc a')], secs=links.map(a=>document.querySelector(a.getAttribute('href')));
+if('IntersectionObserver' in window){
+  const io=new IntersectionObserver(es=>{es.forEach(e=>{if(e.isIntersecting){links.forEach(l=>l.classList.toggle('on',l.getAttribute('href')==='#'+e.target.id))}})},{rootMargin:'-20% 0px -70% 0px'});
+  secs.forEach(s=>s&&io.observe(s));
+}
+})();
+</script>
+</body>
+</html>

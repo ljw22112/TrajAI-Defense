@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>TrajAI-Defense 3D 실시간 미사일 궤도 시뮬레이터</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #0b0e14; font-family: 'Malgun Gothic', sans-serif; }
+        #info-panel {
+            position: absolute; top: 20px; left: 20px; color: #00ffcc;
+            background: rgba(10, 20, 30, 0.85); padding: 15px 25px;
+            border: 1px solid #00ffcc; border-radius: 8px;
+            box-shadow: 0 0 15px rgba(0,255,204,0.3);
+        }
+        h2 { margin: 0 0 10px 0; font-size: 18px; text-transform: uppercase; }
+        .status { font-size: 14px; margin: 5px 0; }
+        .alert { color: #ff3366; font-weight: bold; }
+    </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+</head>
+<body>
+    <div id="info-panel">
+        <h2>TrajAI-Defense 실시간 상황판</h2>
+        <div class="status">표적 ID: <b>MISSILE-T2026</b></div>
+        <div class="status">추적 상태: <span class="alert">PINN 궤도 추론 완료 (0.042초)</span></div>
+        <div class="status">예상 탄착시각(ToT): <b>T+142초</b></div>
+        <div class="status">위협 등급: <span class="alert">CRITICAL (LEVEL 5)</span></div>
+    </div>
+
+    <script>
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x0b0e14, 0.0001);
+
+        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 50000);
+        camera.position.set(2000, 1500, 3000);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        const controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+        const gridHelper = new THREE.GridHelper(10000, 50, 0x00ffcc, 0x223344);
+        scene.add(gridHelper);
+
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+        scene.add(ambientLight);
+
+        // 관측 궤도 (초반 10%)
+        const obsPoints = [];
+        for (let t = 0; t <= 15; t += 0.5) {
+            obsPoints.push(new THREE.Vector3(t * 30, t * 100 - 0.5 * 9.8 * t * t, t * 10));
+        }
+        const obsGeometry = new THREE.BufferGeometry().setFromPoints(obsPoints);
+        const obsMaterial = new THREE.LineBasicMaterial({ color: 0x00ff00, linewidth: 3 });
+        const obsLine = new THREE.Line(obsGeometry, obsMaterial);
+        scene.add(obsLine);
+
+        // AI 예측 궤도 (PINN 추론)
+        const predPoints = [];
+        const lastObs = obsPoints[obsPoints.length - 1];
+        for (let t = 0; t <= 35; t += 0.5) {
+            predPoints.push(new THREE.Vector3(lastObs.x + t * 28, lastObs.y + t * 40 - 0.5 * 9.8 * t * t, lastObs.z + t * 8));
+        }
+        const predGeometry = new THREE.BufferGeometry().setFromPoints(predPoints);
+        const predMaterial = new THREE.LineDashedMaterial({ color: 0xff0055, dashSize: 40, gapSize: 20 });
+        const predLine = new THREE.Line(predGeometry, predMaterial);
+        predLine.computeLineDistances();
+        scene.add(predLine);
+
+        // 예상 탄착지 (CEP 영역)
+        const impactPos = predPoints[predPoints.length - 1];
+        const cepGeometry = new THREE.RingGeometry(10, 150, 32);
+        const cepMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, side: THREE.DoubleSide });
+        const cepMesh = new THREE.Mesh(cepGeometry, cepMaterial);
+        cepMesh.rotation.x = Math.PI / 2;
+        cepMesh.position.set(impactPos.x, 0, impactPos.z);
+        scene.add(cepMesh);
+
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
