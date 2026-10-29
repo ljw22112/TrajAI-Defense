@@ -2,3 +2,19 @@ train          features+EKF  35.5s  median NIS 2.93
 val            features+EKF   3.4s  median NIS 2.92
 test_id_f05    features+EKF   1.2s  median NIS 2.94
    ekf:  41.5s  ADE     715 m  miss    1429 m  CEP   1168 m  cov 0.37
+train          skip (done)
+val            skip (done)
+test_id_f05    features+EKF   1.5s  median NIS 2.94
+   ukf:  36.8s  ADE     603 m  miss    1207 m  CEP   1457 m  cov 0.54
+test_id_f10    features+EKF   1.4s  median NIS 2.96
+   ekf:  35.1s  ADE     187 m  miss     340 m  CEP    595 m  cov 0.70
+   ukf:  35.5s  ADE     179 m  miss     303 m  CEP    613 m  cov 0.78
+test_id_f15    features+EKF   1.7s  median NIS 2.93
+   ekf:  33.7s  ADE     134 m  miss     225 m  CEP    484 m  cov 0.84
+   ukf:  35.3s  ADE     127 m  miss     212 m  CEP    490 m  cov 0.89
+test_id_noise  features+EKF   1.6s  median NIS 2.94
+   ekf:  34.2s  ADE     352 m  miss     629 m  CEP    798 m  cov 0.54
+   ukf:  34.8s  ADE     336 m  miss     608 m  CEP    846 m  cov 0.63
+test_ood       features+EKF   1.9s  median NIS 3.12
+   ekf:  51.1s  ADE     241 m  miss     438 m  CEP    673 m  cov 0.77
+   ukf:  53.2s  ADE     206 m  miss     357 m  CEP    673 m  cov 0.89

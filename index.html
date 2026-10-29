@@ -544,21 +544,22 @@ footer b{color:var(--ink); font-weight:600}
     <div class="eq"><span class="e">ℒ<span class="op">=</span><span class="frac"><span>1</span><span><i>N<sub>d</sub></i></span></span>Σ<sub><i>i</i></sub> ‖<b class="vec">r̂</b>(<i>t<sub>i</sub></i>) − <b class="vec">r</b><sub><i>i</i></sub>‖<sup>2</sup><span class="op">+</span><i>λ</i><sub>p</sub>(<i>e</i>) <span class="frac"><span>1</span><span><i>N<sub>c</sub></i></span></span>Σ<sub><i>j</i></sub> ‖<b class="vec">ℛ</b>(<i>t<sub>j</sub></i>)‖<sup>2</sup><span class="op">+</span><i>λ</i><sub>ic</sub> ‖<b class="vec">r̂</b>(<i>t<sub>c</sub></i>) − <b class="vec">r</b><sub><i>c</i></sub>‖<sup>2</sup></span><span class="tag">(7.3)</span></div>
   </div>
   <div class="prose">
-    <p>데이터 항은 관측 구간과 학습용 실제 궤적에서 계산하고, 물리 항은 <span class="m">[t<sub>c</sub>, t<sub>max</sub>]</span>에서 균등 추출한 <span class="m">N<sub>c</sub></span>개의 배치점(collocation point)에서 계산합니다. 각 축은 특성 길이 <span class="m">L</span> = 100 km, 시간 <span class="m">τ</span> = 100 s로 무차원화해 잔차의 크기를 맞춥니다. PINN은 손실 항 간 기울기 불균형으로 수렴이 불안정하기 쉬우므로, <span class="m">λ<sub>p</sub>(e)</span>를 에폭에 따라 0에서 늘리는 커리큘럼과 기울기 노름 기반 적응 가중을 함께 씁니다 [5].</p>
+    <p>데이터 항은 관측 구간과 학습용 실제 궤적에서 계산하고, 물리 항은 정규화 시간 <span class="m">τ = (t − t<sub>c</sub>)/(t<sub>I</sub> − t<sub>c</sub>) ∈ [0, 1]</span>에서 균등 추출한 <span class="m">N<sub>c</sub></span> = 32개의 배치점(collocation point)에서 계산합니다. 위치는 <span class="m">L</span> = 100 km로 무차원화하고, 연쇄 법칙 <span class="m">d/dt = (1/Δ) d/dτ</span>로 잔차를 SI 단위로 되돌린 뒤 <span class="m">g<sub>0</sub></span>로 나눕니다. PINN은 손실 항 간 기울기 불균형으로 수렴이 불안정하기 쉬우므로 <span class="m">λ<sub>p</sub></span>를 학습 초반 40% 동안 0에서 1까지 선형으로 늘리는 커리큘럼을 적용했습니다. 기울기 노름 기반 적응 가중 [5]은 다음 단계입니다.</p>
   </div>
   <div class="tw">
     <table>
-      <caption><b>Table 7</b>모델 구성. 프로토타입은 <span class="mono">pinn_model.py</span>의 현재 구현이고, 목표는 본 설계입니다</caption>
-      <thead><tr><th>구성 요소</th><th>프로토타입</th><th>목표 설계</th></tr></thead>
+      <caption><b>Table 7</b>모델 구성. 초기 프로토타입(<span class="mono">legacy/pinn_model.py</span>)과 현재 구현(<span class="mono">trajai/model.py</span>), 향후 계획</caption>
+      <thead><tr><th>구성 요소</th><th>초기 프로토타입</th><th>현재 구현</th><th>향후</th></tr></thead>
       <tbody>
-        <tr><td>입력 특징</td><td class="c">9 (x,y,z,vx,vy,vz,ax,ay,az)</td><td class="c">11 (+ altitude, Mach)</td></tr>
-        <tr><td>인코더</td><td class="c">Bi-LSTM, 2 layers, h = 128</td><td class="c">Transformer, 4 layers, d = 128, 4 heads</td></tr>
-        <tr><td>디코더 / 헤드</td><td class="c">MLP 256→128→64→3, SiLU</td><td class="c">연속시간 MLP D(t, c), tanh, 6×128</td></tr>
-        <tr><td>출력</td><td class="c">다음 1-step 위치</td><td class="c">r̂(t) 전 구간, ln β̂, IP, ToT</td></tr>
-        <tr><td>물리 손실</td><td class="c">z축 등가속 1-step 잔차</td><td class="c">식 (7.2) 3축 잔차, autograd</td></tr>
-        <tr><td>λ<sub>p</sub></td><td class="c">0.05 (고정)</td><td class="c">0 → 1 커리큘럼 + 적응 가중</td></tr>
-        <tr><td>최적화</td><td class="c">Adam, lr 1e-3</td><td class="c">Adam 1e-3 → L-BFGS 미세 조정</td></tr>
-        <tr><td>불확실성</td><td class="c">—</td><td class="c">Deep ensemble M = 5 [6] + β 사후 표본</td></tr>
+        <tr><td>입력 특징</td><td class="c">9</td><td class="c">12 (t, r, h, v, a, M), Savitzky–Golay 미분</td><td class="c">—</td></tr>
+        <tr><td>전역 입력 (하이브리드)</td><td class="c">—</td><td class="c">EKF 사후 x̂, σ (10)</td><td class="c">—</td></tr>
+        <tr><td>인코더</td><td class="c">Bi-LSTM 2×128</td><td class="c">Transformer 3 layers, d 128, 4 heads (pre-LN) / Bi-LSTM 2×128</td><td class="c">4 layers</td></tr>
+        <tr><td>디코더</td><td class="c">MLP → 1-step</td><td class="c">연속시간 MLP D(τ, c), tanh, 4×160</td><td class="c">—</td></tr>
+        <tr><td>출력</td><td class="c">다음 1-step 위치</td><td class="c">r̂(τ) 전 구간, ln β̂, Δ = t<sub>I</sub> − t<sub>c</sub>, IP σ<sub>x</sub>, σ<sub>y</sub></td><td class="c">—</td></tr>
+        <tr><td>물리 손실</td><td class="c">z축 1-step 잔차</td><td class="c">식 (7.2) 3축 잔차, autograd 2계 미분</td><td class="c">—</td></tr>
+        <tr><td>λ<sub>p</sub></td><td class="c">0.05 고정</td><td class="c">0 → 1 선형 커리큘럼 (40%)</td><td class="c">적응 가중 [5]</td></tr>
+        <tr><td>최적화</td><td class="c">Adam 1e-3</td><td class="c">AdamW 1e-3, OneCycle, 1,500 step, batch 128, grad clip 1</td><td class="c">L-BFGS 미세 조정</td></tr>
+        <tr><td>불확실성</td><td class="c">—</td><td class="c">IP 이분산 가우시안 헤드 (NLL)</td><td class="c">Deep ensemble [6]</td></tr>
       </tbody>
     </table>
   </div>
@@ -572,20 +573,20 @@ footer b{color:var(--ink); font-weight:600}
 <!-- 8 DATA -->
 <section id="sec-data">
   <div class="sh"><span class="no">§8</span><h2>합성 데이터셋</h2></div>
-  <div class="prose"><p>실측 비행 데이터는 보안상 확보할 수 없으므로 Monte Carlo로 파라미터를 표본 추출하고 §5의 모델로 적분해 합성 궤적을 만듭니다. 각 궤적에는 식 (6.1)의 센서 잡음을 주입한 관측본과 잡음 없는 정답 궤적을 함께 저장합니다.</p></div>
+  <div class="prose"><p>실측 비행 데이터는 보안상 확보할 수 없으므로 Monte Carlo로 파라미터를 표본 추출하고 §5의 모델로 적분해 합성 궤적을 만듭니다. 각 궤적에는 식 (6.1)의 극좌표 센서 잡음을 주입한 관측본과 잡음 없는 정답 궤적을 함께 저장합니다. v2 데이터셋은 연소 종료 이후의 탄도 구간을 다룹니다. 추력 곡선이 알려지지 않은 추진 구간을 넣으면 물리 잔차 (7.2)에 미지 항이 생기기 때문이며, 추진 구간 시뮬레이션(<span class="mono">simulate_powered</span>)은 구현되어 있으나 학습에는 아직 쓰지 않습니다.</p></div>
   <div class="tw">
     <table>
-      <caption><b>Table 8</b>Monte Carlo 파라미터 분포 (<span class="mono">data_generator.py</span> 기준, 균등 분포)</caption>
-      <thead><tr><th>파라미터</th><th>기호</th><th>범위</th><th>OOD 시험 범위</th></tr></thead>
+      <caption><b>Table 8</b>Monte Carlo 파라미터 분포, v2 (<span class="mono">trajai/dataset.py</span>, 균등 분포, β는 로그 균등)</caption>
+      <thead><tr><th>파라미터</th><th>기호</th><th>학습 / ID 시험</th><th>OOD 시험</th></tr></thead>
       <tbody>
-        <tr><td>초기 속도</td><td><span class="m">v<sub>0</sub></span></td><td class="n">300 – 800 m/s</td><td class="n">800 – 1,000 m/s</td></tr>
-        <tr><td>발사 각도</td><td><span class="m">γ<sub>0</sub></span></td><td class="n">30 – 75°</td><td class="n">20 – 30°, 75 – 85°</td></tr>
-        <tr><td>초기 질량</td><td><span class="m">m<sub>0</sub></span></td><td class="n">800 – 1,500 kg</td><td class="n">—</td></tr>
-        <tr><td>항력 계수</td><td><span class="m">C<sub>D</sub></span></td><td class="n">0.15 – 0.35</td><td class="n">0.35 – 0.45</td></tr>
-        <tr><td>기준 단면적</td><td><span class="m">A</span></td><td class="n">0.2 – 0.5 m²</td><td class="n">—</td></tr>
-        <tr><td>연소 시간</td><td><span class="m">t<sub>b</sub></span></td><td class="n">5 – 15 s</td><td class="n">—</td></tr>
-        <tr><td>추력</td><td><span class="m">T</span></td><td class="n">20 – 50 kN</td><td class="n">—</td></tr>
-        <tr><td>적분 간격</td><td><span class="m">Δt</span></td><td class="n">0.05 s</td><td class="n">—</td></tr>
+        <tr><td>연소 종료 고도</td><td><span class="m">h<sub>0</sub></span></td><td class="n">8 – 25 km</td><td class="n">8 – 25 km</td></tr>
+        <tr><td>연소 종료 속도</td><td><span class="m">V<sub>0</sub></span></td><td class="n">0.9 – 1.9 km/s</td><td class="n">1.9 – 2.2 km/s</td></tr>
+        <tr><td>경로각</td><td><span class="m">γ<sub>0</sub></span></td><td class="n">30 – 60°</td><td class="n">25 – 65°</td></tr>
+        <tr><td>방위각 (하향거리 기준)</td><td><span class="m">ψ<sub>0</sub></span></td><td class="n">±10°</td><td class="n">±10°</td></tr>
+        <tr><td>탄도계수</td><td><span class="m">β</span></td><td class="n">600 – 10,000 kg/m²</td><td class="n">10,000 – 16,000 kg/m²</td></tr>
+        <tr><td>관측 비율</td><td><span class="m">f</span></td><td class="n">8 – 20 %</td><td class="n">12 %</td></tr>
+        <tr><td>레이더 잡음 (공칭 / 고잡음)</td><td><span class="m">σ<sub>R</sub>, σ<sub>θ</sub></span></td><td class="n">15 m, 0.4 mrad / 50 m, 1.5 mrad</td><td class="n">15 m, 0.4 mrad</td></tr>
+        <tr><td>적분 / 측정 간격</td><td><span class="m">Δt</span></td><td class="n">RK4 0.1 s / 0.5 s</td><td class="n">—</td></tr>
       </tbody>
     </table>
   </div>
@@ -594,10 +595,10 @@ footer b{color:var(--ink); font-weight:600}
       <caption><b>Table 9</b>텐서 규격과 분할</caption>
       <thead><tr><th>항목</th><th>규격</th></tr></thead>
       <tbody>
-        <tr><td>입력</td><td class="c">[B, T<sub>k</sub>, F],  F = 11,  T<sub>k</sub> = 관측 10–15 % 구간</td></tr>
-        <tr><td>정답</td><td class="c">r(t), t ∈ [t<sub>c</sub>, t<sub>I</sub>];  (x<sub>I</sub>, y<sub>I</sub>);  t<sub>I</sub>;  β</td></tr>
-        <tr><td>규모</td><td class="c">목표 10<sup>6</sup> 궤적 (현재 생성기 기본값 500)</td></tr>
-        <tr><td>분할</td><td class="c">train 80 / val 10 / test-ID 10 %  +  test-OOD (Table 8)</td></tr>
+        <tr><td>입력</td><td class="c">[B, K, 12],  K = 13 – 134 측정 (가변 길이, 패딩 마스크)</td></tr>
+        <tr><td>정답</td><td class="c">r(τ) 129점, τ ∈ [0, 1];  (x<sub>I</sub>, y<sub>I</sub>);  t<sub>I</sub>;  β</td></tr>
+        <tr><td>규모</td><td class="c">train 20,000 / val 2,000 / test 5종 × 1,000 (생성 약 2분, CPU)</td></tr>
+        <tr><td>시험 분할</td><td class="c">ID 관측 5 / 10 / 15 %,  ID 고잡음 12 %,  OOD 12 % (Table 8)</td></tr>
         <tr><td>정규화</td><td class="c">L = 100 km, τ = 100 s 무차원화</td></tr>
       </tbody>
     </table>
@@ -628,15 +629,15 @@ footer b{color:var(--ink); font-weight:600}
       <tbody>
         <tr><td>EKF + Monte Carlo</td><td>식 (5.5), ln β 상태 확장</td><td>공분산 선형 전파 + 표본</td><td>고전 baseline, Fig. 1의 방식</td></tr>
         <tr><td>UKF + Monte Carlo</td><td>식 (5.5), 극좌표 측정</td><td>시그마 포인트</td><td>선형화 오차 비교</td></tr>
-        <tr><td>IMM (CV / CA / 탄도)</td><td>다중 모델</td><td>모델 확률 혼합</td><td>기동 표적 대응 [3]</td></tr>
-        <tr><td>Bi-LSTM (data only)</td><td>—</td><td>앙상블</td><td>λ<sub>p</sub> = 0 ablation</td></tr>
-        <tr><td>Transformer (data only)</td><td>—</td><td>앙상블</td><td>λ<sub>p</sub> = 0 ablation</td></tr>
-        <tr class="prop"><td><b>PINN–Bi-LSTM</b></td><td>식 (7.2)</td><td>앙상블 + β</td><td>제안</td></tr>
-        <tr class="prop"><td><b>PINN–Transformer</b></td><td>식 (7.2)</td><td>앙상블 + β</td><td>제안 (주 모델)</td></tr>
+        <tr><td>IMM (CV / CA / 탄도)</td><td>다중 모델</td><td>모델 확률 혼합</td><td>기동 표적 대응 [3], 미구현</td></tr>
+        <tr><td>Transformer (data only)</td><td>—</td><td>이분산 헤드</td><td>λ<sub>p</sub> = 0 ablation, 20k / 2k</td></tr>
+        <tr class="prop"><td><b>PINN–Bi-LSTM</b></td><td>식 (7.2)</td><td>이분산 헤드</td><td>인코더 비교</td></tr>
+        <tr class="prop"><td><b>PINN–Transformer</b></td><td>식 (7.2)</td><td>이분산 헤드</td><td>제안, 20k / 2k</td></tr>
+        <tr class="prop"><td><b>PINN–Transformer + EKF</b></td><td>식 (7.2)</td><td>이분산 헤드</td><td>제안 (하이브리드, Table 6)</td></tr>
       </tbody>
     </table>
   </div>
-  <div class="prose"><p>Ablation은 물리 손실 유무, 관측 비율(5 / 10 / 15 / 20 %), 센서 잡음 수준(<span class="m">σ<sub>R</sub></span> = 10 / 50 / 150 m)의 3요인으로 설계합니다. 물리 제약의 이점은 관측이 짧고 OOD 조건일 때 가장 크게 나타날 것으로 예상하며, 이를 반증할 수 있도록 같은 조건의 data-only 모델과 짝지어 비교합니다.</p></div>
+  <div class="prose"><p>Ablation은 물리 손실 유무, 학습 데이터 규모(20k / 2k), 관측 비율(5 / 10 / 15 %), 센서 잡음 수준(공칭 / 고잡음), 분포 이동(OOD)으로 구성했습니다. 물리 제약의 이점은 데이터가 적고 OOD 조건일 때 가장 크게 나타날 것으로 예상했으며, 이를 반증할 수 있도록 같은 조건의 data-only 모델과 짝지어 비교합니다. 결과는 §9.1에 있습니다.</p></div>
 </section>
 
 <!-- 10 IMPL -->

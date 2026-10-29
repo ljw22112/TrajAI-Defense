@@ -20,8 +20,13 @@ def noise_of(split):
 def main():
     os.makedirs("results", exist_ok=True)
     for split in ["train", "val"] + TESTS:
-        d = dict(np.load(f"{DATA}/{split}.npz"))
         nz = noise_of(split)
+        done_prep = os.path.exists(f"{DATA}/prep_{split}.npz")
+        done_base = split not in TESTS or all(os.path.exists(f"results/baseline_{b}_{split}.npz") for b in ("ekf", "ukf"))
+        if done_prep and done_base:
+            print(f"{split:14s} skip (done)", flush=True)
+            continue
+        d = dict(np.load(f"{DATA}/{split}.npz"))
         t0 = time.time()
         feats, pad, origin = features.track_features(d["meas"], d["n_meas"])
         x, P, nis, _ = filters.ekf(d["meas_pol"].astype(float), d["meas"].astype(float), d["n_meas"], 0.5, nz["sigma_r"], nz["sigma_ang"])
@@ -33,6 +38,8 @@ def main():
         print(f"{split:14s} features+EKF {t_filter:5.1f}s  median NIS {np.median(nis):.2f}", flush=True)
         if split in TESTS:
             for name, fn in [("ekf", filters.ekf), ("ukf", filters.ukf)]:
+                if os.path.exists(f"results/baseline_{name}_{split}.npz"):
+                    continue
                 t0 = time.time()
                 if name == "ekf":
                     xf, Pf, nisf = x, P, nis

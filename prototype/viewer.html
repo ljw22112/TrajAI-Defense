@@ -1,94 +1,108 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="ko">
 <head>
-    <meta charset="UTF-8">
-    <title>TrajAI-Defense 3D 실시간 미사일 궤도 시뮬레이터</title>
-    <style>
-        body { margin: 0; overflow: hidden; background-color: #0b0e14; font-family: 'Malgun Gothic', sans-serif; }
-        #info-panel {
-            position: absolute; top: 20px; left: 20px; color: #00ffcc;
-            background: rgba(10, 20, 30, 0.85); padding: 15px 25px;
-            border: 1px solid #00ffcc; border-radius: 8px;
-            box-shadow: 0 0 15px rgba(0,255,204,0.3);
-        }
-        h2 { margin: 0 0 10px 0; font-size: 18px; text-transform: uppercase; }
-        .status { font-size: 14px; margin: 5px 0; }
-        .alert { color: #ff3366; font-weight: bold; }
-    </style>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TrajAI-Defense 3D Viewer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+KR:wght@400;600;700&display=swap">
+<style>
+:root{--bg:#0b121d;--panel:rgba(16,26,40,.92);--ink:#e2e8f0;--ink2:#9fadbf;--rule:#26354a;--obs:#47c1a6;--pred:#f2903f;--ekf:#9fb7d8;--truth:#cfd8e3;
+  --sans:"IBM Plex Sans KR",system-ui,sans-serif;--mono:"IBM Plex Mono",ui-monospace,monospace;color-scheme:dark}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:var(--sans);overflow:hidden}
+#scene{position:fixed;inset:0}
+.panel{position:fixed;top:16px;left:16px;width:330px;max-width:calc(100vw - 32px);max-height:calc(100vh - 32px);overflow:auto;background:var(--panel);border:1px solid var(--rule);border-radius:4px;padding:16px;display:flex;flex-direction:column;gap:14px;font-size:13.5px}
+h1{font-size:17px;margin:0}
+.lab{font-family:var(--mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink2)}
+select,button{font:inherit;background:#0f1a29;color:var(--ink);border:1px solid var(--rule);border-radius:3px;padding:6px 8px}
+select{width:100%}
+.row{display:flex;justify-content:space-between;gap:10px;padding:5px 0;border-bottom:1px dashed var(--rule)}
+.row:last-child{border-bottom:0}
+.v{font-family:var(--mono);font-weight:600;text-align:right}
+.lv{display:inline-block;padding:1px 8px;border-radius:2px;font-family:var(--mono);font-weight:600}
+.toggles{display:flex;flex-wrap:wrap;gap:6px 14px}
+.toggles label{display:flex;gap:6px;align-items:center;cursor:pointer}
+.sw{width:16px;height:3px;display:inline-block}
+a{color:var(--pred)}
+.note{font-size:12px;color:var(--ink2);line-height:1.5}
+.err{color:#ff8a8a}
+</style>
 </head>
 <body>
-    <div id="info-panel">
-        <h2>TrajAI-Defense 실시간 상황판</h2>
-        <div class="status">표적 ID: <b>MISSILE-T2026</b></div>
-        <div class="status">추적 상태: <span class="alert">PINN 궤도 추론 완료 (0.042초)</span></div>
-        <div class="status">예상 탄착시각(ToT): <b>T+142초</b></div>
-        <div class="status">위협 등급: <span class="alert">CRITICAL (LEVEL 5)</span></div>
-    </div>
-
-    <script>
-        const scene = new THREE.Scene();
-        scene.fog = new THREE.FogExp2(0x0b0e14, 0.0001);
-
-        const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 50000);
-        camera.position.set(2000, 1500, 3000);
-
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(renderer.domElement);
-
-        const controls = new THREE.OrbitControls(camera, renderer.domElement);
-
-        const gridHelper = new THREE.GridHelper(10000, 50, 0x00ffcc, 0x223344);
-        scene.add(gridHelper);
-
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
-        scene.add(ambientLight);
-
-        // 관측 궤도 (초반 10%)
-        const obsPoints = [];
-        for (let t = 0; t <= 15; t += 0.5) {
-            obsPoints.push(new THREE.Vector3(t * 30, t * 100 - 0.5 * 9.8 * t * t, t * 10));
-        }
-        const obsGeometry = new THREE.BufferGeometry().setFromPoints(obsPoints);
-        const obsMaterial = new THREE.LineBasicMaterial({ color: 0x00ff00, linewidth: 3 });
-        const obsLine = new THREE.Line(obsGeometry, obsMaterial);
-        scene.add(obsLine);
-
-        // AI 예측 궤도 (PINN 추론)
-        const predPoints = [];
-        const lastObs = obsPoints[obsPoints.length - 1];
-        for (let t = 0; t <= 35; t += 0.5) {
-            predPoints.push(new THREE.Vector3(lastObs.x + t * 28, lastObs.y + t * 40 - 0.5 * 9.8 * t * t, lastObs.z + t * 8));
-        }
-        const predGeometry = new THREE.BufferGeometry().setFromPoints(predPoints);
-        const predMaterial = new THREE.LineDashedMaterial({ color: 0xff0055, dashSize: 40, gapSize: 20 });
-        const predLine = new THREE.Line(predGeometry, predMaterial);
-        predLine.computeLineDistances();
-        scene.add(predLine);
-
-        // 예상 탄착지 (CEP 영역)
-        const impactPos = predPoints[predPoints.length - 1];
-        const cepGeometry = new THREE.RingGeometry(10, 150, 32);
-        const cepMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000, side: THREE.DoubleSide });
-        const cepMesh = new THREE.Mesh(cepGeometry, cepMaterial);
-        cepMesh.rotation.x = Math.PI / 2;
-        cepMesh.position.set(impactPos.x, 0, impactPos.z);
-        scene.add(cepMesh);
-
-        function animate() {
-            requestAnimationFrame(animate);
-            controls.update();
-            renderer.render(scene, camera);
-        }
-        animate();
-
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-    </script>
+<div id="scene"></div>
+<div class="panel">
+  <div><span class="lab">TrajAI-Defense</span><h1>3D 궤적 뷰어</h1></div>
+  <div><label class="lab" for="case">시험 케이스</label><select id="case"></select></div>
+  <div class="toggles" id="toggles">
+    <label><input type="checkbox" id="t-truth" checked><i class="sw" style="background:var(--truth)"></i>실제 궤적</label>
+    <label><input type="checkbox" id="t-meas" checked><i class="sw" style="background:var(--obs)"></i>레이더 측정</label>
+    <label><input type="checkbox" id="t-ekf" checked><i class="sw" style="background:var(--ekf)"></i>EKF 예측</label>
+    <label><input type="checkbox" id="t-pinn" checked><i class="sw" style="background:var(--pred)"></i>PINN 예측</label>
+    <label><input type="checkbox" id="t-assets" checked>보호 자산</label>
+  </div>
+  <div id="stats"></div>
+  <div id="threat"></div>
+  <p class="note">마우스 드래그로 회전, 휠로 확대. 좌표는 국소 ENU(km): x 하향거리, y 횡방향, 고도. 자산은 가상 좌표입니다. <a href="../index.html">기술 문서로 돌아가기</a></p>
+</div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(async function(){
+  const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+  const el=document.getElementById('scene');
+  const renderer=new THREE.WebGLRenderer({antialias:true}); renderer.setPixelRatio(Math.min(2,devicePixelRatio));
+  renderer.setSize(innerWidth,innerHeight); renderer.setClearColor(css('--bg')); el.appendChild(renderer.domElement);
+  const scene=new THREE.Scene();
+  const cam=new THREE.PerspectiveCamera(50,innerWidth/innerHeight,0.1,5000);
+  const ctl=new THREE.OrbitControls(cam,renderer.domElement); ctl.enableDamping=true;
+  const grid=new THREE.GridHelper(800,40,0x26354a,0x1a2738); grid.position.x=300; scene.add(grid);
+  const V=(p)=>new THREE.Vector3(p[0],p[2]||0,-p[1]);          // ENU km -> three (y up)
+  const groups={};
+  function line(pts,color,dashed){
+    const g=new THREE.BufferGeometry().setFromPoints(pts.map(V));
+    const m=dashed?new THREE.LineDashedMaterial({color,dashSize:3,gapSize:2}):new THREE.LineBasicMaterial({color});
+    const l=new THREE.Line(g,m); if(dashed) l.computeLineDistances(); return l;
+  }
+  function ring(c,r,color){const g=new THREE.RingGeometry(Math.max(r-0.25,0.05),r,64);const m=new THREE.Mesh(g,new THREE.MeshBasicMaterial({color,side:THREE.DoubleSide,transparent:true,opacity:.9}));m.rotation.x=-Math.PI/2;m.position.copy(V([c[0],c[1],0.02]));return m}
+  let data;
+  try{ data=await (await fetch('../results/samples.json')).json(); }
+  catch(e){ document.getElementById('stats').innerHTML='<p class="err">results/samples.json을 불러오지 못했습니다. 로컬에서는 저장소 루트에서 <code>python -m http.server</code>로 여세요.</p>'; return; }
+  const sel=document.getElementById('case');
+  data.cases.forEach((c,i)=>{const o=document.createElement('option');o.value=i;o.textContent=`${c.split.replace('test_','')} #${c.index} · β ${Math.round(c.beta)} · ToT ${c.T.toFixed(0)} s`;sel.appendChild(o)});
+  const LV=['#4b5b71','#6f8f5a','#c9a227','#e07a2e','#e0453a'];
+  function show(i){
+    Object.values(groups).forEach(g=>scene.remove(g));
+    const c=data.cases[i];
+    const mk=(name)=>{const g=new THREE.Group();groups[name]=g;scene.add(g);return g};
+    mk('truth').add(line(c.truth,css('--truth'),false));
+    const gm=mk('meas'); const pg=new THREE.BufferGeometry().setFromPoints(c.meas.map(V)); gm.add(new THREE.Points(pg,new THREE.PointsMaterial({color:css('--obs'),size:1.2})));
+    const ge=mk('ekf'); ge.add(line(c.ekf.grid,css('--ekf'),true)); ge.add(ring(c.ekf.ip,c.ekf.cep/1000,css('--ekf')));
+    const gp=mk('pinn'); gp.add(line(c.pinn.grid,css('--pred'),true)); gp.add(ring(c.pinn.ip,c.pinn.cep/1000,css('--pred')));
+    const ga=mk('assets'); data.meta.assets.forEach(a=>{ga.add(ring([a.x,a.y],a.radius,0x8a6cff))});
+    const xs=c.truth.map(p=>p[0]); const xmid=(Math.min(...xs)+Math.max(...xs))/2, span=Math.max(...xs)-Math.min(...xs);
+    ctl.target.set(xmid,20,0); cam.position.set(xmid-span*0.2,span*0.45+40,span*0.95+60); ctl.update();
+    ['truth','meas','ekf','pinn','assets'].forEach(k=>groups[k].visible=document.getElementById('t-'+k).checked);
+    const f=v=>Math.round(v).toLocaleString('en-US');
+    document.getElementById('stats').innerHTML=`<span class="lab">추정 결과</span>
+      <div class="row"><span>관측 종료 / 실제 ToT</span><span class="v">T+${c.t_c.toFixed(1)} / ${c.T.toFixed(1)} s</span></div>
+      <div class="row"><span>PINN 예측 ToT</span><span class="v">${c.pinn.tot.toFixed(1)} s</span></div>
+      <div class="row"><span>IP 오차 EKF / PINN</span><span class="v">${f(c.ekf.miss)} / ${f(c.pinn.miss)} m</span></div>
+      <div class="row"><span>CEP50 EKF / PINN</span><span class="v">${f(c.ekf.cep)} / ${f(c.pinn.cep)} m</span></div>`;
+    const t=c.threat, top=Object.entries(t.probabilities).sort((a,b)=>b[1]-a[1])[0];
+    const w=k=>t.windows[k]?`T+${t.windows[k].t_in.toFixed(0)}–${t.windows[k].t_out.toFixed(0)} s (PIP ${(t.windows[k].h_pip/1000).toFixed(1)} km)`:'—';
+    document.getElementById('threat').innerHTML=`<span class="lab">위협 평가</span>
+      <div class="row"><span>위협 등급</span><span class="lv" style="background:${LV[t.level-1]}">LEVEL ${t.level}</span></div>
+      <div class="row"><span>최대 위험 자산</span><span class="v">${top[0]} · ${(top[1]*100).toFixed(1)}%</span></div>
+      <div class="row"><span>상층 교전 창</span><span class="v">${w('upper')}</span></div>
+      <div class="row"><span>하층 교전 창</span><span class="v">${w('lower')}</span></div>`;
+  }
+  sel.addEventListener('change',()=>show(+sel.value));
+  ['truth','meas','ekf','pinn','assets'].forEach(k=>document.getElementById('t-'+k).addEventListener('change',e=>{if(groups[k])groups[k].visible=e.target.checked}));
+  show(0);
+  addEventListener('resize',()=>{cam.aspect=innerWidth/innerHeight;cam.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+  (function loop(){requestAnimationFrame(loop);ctl.update();renderer.render(scene,cam)})();
+})();
+</script>
 </body>
 </html>

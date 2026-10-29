@@ -28,20 +28,30 @@ def test_vacuum_limit_matches_parabola():
     assert abs(s[0, 2] - (100_000.0 + 50.0 * t - 0.5 * g * t * t)) < 1.0
 
 
-def test_rk4_fourth_order_convergence():
+def _run(s0, beta, dt, T=20.0):
+    s = s0.copy()
+    for _ in range(int(round(T / dt))):
+        s = physics.rk4_step(s, beta, dt)
+    return s
+
+
+def test_rk4_fourth_order_convergence_smooth_dynamics():
+    # high altitude, drag negligible: smooth right-hand side -> 4th-order convergence (ratio ~16)
+    s0 = np.array([[0.0, 0.0, 120_000.0, 1500.0, 0.0, 1500.0]])
+    beta = np.array([1e9])
+    ref = _run(s0, beta, 0.01, 60.0)
+    e1 = np.abs(_run(s0, beta, 2.0, 60.0) - ref)[0, :3].max()
+    e2 = np.abs(_run(s0, beta, 1.0, 60.0) - ref)[0, :3].max()
+    assert e1 / e2 > 10.0
+
+
+def test_rk4_error_bounded_across_atmosphere_kinks():
+    # crossing the 20 km USSA-1976 temperature kink makes the RHS non-smooth (order drops),
+    # but at the dataset step (0.1 s) the position error stays far below sensor noise
     s0 = np.array([[0.0, 0.0, 15_000.0, 900.0, 0.0, 900.0]])
     beta = np.array([1500.0])
-
-    def run(dt, T=20.0):
-        s = s0.copy()
-        for _ in range(int(round(T / dt))):
-            s = physics.rk4_step(s, beta, dt)
-        return s
-
-    ref = run(0.01)
-    e1 = np.abs(run(0.4) - ref)[0, :3].max()
-    e2 = np.abs(run(0.2) - ref)[0, :3].max()
-    assert e1 / e2 > 10.0      # ~16 for a 4th-order scheme
+    ref = _run(s0, beta, 0.005)
+    assert np.abs(_run(s0, beta, 0.1) - ref)[0, :3].max() < 0.01
 
 
 def test_propagate_to_ground_lands():

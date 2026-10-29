@@ -61,7 +61,7 @@ def step_losses(model, b, lam, n_grid=24, n_col=32, w=None):
         z0 = b["origin"][:, 2]
         l_phys, _ = physics_residual(model, c, lb_hat, b["dT"], z0, n_col)
     total = 100.0 * l_data + l_T + 0.3 * l_b + 0.05 * l_nll + lam * l_phys
-    return total, dict(data=l_data.item(), T=l_T.item(), b=l_b.item(), nll=l_nll.item(), phys=float(l_phys))
+    return total, dict(data=l_data.item(), T=l_T.item(), b=l_b.item(), nll=l_nll.item(), phys=float(l_phys.detach()))
 
 
 def main():
