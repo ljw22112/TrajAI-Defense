@@ -1,0 +1,4 @@
+train          features+EKF  35.5s  median NIS 2.93
+val            features+EKF   3.4s  median NIS 2.92
+test_id_f05    features+EKF   1.2s  median NIS 2.94
+   ekf:  41.5s  ADE     715 m  miss    1429 m  CEP   1168 m  cov 0.37

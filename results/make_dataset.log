@@ -1,0 +1,7 @@
+train          n= 20000  T=[87,345] s  range=[7,365] km  n_meas=[15,134]
+val            n=  2000  T=[92,339] s  range=[8,356] km  n_meas=[19,132]
+test_id_f10    n=  1000  T=[88,336] s  range=[9,356] km  n_meas=[18,68]
+test_id_f15    n=  1000  T=[97,330] s  range=[8,348] km  n_meas=[30,100]
+test_id_f05    n=  1000  T=[95,338] s  range=[9,335] km  n_meas=[13,34]
+test_id_noise  n=  1000  T=[92,326] s  range=[9,348] km  n_meas=[23,79]
+test_ood       n=  1000  T=[153,415] s  range=[176,502] km  n_meas=[37,100]

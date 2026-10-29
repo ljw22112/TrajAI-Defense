@@ -1,4 +1,9 @@
-torch
 numpy
+scipy
 pandas
+torch
+onnx
+onnxruntime
+pytest
+matplotlib
 python-docx
