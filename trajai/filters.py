@@ -210,3 +210,54 @@ def nominal_on_grid(x, t_c, T_true, n_tau=129, steps_per_cell=8, atm=None):
                 landed |= newly
         out[:, c + 1] = np.where(landed[:, None], hold, s[:, :3])
     return out
+
+
+class StreamingEKF:
+    """Single-track EKF that ingests one polar measurement at a time (for live streaming).
+
+    Uses the same model as ekf(): x = [r, v, ln beta], numerical Jacobian, Joseph update.
+    """
+
+    def __init__(self, dt, sigma_r, sigma_ang, atm=None):
+        self.dt, self.atm = dt, atm
+        self.R = np.diag([sigma_r ** 2, sigma_ang ** 2, sigma_ang ** 2])
+        self.sigma_r, self.sigma_ang = sigma_r, sigma_ang
+        self.Q = Qd(dt)
+        self.buf = []
+        self.x = self.P = None
+        self.k = 0
+        self.nis = []
+
+    def update(self, z_pol):
+        """Feed one measurement [R, az, el]. Returns a state dict (or None until initialised)."""
+        z_pol = np.asarray(z_pol, float)
+        self.k += 1
+        if self.x is None:
+            self.buf.append(radar.to_cartesian(z_pol[None])[0])
+            if len(self.buf) < 2:
+                return None
+            x, P = _init(np.array(self.buf)[None], self.dt, self.sigma_r, self.sigma_ang)
+            self.x, self.P = x, P
+            return self.state()
+        xp = phi(self.x, self.dt, atm=self.atm)
+        F = numerical_F(self.x, self.dt, xp, self.atm)
+        Pp = F @ self.P @ np.transpose(F, (0, 2, 1)) + self.Q
+        H = np.concatenate([radar.polar_jacobian(xp[:, :3]), np.zeros((1, 3, 4))], 2)
+        nu = z_pol[None] - radar.to_polar(xp[:, :3])
+        nu[:, 1:] = _wrap(nu[:, 1:])
+        S = H @ Pp @ np.transpose(H, (0, 2, 1)) + self.R
+        Si = np.linalg.inv(S)
+        K = Pp @ np.transpose(H, (0, 2, 1)) @ Si
+        x = xp + np.einsum("nij,nj->ni", K, nu)
+        x[:, 6] = np.clip(x[:, 6], LB_MIN, LB_MAX)
+        IKH = np.eye(NX) - K @ H
+        P = IKH @ Pp @ np.transpose(IKH, (0, 2, 1)) + K @ self.R @ np.transpose(K, (0, 2, 1))
+        self.x, self.P = x, 0.5 * (P + np.transpose(P, (0, 2, 1)))
+        self.nis.append(float(np.einsum("ni,nij,nj->n", nu, Si, nu)[0]))
+        return self.state()
+
+    def state(self):
+        x, P = self.x[0], self.P[0]
+        return dict(k=self.k, r=x[:3].tolist(), v=x[3:6].tolist(), beta=float(np.exp(x[6])),
+                    sigma_pos=float(np.sqrt(np.trace(P[:3, :3]))), sigma_lnb=float(np.sqrt(P[6, 6])),
+                    nis=self.nis[-1] if self.nis else None)

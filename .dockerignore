@@ -1,0 +1,11 @@
+data/
+checkpoints/
+web/node_modules/
+web/dist/
+app/
+legacy/
+docs/*.docx
+**/__pycache__/
+**/*.pyc
+.git/
+results/*.npz

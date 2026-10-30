@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "trajai"
+version = "0.3.0"
+description = "Physics-informed trajectory prediction, EKF/UKF baselines and weather-aware flight dynamics"
+requires-python = ">=3.10"
+dependencies = ["numpy", "scipy"]
+
+[project.optional-dependencies]
+ml = ["torch", "onnx", "onnxruntime"]
+
+[tool.setuptools]
+packages = ["trajai"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "server/tests"]

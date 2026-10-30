@@ -1,0 +1,24 @@
+# docker compose up --build   ->  http://localhost:8000  (console)  /api/docs (OpenAPI)
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: trajai
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-trajai}
+      POSTGRES_DB: trajai
+    volumes: [pgdata:/var/lib/postgresql/data]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U trajai"]
+      interval: 5s
+      retries: 10
+  api:
+    build: .
+    depends_on:
+      db: {condition: service_healthy}
+    environment:
+      TRAJAI_DATABASE_URL: postgresql+psycopg2://trajai:${POSTGRES_PASSWORD:-trajai}@db:5432/trajai
+      TRAJAI_JWT_SECRET: ${TRAJAI_JWT_SECRET:?set TRAJAI_JWT_SECRET (e.g. openssl rand -hex 32)}
+      TRAJAI_ADMIN_PASSWORD: ${TRAJAI_ADMIN_PASSWORD:-admin1234}
+    ports: ["8000:8000"]
+volumes:
+  pgdata:

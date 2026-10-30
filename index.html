@@ -247,6 +247,7 @@ footer b{color:var(--ink); font-weight:600}
     <span class="brand">TrajAI<i>-</i>Defense</span>
     <span class="doc">TAD-TR-001 · Rev 1.0 · 2026-10</span>
     <span class="sp"></span>
+    <a class="gh" href="app/">Console</a>
     <a class="gh" href="prototype/viewer.html">3D Viewer</a>
     <a class="gh" href="https://github.com/ljw22112/TrajAI-Defense" target="_blank" rel="noopener">GitHub</a>
   </div>
@@ -267,7 +268,8 @@ footer b{color:var(--ink); font-weight:600}
     <li><a href="#sec-vv"><span>9</span>검증과 실험 결과</a></li>
     <li><a href="#sec-impl"><span>10</span>구현 현황</a></li>
     <li><a href="#sec-plan"><span>11</span>일정과 위험 관리</a></li>
-    <li><a href="#sec-ref"><span>12</span>참고문헌</a></li>
+    <li><a href="#sec-stack"><span>12</span>풀스택 운용 콘솔</a></li>
+    <li><a href="#sec-ref"><span>13</span>참고문헌</a></li>
   </ol>
 </nav>
 
@@ -816,9 +818,44 @@ footer b{color:var(--ink); font-weight:600}
   <div class="prose"><p>확장 방향은 UAM·드론 군집 경로 추적, 우주 재진입체와 수명 말기 위성의 낙하 궤적 예측, 민간 항공기 비상 착륙 궤적 유도와 UAM 충돌 방지입니다. 모두 "짧은 관측에서 물리적으로 유효한 장기 궤적과 그 불확실성을 빠르게 추론한다"는 같은 문제 구조를 가집니다.</p></div>
 </section>
 
-<!-- 12 REF -->
+<!-- 12 STACK -->
+<section id="sec-stack">
+  <div class="sh"><span class="no">§12</span><h2>풀스택 운용 콘솔</h2></div>
+  <div class="prose">
+    <p>연구 코드(<span class="mono">trajai/</span>)를 운용 시스템으로 감싼 웹 애플리케이션입니다. 분석관이 기상 일자를 골라 시나리오를 만들면 서버가 궤적을 적분하고 레이더 측정을 생성해 데이터베이스에 저장합니다. 이후 추정기(EKF·UKF·PINN)를 실행하면 결과와 위협 평가가 기록되고, WebSocket으로 추적을 실시간 재생할 수 있습니다. GitHub Pages에는 서버 없이 볼 수 있는 읽기 전용 데모를 올렸습니다. 이 데모는 실제 서버와 PostgreSQL에서 만든 스냅샷입니다.</p>
+  </div>
+  <div class="callout"><b>바로 가기.</b> <a href="app/">운용 콘솔 데모 (읽기 전용)</a> · <a href="https://github.com/ljw22112/TrajAI-Defense/blob/main/docs/architecture.md">아키텍처 문서 (ERD, 시퀀스, 보안, 테스트)</a> · 로컬 실행 시 API 문서는 <span class="mono">/api/docs</span></div>
+  <div class="tw">
+    <table>
+      <caption><b>Table 14</b>계층별 구현</caption>
+      <thead><tr><th>계층</th><th>기술</th><th>구현 내용</th></tr></thead>
+      <tbody>
+        <tr><td>프론트엔드</td><td class="c">React 18 · TypeScript (strict) · Vite · TanStack Query</td><td>대시보드, 시나리오 생성(기상 프로파일 미리보기), 상세·탄착 영역·실시간 재생, 자산 CRUD, 모델 레지스트리, 사용자·감사 로그. 역할에 따라 메뉴와 버튼을 숨김</td></tr>
+        <tr><td>백엔드</td><td class="c">FastAPI · Pydantic v2 · PyJWT · bcrypt</td><td>REST 23개(health 포함) + WebSocket 1개 엔드포인트, OAuth2 JWT 인증, 3단계 역할(viewer·analyst·admin), 소유권 검사, 감사 로그, OpenAPI 자동 문서</td></tr>
+        <tr><td>데이터베이스</td><td class="c">PostgreSQL 16 · SQLAlchemy 2.0 · Alembic</td><td>9개 테이블(사용자, 자산, 기상 캐시, 시나리오, 측정, 추정, 위협 평가, 모델 버전, 감사 로그), FK·CHECK·UNIQUE 제약, JSONB, 왕복 검증한 마이그레이션</td></tr>
+        <tr><td>모델 서빙</td><td class="c">ONNX Runtime</td><td>PINN 하이브리드를 동적 트랙 길이로 내보내 서버에서 추론(PyTorch 대비 오차 4 cm 이내)</td></tr>
+        <tr><td>외부 연동</td><td class="c">Open-Meteo</td><td>기압면 자료를 (시각, 위치) 키로 캐시, 일시적 오류 재시도, 429 제한 시 503으로 안내</td></tr>
+        <tr><td>운영</td><td class="c">Docker · Compose · GitHub Actions</td><td>멀티 스테이지 이미지(SPA + API), PostgreSQL 서비스를 띄운 CI에서 마이그레이션·API·웹 테스트</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="tw">
+    <table>
+      <caption><b>Table 15</b>테스트</caption>
+      <thead><tr><th>수준</th><th>범위</th><th>수</th></tr></thead>
+      <tbody>
+        <tr><td>코어 단위</td><td>대기, RK4 수렴 차수, 레이더 야코비안, EKF/UKF 일관성, 기상 격자, 위협 평가</td><td class="n">17</td></tr>
+        <tr><td>API 통합</td><td>인증·RBAC·CRUD·검증·기상 캐시·시뮬레이션·추정·통계·WebSocket·감사 (SQLite와 PostgreSQL 각각)</td><td class="n">13</td></tr>
+        <tr><td>프론트엔드</td><td>API 클라이언트 오류 처리, UI 컴포넌트</td><td class="n">9</td></tr>
+        <tr><td>E2E (Playwright)</td><td>로그인, 대시보드, 실시간 재생, 폼 검증, viewer 읽기 전용, 런타임 오류 없음</td><td class="n">6</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- 13 REF -->
 <section id="sec-ref">
-  <div class="sh"><span class="no">§12</span><h2>참고문헌</h2></div>
+  <div class="sh"><span class="no">§13</span><h2>참고문헌</h2></div>
   <ol class="refs">
     <li>M. Raissi, P. Perdikaris, G. E. Karniadakis, “Physics-informed neural networks: A deep learning framework for solving forward and inverse problems involving nonlinear partial differential equations,” <i>J. Comput. Phys.</i>, vol. 378, pp. 686–707, 2019.</li>
     <li>P. Zarchan, <i>Tactical and Strategic Missile Guidance</i>, AIAA Progress in Astronautics and Aeronautics.</li>

@@ -7,6 +7,32 @@
 - **기술 문서 / 프로젝트 페이지:** https://ljw22112.github.io/TrajAI-Defense/
 - **3D 결과 뷰어:** https://ljw22112.github.io/TrajAI-Defense/prototype/viewer.html
 
+## 풀스택 운용 콘솔
+
+연구 코드를 감싼 웹 애플리케이션입니다 (풀스택 프로그래밍 과제).
+
+- **프론트엔드** `web/`: React 18 + TypeScript (strict) + Vite + TanStack Query. 대시보드, 시나리오 생성(기상 미리보기), 상세·실시간 재생(WebSocket), 자산 CRUD, 모델 레지스트리, 사용자·감사 로그
+- **백엔드** `server/`: FastAPI + Pydantic v2. REST 23개 + WebSocket, JWT 인증, viewer / analyst / admin 역할, 감사 로그, OpenAPI 문서 `/api/docs`
+- **데이터베이스**: PostgreSQL 16 (개발·테스트는 SQLite), SQLAlchemy 2.0, Alembic 마이그레이션, 9개 테이블
+- **정적 데모**: https://ljw22112.github.io/TrajAI-Defense/app/ (실제 서버 스냅샷, 읽기 전용)
+- **설계 문서**: [docs/architecture.md](docs/architecture.md) (구성도, ERD, 시퀀스, 보안, 테스트 전략)
+
+```bash
+# 로컬 (SQLite)
+pip install -r server/requirements.txt
+cd server && uvicorn app.main:app --reload       # API + 문서: http://127.0.0.1:8000/api/docs
+cd web && npm ci && npm run dev                   # 콘솔: http://127.0.0.1:5173  (admin@trajai.dev / admin1234)
+
+# PostgreSQL + 단일 컨테이너
+export TRAJAI_JWT_SECRET=$(openssl rand -hex 32)
+docker compose up --build                         # http://localhost:8000
+
+# 테스트
+python -m pytest -q tests server/tests            # 코어 17 + API 13
+cd web && npm test                                # 프론트엔드 9
+E2E_BASE=http://127.0.0.1:8000 python -m pytest e2e   # Playwright 6 (서버 실행 + seed_demo.py 필요)
+```
+
 ## 구성
 
 | 경로 | 내용 |
@@ -22,6 +48,10 @@
 | `scripts/` | 데이터 생성, 전처리, 학습, 평가, ONNX 변환·지연 측정, 그림, 사이트 결과 생성 |
 | `tests/` | 물리·레이더·필터·위협 평가 단위 테스트 (GitHub Actions) |
 | `results/`, `figures/` | 평가 지표(`metrics.json`), 지연(`latency.json`), 그림 |
+| `server/` | FastAPI 앱, Alembic 마이그레이션, API 테스트, 시드·데모 내보내기 스크립트 |
+| `web/` | React + TypeScript 운용 콘솔 |
+| `app/` | 정적 데모 빌드 (GitHub Pages) |
+| `e2e/` | Playwright 종단 간 테스트 |
 | `prototype/viewer.html` | 시험 케이스의 궤적·예측·CEP·위협 평가 Three.js 뷰어 |
 | `legacy/` | 초기 프로토타입 코드 (Euler 생성기, 1-step PINN) |
 | `docs/` | AI 서비스 컨셉 정의서, 프로젝트 기획서 |

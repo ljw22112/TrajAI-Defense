@@ -17,16 +17,17 @@ from trajai.model import PINNPredictor  # noqa: E402
 
 
 class Deployable(torch.nn.Module):
-    """Single-track inference graph: features (1, K, 12), global (1, 10) -> trajectory (1, 129, 3), head (1, 4)."""
+    """Single-track inference graph: features (1, K, 12), global (1, 10) [, wx (1, 27)] -> trajectory (1, 129, 3), head (1, 4).
+    K (track length) is a dynamic dimension."""
 
     def __init__(self, m):
         super().__init__()
         self.m = m
         self.register_buffer("tau", torch.linspace(0, 1, 129)[None])
 
-    def forward(self, feats, g):
-        pad = torch.zeros(feats.shape[:2], dtype=torch.bool)
-        c, h = self.m.context(feats, pad, g)
+    def forward(self, feats, g, wx=None):
+        pad = torch.zeros(feats.shape[0], feats.shape[1], dtype=torch.bool)
+        c, h = self.m.context(feats, pad, g, wx)
         return self.m.decode(c, self.tau), h
 
 
@@ -43,26 +44,38 @@ def bench(fn, n=300, warm=20):
 def main(name):
     torch.set_num_threads(1)
     ck = torch.load(f"checkpoints/{name}.pt", weights_only=False)
-    m = PINNPredictor(ck["args"]["encoder"], hybrid=ck["args"]["hybrid"]); m.load_state_dict(ck["state"]); m.eval()
+    use_wx = bool(ck["args"].get("wx"))
+    m = PINNPredictor(ck["args"]["encoder"], hybrid=ck["args"]["hybrid"], n_wx=27 if use_wx else 0); m.load_state_dict(ck["state"]); m.eval()
     dep = Deployable(m).eval()
     d = np.load("data/prep_test_id_f10.npz")
     k = int((~d["pad"][0]).sum())
     feats = torch.from_numpy(d["feats"][:1, :k]); g = torch.from_numpy(d["g"][:1])
     os.makedirs("export", exist_ok=True)
     path = f"export/{name}.onnx"
-    torch.onnx.export(dep, (feats, g), path, input_names=["feats", "global"], output_names=["trajectory", "head"],
-                      dynamic_axes={"feats": {1: "K"}}, opset_version=17, dynamo=False)
+    K = torch.export.Dim("K", min=4, max=400)
+    args = (feats, g) + ((torch.zeros(1, 27),) if use_wx else ())
+    names = ["feats", "global"] + (["wx"] if use_wx else [])
+    shapes = {"feats": {1: K}, "g": None, **({"wx": None} if use_wx else {})}
+    torch.onnx.export(dep, args, path, input_names=names, output_names=["trajectory", "head"], dynamo=True, dynamic_shapes=shapes)
     import onnxruntime as ort
     so = ort.SessionOptions(); so.intra_op_num_threads = 1; so.inter_op_num_threads = 1
     sess = ort.InferenceSession(path, so, providers=["CPUExecutionProvider"])
-    with torch.no_grad():
-        ref_traj, ref_head = dep(feats, g)
-    out = sess.run(None, {"feats": feats.numpy(), "global": g.numpy()})
-    max_diff_m = float(np.abs(out[0] - ref_traj.numpy()).max() * 1e5)
+    def feed(f):
+        x = {"feats": f.numpy(), "global": g.numpy()}
+        if use_wx:
+            x["wx"] = np.zeros((1, 27), np.float32)
+        return x
+    max_diff_m = 0.0
+    for L in (13, 26, 46, 90, 134):        # validate several track lengths (dynamic K)
+        f = torch.from_numpy(np.ascontiguousarray(np.resize(d["feats"][0, :k], (L, 12))[None]))
+        with torch.no_grad():
+            ref = dep(f, g, *( (torch.zeros(1, 27),) if use_wx else ()))[0].numpy()
+        max_diff_m = max(max_diff_m, float(np.abs(sess.run(None, feed(f))[0] - ref).max() * 1e5))
     res = {"model": name, "onnx_file": path, "onnx_size_kb": os.path.getsize(path) / 1024, "onnx_vs_torch_max_diff_m": max_diff_m}
+    extra = (torch.zeros(1, 27),) if use_wx else ()
     with torch.no_grad():
-        res["torch_cpu"] = bench(lambda: dep(feats, g))
-    res["onnxruntime_cpu"] = bench(lambda: sess.run(None, {"feats": feats.numpy(), "global": g.numpy()}))
+        res["torch_cpu"] = bench(lambda: dep(feats, g, *extra))
+    res["onnxruntime_cpu"] = bench(lambda: sess.run(None, feed(feats)))
     # EKF + Monte Carlo baseline for the same single track
     raw = np.load("data/test_id_f10.npz")
     nz = radar.NOISE_NOMINAL
@@ -78,7 +91,8 @@ def main(name):
     res["ekf_filter_only"] = bench(ekf_only, n=30, warm=3)
     res["ekf_plus_mc100"] = bench(ekf_mc, n=15, warm=2)
     print(json.dumps(res, indent=1))
-    json.dump(res, open("results/latency.json", "w"), indent=1)
+    out = "results/latency.json" if name == "pinn_tf_hybrid" or len(sys.argv) < 3 else f"results/latency_{name}.json"
+    json.dump(res, open(out, "w"), indent=1)
 
 
 if __name__ == "__main__":
