@@ -15,8 +15,8 @@ os.makedirs("figures", exist_ok=True)
 TESTS = ["test_id_f05", "test_id_f10", "test_id_f15", "test_id_noise", "test_ood"]
 TLAB = ["ID 5%", "ID 10%", "ID 15%", "ID high noise", "OOD 12%"]
 MAIN = [("ekf", "EKF+MC"), ("ukf", "UKF+MC"), ("data_tf_v2", "Transformer (data only)"),
-        ("pinn_tf", "PINN-Transformer (v1)"), ("pinn_tf_hybrid_v2", "PINN-Transformer + EKF (hybrid)")]
-COL = {"ekf": "#7d8a9c", "ukf": "#4b5b71", "data_tf": "#9fb7d8", "pinn_tf": "#cf5f14", "pinn_lstm": "#e8a06a",
+        ("pinn_tf_v2", "PINN-Transformer"), ("pinn_tf_hybrid_v2", "PINN-Transformer + EKF (hybrid)")]
+COL = {"ekf": "#7d8a9c", "ukf": "#4b5b71", "data_tf": "#9fb7d8", "pinn_tf": "#cf5f14", "pinn_tf_v2": "#cf5f14", "pinn_lstm": "#e8a06a",
        "pinn_tf_hybrid": "#17806f", "pinn_tf_hybrid_v2": "#17806f", "data_tf_v2": "#9fb7d8", "data_tf_2k": "#9fb7d8", "pinn_tf_2k": "#cf5f14"}
 INK, GRID = "#14233a", "#e6ebf1"
 

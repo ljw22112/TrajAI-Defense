@@ -6,7 +6,9 @@
 - wx_hybrid_clim (720 m), wx_hybrid_date (683 m) 학습·평가, ONNX 변환
 - 풀스택 콘솔: 모델 레지스트리에 wx_hybrid_date(활성)·pinn_tf_hybrid_v2 등록. 기상 없는 시나리오는 표준 대기 모델로 자동 대체
 - 수정: model_versions.kind VARCHAR(40) 초과로 PostgreSQL 기동 실패 → 라벨 단축, 길이 검사 테스트 추가
-- 미실행(선택): pinn_tf_v2, pinn_lstm_v2, 2k 저데이터 v2 ablation
+- pinn_tf_v2 학습·평가(ID 10% 733 m, OOD 14.2 km, 잔차 0.10 g) → §9 표·그림·유의성 갱신
+- 검토 반영: 과장 수정, 핵심 결과 카드, §9.4–9.6, 재현 절차, 콘솔 UX, 기상 영향 분석, 교전 우선순위
+- 미실행(선택): pinn_lstm_v2, 2k 저데이터 v2 ablation, 다중 seed
 
 ## 2026-10-30 (3차 세션)
 - v1 결과(data_tf, pinn_tf, pinn_tf_hybrid; 공칭 잡음, 1,500 step) 평가 → 사이트 §9.1/9.2, Table 2 측정값, README 반영, main 배포

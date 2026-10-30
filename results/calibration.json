@@ -11,6 +11,10 @@
   "cep_scale": 0.8987992934687505,
   "fitted_on": "test_id_f10"
  },
+ "pinn_tf_v2": {
+  "cep_scale": 0.8261303129466895,
+  "fitted_on": "test_id_f10"
+ },
  "pinn_tf_hybrid_v2": {
   "cep_scale": 0.8261275573726254,
   "fitted_on": "test_id_f10"
