@@ -51,9 +51,9 @@ class TorchAtmosphere:
         self.hmax = (self.rho.shape[1] - 1) * dh
 
     def lookup(self, arr, z, idx):
-        x = z.clamp(0.0, self.hmax - 1e-3) / self.dh
-        i = x.detach().floor().long()
-        f = x - i
+        x = torch.nan_to_num(z, nan=0.0).clamp(0.0, self.hmax) / self.dh
+        i = x.detach().floor().long().clamp(0, arr.shape[1] - 2)   # float32: hmax - eps may round up to hmax
+        f = (x - i).clamp(0.0, 1.0)
         rows = idx.view(-1, *([1] * (z.dim() - 1))).expand_as(i)
         return arr[rows, i] * (1 - f) + arr[rows, i + 1] * f
 
