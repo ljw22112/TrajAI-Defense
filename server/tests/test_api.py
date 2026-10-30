@@ -167,3 +167,43 @@ def test_estimates_csv_export(scenarios, client, users):
     assert rows and {"method", "miss_m", "threat_level"} <= set(rows[0])
     assert any(row["scenario_id"] == str(std["id"]) and row["method"] == "ekf_std" for row in rows)
     assert client.get("/api/scenarios/export.csv").status_code == 401
+
+
+def test_estimate_and_stats_expose_model(scenarios, client, users):
+    std, _ = scenarios
+    e = client.post(f"/api/scenarios/{std['id']}/estimates", json={"method": "ekf_std"}, headers=users["analyst"]).json()
+    assert "model_name" in e and e["model_name"] is None          # filters have no model version
+    st = client.get("/api/stats", headers=users["viewer"]).json()
+    assert all("model" in m for m in st["by_method"])
+    assert {m["method"] for m in st["by_method"]} >= {"ekf_std", "ekf_wx", "ukf_wx", "pinn"}
+
+
+def test_threat_board_orders_by_urgency(scenarios, client, users):
+    std, wx = scenarios
+    for m in ("ekf_std", "ekf_wx"):
+        client.post(f"/api/scenarios/{wx['id']}/estimates", json={"method": m}, headers=users["analyst"])
+    rows = client.get("/api/threats", headers=users["viewer"]).json()
+    assert rows and len({r["scenario_id"] for r in rows}) == len(rows)          # one row per scenario
+    keys = [(-r["level"], -r["max_prob"], r["time_to_impact"]) for r in rows]
+    assert keys == sorted(keys)
+    row = next(r for r in rows if r["scenario_id"] == wx["id"])
+    assert row["method"] == "ekf_wx" and row["time_to_impact"] > 0           # weather-aware filter preferred
+
+
+def test_weather_impact_analysis(client, users, admin):
+    body = {"name": "t", "start_date": "2026-10-14", "days": 2, "hours": [0, 12], "lat": 36.6, "lon": 127.4, "seed": 3}
+    assert client.post("/api/analyses", json=body, headers=users["viewer"]).status_code == 403
+    bad = client.post("/api/analyses", json={**body, "hours": [3]}, headers=users["analyst"])
+    assert bad.status_code == 422
+    r = client.post("/api/analyses", json=body, headers=users["analyst"])
+    assert r.status_code == 201, r.text
+    a = r.json()
+    assert a["n_profiles"] == 4 and len(a["items"]) == 4
+    assert (a["lat"], a["lon"]) == (36.5, 127.5)                           # snapped to the 0.25 deg provider grid
+    s = a["summary"]
+    assert s["median_miss_wx"] < s["median_miss_std"]                       # weather-aware EKF helps under a windy profile
+    assert all(it["shift_m"] >= 0 and it["miss_wx"] >= 0 for it in a["items"])
+    assert client.get("/api/analyses", headers=users["viewer"]).json()["total"] >= 1
+    assert client.get(f"/api/analyses/{a['id']}", headers=users["viewer"]).json()["params"]["days"] == 2
+    assert client.delete(f"/api/analyses/{a['id']}", headers=users["viewer"]).status_code == 403
+    assert client.delete(f"/api/analyses/{a['id']}", headers=admin).status_code == 204

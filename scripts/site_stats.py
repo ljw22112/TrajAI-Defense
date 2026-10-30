@@ -107,6 +107,43 @@ def fp(p):
     return "&lt;0.001" if p < 1e-3 else f"{p:.3f}"
 
 
+def key_findings(html, rows, cal):
+    """Abstract-level summary cards; every number is read from results/*.json so it cannot drift from §9."""
+    M = json.load(open(f"{R}/metrics.json"))
+    L = json.load(open(f"{R}/latency.json"))
+    W = json.load(open(f"{R}/weather_filters.json"))
+    med = lambda m, s, k="miss": M[m][s][k]["median"]
+    pick = lambda a, b: next((r for r in rows if r["a"] == a and r["b"] == b), None)
+    onnx, ekfmc = L["onnxruntime_cpu"]["p50_ms"], L["ekf_plus_mc100"]["p50_ms"]
+    h15, u15 = med("pinn_tf_hybrid_v2", "test_id_f15"), med("ukf", "test_id_f15")
+    we, wd = W["ekf_exp"]["miss"]["median"], W["ekf_date"]["miss"]["median"]
+    n0, n1 = med("pinn_tf_hybrid_v2", "test_wx"), med("wx_hybrid_clim", "test_wx")
+    dd = pick("wx_hybrid_date", "wx_hybrid_clim")
+    ood = med("pinn_tf_hybrid_v2", "test_ood")
+    c90 = [c["cal90"] for c in cal]
+    cards = [
+        ("ok", "지연 목표 충족", f"{onnx:.2f} ms", f"ONNX Runtime p50, CPU 1스레드. EKF + Monte Carlo {ekfmc:.0f} ms보다 약 {ekfmc / onnx:,.0f}배 빠름", "#sec-results"),
+        ("no", "정확도는 필터가 우세", f"{f0(h15)} m vs {f0(u15)} m", "최선 신경망(하이브리드) 대 UKF, ID 15% IP 오차 중앙값. 차이는 통계적으로 유의", "#sec-stats"),
+        ("ok", "실제 기상 반영이 가장 큰 개선", f"−{(1 - wd / we) * 100:.0f}%", f"EKF IP 오차 {f0(we)} → {f0(wd)} m (표준 대기 → 선택 일자 기상). 기본 설정으로 채택", "#sec-weather"),
+        ("ok", "신경망도 기상으로 학습하면 개선", f"{f0(n0)} → {f0(n1)} m", "직전 1년 실제 기상 속 발사 2만 회로 학습. 일자 기상 입력의 추가 효과"
+         + (f"(Δ {dd['diff']:+.0f} m)는 불확실" if dd else "") , "#sec-stats"),
+        ("part", "불확실성은 보정 필요", "CEP50 → 0.50", f"계수 하나로 50% 포함률은 맞지만, 같은 계수의 90% 포함률은 {len(c90)}개 중 {sum(c < 0.85 for c in c90)}개가 0.85 미만({min(c for c in c90 if c < 0.85):.2f}–{max(c for c in c90 if c < 0.85):.2f}). 오차 꼬리가 두꺼움", "#sec-calib"),
+        ("no", "분포 밖 일반화 실패", f"{ood / 1000:,.1f} km", "OOD(고속·고β) 시험에서 하이브리드 IP 오차. 물리 손실만으로는 외삽이 보장되지 않음", "#sec-validity"),
+    ]
+    body = "\n".join(f'    <a class="key {t}" href="{href}"><span class="label">{h}</span><b>{v}</b><span>{d}</span></a>'
+                     for t, h, v, d, href in cards)
+    block = f"""<!-- KEY:BEGIN -->
+  <div class="keys" aria-label="핵심 결과">
+{body}
+  </div>
+<!-- KEY:END -->"""
+    if "<!-- KEY:BEGIN -->" in html:
+        return re.sub(r"<!-- KEY:BEGIN -->.*?<!-- KEY:END -->", lambda _: block, html, flags=re.S)
+    anchor = '  <div class="meta">'
+    assert anchor in html
+    return html.replace(anchor, block + "\n" + anchor, 1)
+
+
 def main():
     rng = np.random.default_rng(7)
     pinn = "pinn_tf_v2" if load("pinn_tf_v2", "test_id_f10") else None
@@ -175,14 +212,14 @@ def main():
                       "유의차 없음": "통계적으로 유의하지 않습니다. 개선의 대부분은 직전 1년 기상으로 학습한 데서 나옵니다.",
                   }.get(verdict_of(wd), "부호순위 검정으로는 유의하지만 중앙값 차이의 신뢰구간이 0을 포함하고 승률도 0.5에 가깝습니다. "
                                         "작고 일관된 이동은 있으나 크기는 불확실하며, 개선의 대부분은 직전 1년 기상으로 학습한 데서 나옵니다."))
-    thin = [LAB.get(c["model"], c["model"]) + " (" + SPL[c["split"]] + f' {c["cal90"]:.2f})' for c in cal if c["cal90"] < 0.85]
-    tail_txt = ("같은 s로 잰 90% 포함률이 0.85 미만인 경우(" + ", ".join(thin) + ")는 오차 꼬리가 가우시안보다 두껍다는 뜻이므로, 높은 신뢰수준이 필요한 위협 판정에는 수준별 보정이 따로 필요합니다."
+    thin = [c["cal90"] for c in cal if c["cal90"] < 0.85]
+    tail_txt = (f"하지만 같은 s로 잰 90% 포함률은 {len(cal)}개 중 {len(thin)}개에서 0.85 미만({min(thin):.2f}–{max(thin):.2f})입니다. 오차 분포의 꼬리가 가우시안보다 두껍다는 뜻이므로, 높은 신뢰수준이 필요한 위협 판정에는 수준별 보정이 따로 필요합니다."
                 if thin else "같은 s로 잰 90% 포함률도 모두 0.85 이상으로, 오차 꼬리가 가우시안 가정과 크게 어긋나지 않습니다.")
     ood = [c for c in cal if c["split"] == "test_ood" and "transfer50" in c]
     ood_txt = ", ".join(f'{LAB.get(c["model"], c["model"])} {c["transfer50"]:.2f}' for c in ood)
 
     block = f"""<!-- STATS:BEGIN -->
-  <h3 class="sub"><span class="no">9.4</span>통계적 유의성</h3>
+  <h3 class="sub" id="sec-stats"><span class="no">9.4</span>통계적 유의성</h3>
   <div class="prose">
     <p>모든 비교는 같은 1,000개 시험 궤적에 대한 쌍대 비교입니다. 중앙값의 95% 신뢰구간은 percentile bootstrap(B = {B:,}), 중앙값 차이의 구간은 쌍대 bootstrap, p값은 Wilcoxon 부호순위 검정이며 표 전체 {len(rows)}개 비교에 Holm–Bonferroni 보정을 했습니다. 승률은 같은 궤적에서 A의 IP 오차가 B보다 작은 비율입니다.</p>
   </div>
@@ -198,7 +235,7 @@ def main():
   <div class="prose">
     <p>{len(rows)}개 비교 중 {n_sig}개가 보정 후 유의수준 0.05에서 유의하고 중앙값 차이의 95% 구간도 0을 포함하지 않습니다(두 조건을 모두 만족할 때만 "우세"로 판정).{wd_txt}</p>
   </div>
-  <h3 class="sub"><span class="no">9.5</span>불확실성 보정 (split conformal)</h3>
+  <h3 class="sub" id="sec-calib"><span class="no">9.5</span>불확실성 보정 (split conformal)</h3>
   <div class="prose">
     <p>CEP 포함률이 0.5에서 벗어나면 위협 평가의 확률이 틀립니다. 각 추정기의 CEP<sub>50</sub> 반경을 스칼라 s 하나로 늘리거나 줄이되, s는 시험 분할의 절반(보정용)에서 IP 오차 / CEP 비의 중앙값으로 정하고 나머지 절반에서 포함률을 쟀습니다. 두 절반을 바꿔 가며 50번 무작위 분할한 평균입니다. 90% 열은 같은 s에 원형 Rayleigh 비 √(ln 10 / ln 2) ≈ {RAY90:.3f}를 곱한 반경으로, 따로 맞추지 않으므로 오차 분포 꼬리의 모양을 검사합니다. 마지막 열은 ID 10%에서 정한 s를 다시 맞추지 않고 분포가 바뀐 분할에 그대로 쓴 결과입니다.</p>
   </div>
@@ -216,6 +253,7 @@ def main():
   </div>
 <!-- STATS:END -->"""
     html = open("index.html").read()
+    html = key_findings(html, rows, cal)
     if "<!-- STATS:BEGIN -->" in html:
         html = re.sub(r"<!-- STATS:BEGIN -->.*?<!-- STATS:END -->", lambda _: block, html, flags=re.S)
     else:

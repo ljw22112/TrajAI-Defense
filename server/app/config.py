@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     weather_lat: float = 36.5
     weather_lon: float = 127.5
     weather_offline: bool = False                         # tests: never call the network
+    weather_archive_dir: Path = ROOT / "data" / "weather"   # monthly provider downloads, read before the network
     admin_email: str = "admin@trajai.dev"
     admin_password: str = "admin1234"                     # seeded on first start; change after login
     stream_speed: float = 4.0                             # live replay: simulated seconds per wall second

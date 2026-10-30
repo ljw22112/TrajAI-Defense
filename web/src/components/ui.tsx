@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { ApiError } from "../api/client";
+import { TERMS } from "../api/types";
 
 export const fmt = (v: number | null | undefined, d = 0) =>
   v === null || v === undefined || !Number.isFinite(v) ? "—" : v.toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
@@ -25,6 +26,11 @@ export function Card({ title, aside, children, className = "" }: { title?: strin
       {children}
     </section>
   );
+}
+
+export function Term({ k, children }: { k: string; children?: ReactNode }) {
+  const def = TERMS[k];
+  return def ? <abbr className="term" title={def} tabIndex={0}>{children ?? k}</abbr> : <>{children ?? k}</>;
 }
 
 export function Stat({ label, value, unit, tone }: { label: string; value: string; unit?: string; tone?: "acc" | "ok" }) {

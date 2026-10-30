@@ -70,7 +70,7 @@ def export_csv(db: Session = Depends(get_db), user: User = Depends(current_user)
 
 @router.post("", response_model=ScenarioOut, status_code=201, summary="Create and simulate a scenario")
 async def create_scenario(body: ScenarioIn, db: Session = Depends(get_db), user: User = Depends(require(Role.analyst))):
-    wrow = wsvc.get_or_fetch(db, body.weather_date, body.weather_hour) if body.weather_date else None
+    wrow = wsvc.get_or_fetch(db, body.weather_date, body.weather_hour, body.weather_lat, body.weather_lon) if body.weather_date else None
     bank = wsvc.bank_of(wrow)
     seed = body.seed if body.seed is not None else secrets.randbelow(2**31)
     sim = await run_in_threadpool(simulation.simulate, body.h0, body.v0, body.gamma_deg, body.psi_deg, body.beta,

@@ -162,7 +162,11 @@ class Estimate(Base):
     trajectory: Mapped[dict] = mapped_column(JSONType)       # {x, z} predicted descent (downsampled)
     scenario: Mapped[Scenario] = relationship(back_populates="estimates")
     threat: Mapped[ThreatAssessment | None] = relationship(back_populates="estimate", cascade="all, delete-orphan", uselist=False)
-    model_version: Mapped[ModelVersion | None] = relationship()
+    model_version: Mapped[ModelVersion | None] = relationship(lazy="joined")
+
+    @property
+    def model_name(self) -> str | None:
+        return self.model_version.name if self.model_version else None
 
 
 class ThreatAssessment(Base):
@@ -177,6 +181,22 @@ class ThreatAssessment(Base):
     windows: Mapped[dict] = mapped_column(JSONType)          # engagement altitude windows
     estimate: Mapped[Estimate] = relationship(back_populates="threat")
     top_asset: Mapped[Asset | None] = relationship()
+
+
+class WeatherAnalysis(Base):
+    """A stored weather-impact study: one flight flown through several dated profiles at one location."""
+    __tablename__ = "weather_analyses"
+    __table_args__ = (CheckConstraint("n_profiles BETWEEN 1 AND 28", name="ck_analysis_size"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(120))
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    lat: Mapped[float] = mapped_column(Float)
+    lon: Mapped[float] = mapped_column(Float)
+    n_profiles: Mapped[int] = mapped_column(Integer)
+    params: Mapped[dict] = mapped_column(JSONType)            # flight + sensor + time window
+    summary: Mapped[dict] = mapped_column(JSONType)
+    items: Mapped[list] = mapped_column(JSONType)             # one row per profile
 
 
 class AuditLog(Base):

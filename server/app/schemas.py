@@ -81,6 +81,8 @@ class WeatherOut(ORM):
 class WeatherQuery(BaseModel):
     date: date
     hour: int = Field(0, ge=0, le=23)
+    lat: float | None = Field(None, ge=-80, le=80)
+    lon: float | None = Field(None, ge=-180, le=180)
 
     @field_validator("date")
     @classmethod
@@ -103,7 +105,58 @@ class ScenarioIn(BaseModel):
     sigma_ang_mrad: float = Field(0.4, ge=0.05, le=5, description="angle noise 1-sigma [mrad]")
     weather_date: date | None = Field(None, description="fly through this date's atmosphere (None = standard)")
     weather_hour: int = Field(0, ge=0, le=23)
+    weather_lat: float | None = Field(None, ge=-80, le=80, description="weather location (engagement area); default from settings")
+    weather_lon: float | None = Field(None, ge=-180, le=180)
     seed: int | None = None
+
+
+class AnalysisIn(BaseModel):
+    """Weather-impact study: the flight/sensor of a scenario, flown through every profile in a time window."""
+    name: str = Field("weather impact", min_length=1, max_length=120)
+    h0: float = Field(15_000.0, ge=5_000, le=40_000)
+    v0: float = Field(1_400.0, ge=500, le=2_500)
+    gamma_deg: float = Field(45.0, ge=15, le=75)
+    psi_deg: float = Field(0.0, ge=-30, le=30)
+    beta: float = Field(2_500.0, ge=300, le=20_000)
+    obs_fraction: float = Field(0.12, ge=0.04, le=0.6)
+    sigma_r: float = Field(15.0, ge=1, le=200)
+    sigma_ang_mrad: float = Field(0.4, ge=0.05, le=5)
+    seed: int = Field(7, ge=0)
+    start_date: date
+    days: int = Field(3, ge=1, le=7)
+    hours: list[int] = Field(default_factory=lambda: [0, 6, 12, 18], min_length=1, max_length=4)
+    lat: float | None = Field(None, ge=-80, le=80)
+    lon: float | None = Field(None, ge=-180, le=180)
+
+    @field_validator("hours")
+    @classmethod
+    def _hours(cls, v: list[int]) -> list[int]:
+        if not set(v) <= {0, 6, 12, 18}:
+            raise ValueError("hours must be a subset of 0, 6, 12, 18 UTC")
+        return sorted(set(v))
+
+    @field_validator("start_date")
+    @classmethod
+    def _start(cls, v: date) -> date:
+        if v < date(2022, 1, 1):
+            raise ValueError("weather archive starts on 2022-01-01")
+        return v
+
+
+class AnalysisSummaryOut(ORM):
+    id: int
+    name: str
+    created_by: int | None
+    created_at: datetime
+    lat: float
+    lon: float
+    n_profiles: int
+    summary: dict
+
+
+class AnalysisOut(AnalysisSummaryOut):
+    params: dict
+    items: list
 
 
 class MeasurementOut(ORM):
@@ -130,6 +183,7 @@ class EstimateOut(ORM):
     scenario_id: int
     method: Method
     model_version_id: int | None
+    model_name: str | None = None
     created_at: datetime
     ip_x: float
     ip_y: float
@@ -193,10 +247,27 @@ class ModelVersionOut(ORM):
 
 class MethodStat(BaseModel):
     method: Method
+    model: str | None = None          # PINN rows are split by model version
     n: int
     median_miss_m: float | None
     coverage: float | None
     median_latency_ms: float | None
+
+
+class ThreatBoardRow(BaseModel):
+    scenario_id: int
+    scenario: str
+    estimate_id: int
+    method: Method
+    model: str | None
+    level: int
+    max_prob: float
+    top_asset: str | None
+    impact_time: float            # predicted ToT [s after burnout]
+    time_to_impact: float         # from the end of the observed track [s]
+    first_window_open: float | None   # earliest engagement window opening, seconds after the end of the track (<= 0: already open)
+    first_window_close: float | None
+    miss_m: float
 
 
 class Stats(BaseModel):

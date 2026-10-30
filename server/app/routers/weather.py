@@ -14,10 +14,11 @@ router = APIRouter(prefix="/api/weather", tags=["weather"])
 
 
 @router.get("", response_model=WeatherOut, summary="Profile for a date/hour (cached, fetched from Open-Meteo on a miss)")
-def get_profile(day: date = Query(..., alias="date"), hour: int = Query(0, ge=0, le=23), db: Session = Depends(get_db),
-                _: User = Depends(current_user)):
-    q = WeatherQuery(date=day, hour=hour)
-    return wsvc.get_or_fetch(db, q.date, q.hour)
+def get_profile(day: date = Query(..., alias="date"), hour: int = Query(0, ge=0, le=23),
+                lat: float | None = Query(None, ge=-80, le=80), lon: float | None = Query(None, ge=-180, le=180),
+                db: Session = Depends(get_db), _: User = Depends(current_user)):
+    q = WeatherQuery(date=day, hour=hour, lat=lat, lon=lon)
+    return wsvc.get_or_fetch(db, q.date, q.hour, q.lat, q.lon)
 
 
 @router.get("/cached", response_model=list[WeatherOut])
