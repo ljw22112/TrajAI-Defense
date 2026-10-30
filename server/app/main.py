@@ -23,7 +23,7 @@ from . import __version__  # noqa: E402
 from .config import get_settings  # noqa: E402
 from .db import Base, SessionLocal, engine  # noqa: E402
 from .models import Asset, ModelVersion, Role, User  # noqa: E402
-from .routers import assets, auth, insights, scenarios, stream, weather  # noqa: E402
+from .routers import analysis, assets, auth, insights, scenarios, stream, weather  # noqa: E402
 from .security import hash_password  # noqa: E402
 
 MODELS = [  # registry seed: (name, kind, onnx file, uses weather, metrics key)
@@ -94,7 +94,7 @@ def create_app() -> FastAPI:
     def health():
         return {"status": "ok", "version": __version__}
 
-    for r in (auth.router, assets.router, weather.router, scenarios.router, insights.router, stream.router):
+    for r in (auth.router, assets.router, weather.router, scenarios.router, analysis.router, insights.router, stream.router):
         app.include_router(r)
     dist = ROOT / "web" / "dist"
     if dist.exists():                                # single-container deployment: serve the built SPA at /

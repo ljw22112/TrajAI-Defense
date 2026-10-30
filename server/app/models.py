@@ -183,6 +183,22 @@ class ThreatAssessment(Base):
     top_asset: Mapped[Asset | None] = relationship()
 
 
+class WeatherAnalysis(Base):
+    """A stored weather-impact study: one flight flown through several dated profiles at one location."""
+    __tablename__ = "weather_analyses"
+    __table_args__ = (CheckConstraint("n_profiles BETWEEN 1 AND 28", name="ck_analysis_size"),)
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(120))
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
+    lat: Mapped[float] = mapped_column(Float)
+    lon: Mapped[float] = mapped_column(Float)
+    n_profiles: Mapped[int] = mapped_column(Integer)
+    params: Mapped[dict] = mapped_column(JSONType)            # flight + sensor + time window
+    summary: Mapped[dict] = mapped_column(JSONType)
+    items: Mapped[list] = mapped_column(JSONType)             # one row per profile
+
+
 class AuditLog(Base):
     __tablename__ = "audit_log"
     id: Mapped[int] = mapped_column(primary_key=True)

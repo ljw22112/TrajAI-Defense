@@ -100,5 +100,21 @@ def test_viewer_can_export_csv(page):
     assert head.startswith("scenario_id,scenario,") and "threat_level" in head
 
 
+def test_threat_board_and_weather_analysis(page):
+    page.get_by_role("button", name="로그아웃").click()
+    login(page, "analyst@trajai.dev", "password123")
+    pw.expect(page.get_by_text("교전 우선순위")).to_be_visible()
+    page.goto(f"{BASE}/#/analyses")
+    pw.expect(page.get_by_role("heading", name="기상 영향 분석")).to_be_visible()
+    page.get_by_label("기간 (일)").fill("1")
+    page.get_by_role("checkbox", name="06Z").uncheck()
+    page.get_by_role("checkbox", name="18Z").uncheck()
+    page.get_by_role("button", name=re.compile("분석 실행")).click()
+    pw.expect(page.get_by_text("기상 반영 이득").first).to_be_visible(timeout=60_000)
+    pw.expect(page.get_by_text("시각별 결과 (2)")).to_be_visible()
+    page.get_by_role("button", name="삭제").click()
+    pw.expect(page.get_by_text("저장된 분석")).to_be_visible()
+
+
 def test_no_uncaught_errors(page):
     assert page.errors == []

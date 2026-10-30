@@ -33,9 +33,9 @@ flowchart LR
 
 | 계층 | 기술 | 역할 |
 |---|---|---|
-| 프론트엔드 | React 18, TypeScript 5 (strict), Vite 5, TanStack Query, React Router | 대시보드, 시나리오 생성(기상 미리보기), 상세·실시간 재생, 자산 CRUD, 모델 레지스트리, 사용자·감사 로그 |
+| 프론트엔드 | React 18, TypeScript 5 (strict), Vite 5, TanStack Query, React Router | 대시보드(교전 우선순위), 시나리오 생성(위치·일자별 기상), 상세·실시간 재생, 기상 영향 분석, 자산 CRUD, 모델 레지스트리, 사용자·감사 로그 |
 | 백엔드 | FastAPI, Pydantic v2, Uvicorn, PyJWT, bcrypt | REST + WebSocket API, 역할 기반 접근 제어, 입력 검증, OpenAPI 문서(`/api/docs`) |
-| 데이터베이스 | PostgreSQL 16 (개발·테스트는 SQLite), SQLAlchemy 2.0 ORM, Alembic | 9개 테이블, FK·CHECK·UNIQUE 제약, JSONB, 마이그레이션 |
+| 데이터베이스 | PostgreSQL 16 (개발·테스트는 SQLite), SQLAlchemy 2.0 ORM, Alembic | 10개 테이블, FK·CHECK·UNIQUE 제약, JSONB, 마이그레이션 2개 |
 | 모델 서빙 | ONNX Runtime (CPU) | PINN 하이브리드 추론, 동적 트랙 길이 |
 | 운영 | Docker 멀티 스테이지, Docker Compose, GitHub Actions | 단일 컨테이너(API + SPA) 배포, CI(코어·API·웹) |
 
@@ -47,6 +47,7 @@ erDiagram
   users ||--o{ assets : creates
   users ||--o{ estimates : runs
   users ||--o{ audit_log : acts
+  users ||--o{ weather_analyses : runs
   weather_profiles ||--o{ scenarios : "atmosphere of"
   scenarios ||--|{ measurements : has
   scenarios ||--o{ estimates : has
@@ -125,6 +126,16 @@ erDiagram
     jsonb probabilities
     jsonb windows
   }
+  weather_analyses {
+    int id PK
+    int created_by FK
+    float lat
+    float lon
+    int n_profiles "CHECK 1-28"
+    jsonb params
+    jsonb summary
+    jsonb items
+  }
   audit_log {
     int id PK
     int user_id FK
@@ -139,6 +150,8 @@ erDiagram
 
 - **측정은 정규화된 테이블**(`measurements`, `UNIQUE(scenario_id, k)`)로 둡니다. 실시간 재생이 측정을 순서대로 읽고, 다른 추정기가 같은 측정을 재사용하기 때문입니다. 반면 진짜 궤적과 예측 궤적은 그리는 용도로만 쓰이므로 `JSONB`로 둡니다.
 - **기상 프로파일은 (시각, 위치) 유일 키로 캐시**합니다. 같은 일자를 다시 요청하면 외부 API를 호출하지 않습니다. 이 동작은 테스트에서 호출 횟수로 확인합니다.
+- **기상 영향 분석은 결과를 통째로 저장**합니다(`weather_analyses`, 시각별 행은 `JSONB`). 분석 하나는 최대 28개 프로파일로 작고, 항상 함께 읽히며, 다시 계산하면 외부 API를 또 불러야 하기 때문입니다. 기상 조회는 0.25° 격자로 맞춰 캐시 적중률을 높이고, `data/weather/`의 월 단위 내려받기 파일이 있으면 네트워크보다 먼저 읽습니다(제공자 429 제한 회피).
+- **범위**: 목표 지점·발사 후보지를 주고 발사 시각·위치를 고르는 기능은 방어 측 예측이라는 목적과 맞지 않아 넣지 않았습니다.
 - **삭제 정책**: 시나리오를 지우면 측정·추정·위협 평가가 함께 지워집니다(`CASCADE`). 사용자나 자산을 지우면 이력은 남기고 참조만 끊습니다(`SET NULL`).
 - **PostgreSQL enum 타입**(`role`, `method`)은 마이그레이션 downgrade에서 명시적으로 제거합니다. 그렇지 않으면 upgrade를 다시 할 때 충돌합니다.
 

@@ -3,6 +3,7 @@ import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, ApiError } from "../api/client";
 import type { ScenarioIn } from "../api/types";
+import { LocationPicker } from "../components/LocationPicker";
 import { ProfileChart } from "../components/ProfileChart";
 import { Card, ErrorBox, PageHead, Spinner, fmt } from "../components/ui";
 
@@ -22,7 +23,7 @@ const PRESETS: Record<string, Partial<ScenarioIn>> = {
   "중거리 (기본)": { h0: 15000, v0: 1400, gamma_deg: 45, beta: 2500 },
   "장거리 · 고탄도계수": { h0: 22000, v0: 1900, gamma_deg: 50, beta: 8000 },
 };
-const DEFAULT: ScenarioIn = { name: "", h0: 15000, v0: 1400, gamma_deg: 45, psi_deg: 0, beta: 2500, obs_fraction: 0.12, sigma_r: 15, sigma_ang_mrad: 0.4, weather_date: "2026-10-15", weather_hour: 0, seed: null };
+const DEFAULT: ScenarioIn = { name: "", h0: 15000, v0: 1400, gamma_deg: 45, psi_deg: 0, beta: 2500, obs_fraction: 0.12, sigma_r: 15, sigma_ang_mrad: 0.4, weather_date: "2026-10-15", weather_hour: 0, weather_lat: 36.5, weather_lon: 127.5, seed: null };
 
 export function ScenarioNewPage() {
   const nav = useNavigate();
@@ -30,8 +31,8 @@ export function ScenarioNewPage() {
   const [f, setF] = useState<ScenarioIn>(DEFAULT);
   const [useWx, setUseWx] = useState(true);
   const wx = useQuery({
-    queryKey: ["weather", f.weather_date, f.weather_hour],
-    queryFn: () => api.weather(f.weather_date!, f.weather_hour),
+    queryKey: ["weather", f.weather_date, f.weather_hour, f.weather_lat, f.weather_lon],
+    queryFn: () => api.weather(f.weather_date!, f.weather_hour, f.weather_lat ?? undefined, f.weather_lon ?? undefined),
     enabled: useWx && !!f.weather_date,
     retry: 0,
   });
@@ -44,7 +45,7 @@ export function ScenarioNewPage() {
 
   function submit(e: FormEvent) {
     e.preventDefault();
-    create.mutate({ ...f, name: f.name.trim() || `scenario ${new Date().toISOString().slice(0, 16)}`, weather_date: useWx ? f.weather_date : null });
+    create.mutate({ ...f, name: f.name.trim() || `scenario ${new Date().toISOString().slice(0, 16)}`, weather_date: useWx ? f.weather_date : null, weather_lat: useWx ? f.weather_lat : null, weather_lon: useWx ? f.weather_lon : null });
   }
 
   return (
@@ -85,6 +86,7 @@ export function ScenarioNewPage() {
                   <select id="whour" value={f.weather_hour} onChange={e => set("weather_hour", Number(e.target.value))}>
                     {[0, 6, 12, 18].map(h => <option key={h} value={h}>{String(h).padStart(2, "0")}Z</option>)}
                   </select></div>
+                <LocationPicker lat={f.weather_lat ?? 36.5} lon={f.weather_lon ?? 127.5} onChange={(la, lo) => setF(p => ({ ...p, weather_lat: la, weather_lon: lo }))} />
               </div>
               {wx.isLoading ? <Spinner label="Open-Meteo에서 기압면 자료를 받는 중" /> : <ErrorBox error={wx.error} />}
               {wx.data && (

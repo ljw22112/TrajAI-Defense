@@ -956,16 +956,22 @@ python -m pytest -q tests server/tests</code></pre>
       <caption><b>Table 14</b>계층별 구현</caption>
       <thead><tr><th>계층</th><th>기술</th><th>구현 내용</th></tr></thead>
       <tbody>
-        <tr><td>프론트엔드</td><td class="c">React 18 · TypeScript (strict) · Vite · TanStack Query</td><td>대시보드, 시나리오 생성(기상 프로파일 미리보기), 상세·탄착 영역·실시간 재생, 자산 CRUD, 모델 레지스트리, 사용자·감사 로그. 역할에 따라 메뉴와 버튼을 숨김</td></tr>
-        <tr><td>백엔드</td><td class="c">FastAPI · Pydantic v2 · PyJWT · bcrypt</td><td>REST 24개(health 포함) + WebSocket 1개 엔드포인트, OAuth2 JWT 인증, 로그인 실패 제한(5회/5분, HTTP 429), 추정 결과 CSV 내보내기, 3단계 역할(viewer·analyst·admin), 소유권 검사, 감사 로그, OpenAPI 자동 문서</td></tr>
-        <tr><td>데이터베이스</td><td class="c">PostgreSQL 16 · SQLAlchemy 2.0 · Alembic</td><td>9개 테이블(사용자, 자산, 기상 캐시, 시나리오, 측정, 추정, 위협 평가, 모델 버전, 감사 로그), FK·CHECK·UNIQUE 제약, JSONB, 왕복 검증한 마이그레이션</td></tr>
+        <tr><td>프론트엔드</td><td class="c">React 18 · TypeScript (strict) · Vite · TanStack Query</td><td>대시보드(교전 우선순위, 추정기·모델별 성능), 시나리오 생성(위치·일자별 기상 미리보기), 상세·탄착 영역·실시간 재생, 기상 영향 분석, 자산 CRUD, 모델 레지스트리, 사용자·감사 로그. 용어 툴팁, 첫 방문 안내, 역할에 따라 메뉴와 버튼을 숨김</td></tr>
+        <tr><td>백엔드</td><td class="c">FastAPI · Pydantic v2 · PyJWT · bcrypt</td><td>REST 29개(health 제외) + WebSocket 1개 엔드포인트, OAuth2 JWT 인증, 로그인 실패 제한(5회/5분, HTTP 429), 추정 결과 CSV 내보내기, 3단계 역할(viewer·analyst·admin), 소유권 검사, 감사 로그, OpenAPI 자동 문서</td></tr>
+        <tr><td>데이터베이스</td><td class="c">PostgreSQL 16 · SQLAlchemy 2.0 · Alembic</td><td>10개 테이블(사용자, 자산, 기상 캐시, 시나리오, 측정, 추정, 위협 평가, 모델 버전, 기상 영향 분석, 감사 로그), FK·CHECK·UNIQUE 제약, JSONB, 왕복 검증한 마이그레이션</td></tr>
         <tr><td>모델 서빙</td><td class="c">ONNX Runtime</td><td>모델 레지스트리의 PINN 하이브리드(기상 입력 / 표준 대기 v2)를 동적 트랙 길이로 서빙(PyTorch 대비 오차 4 cm 이내). 기상 없는 시나리오는 표준 대기 모델로 자동 대체, CEP는 split-conformal 계수로 보정</td></tr>
         <tr><td>외부 연동</td><td class="c">Open-Meteo</td><td>기압면 자료를 (시각, 위치) 키로 캐시, 일시적 오류 재시도, 429 제한 시 503으로 안내</td></tr>
         <tr><td>운영</td><td class="c">Docker · Compose · GitHub Actions</td><td>멀티 스테이지 이미지(SPA + API), PostgreSQL 서비스를 띄운 CI에서 마이그레이션·API·웹 테스트</td></tr>
       </tbody>
     </table>
   </div>
-  <div class="tw">
+    <h3 class="sub" id="sec-wximpact"><span class="no">12.1</span>기상 영향 분석과 교전 우선순위</h3>
+  <div class="prose">
+    <p><b>기상 영향 분석</b>은 한 비행 조건을 정한 위치(0.25° 격자)와 기간(최대 7일 × 하루 4회)의 실제 기상 속으로 날려, 같은 레이더 측정을 표준 대기 EKF와 그 시각 기상 EKF로 각각 추정합니다. 결과는 데이터베이스(<code>weather_analyses</code>)에 저장되어 다시 열어 볼 수 있습니다. 2026-10-13–19(28개 프로파일, 중부)에서 기상을 반영한 추정의 IP 오차 감소는 저β 단거리 98%(2,210 → 45 m), 기준 비행 95%(5,132 → 281 m)였고, 2026-01-12–16 겨울 제트기류 속 고β 장거리는 16%(555 → 469 m)에 그쳤습니다. 탄도계수가 클수록 항력, 곧 대기의 영향이 작다는 식 (5.5)의 예상과 일치합니다. 이 분석의 기상 반영 EKF는 비행에 쓰인 프로파일을 그대로 받으므로 분석장 오차가 없는 낙관적 조건이며, 오차를 넣은 평가는 §9.3에 있습니다.</p>
+    <p><b>교전 우선순위</b>는 시나리오마다 가장 정확한 최신 추정(§9.4 순서: 기상 반영 EKF → UKF → PINN → 표준 EKF)을 골라 위협 등급, 탄착 확률, 남은 시간, 교전 창이 열리기까지의 시간 순으로 정렬합니다.</p>
+    <p><b>범위 밖으로 둔 기능.</b> 목표 지점과 발사 후보지를 주고 기상 조건에 따라 발사 시각과 위치를 고르는 기능은 검토했으나 넣지 않았습니다. 들어오는 표적을 예측해 방어 판단을 돕는다는 이 시스템의 목적과 반대 방향(공격 측 계획)이기 때문입니다. 같은 기상 자료를 방어 쪽에서 쓰는 방식이 위의 기상 영향 분석입니다.</p>
+  </div>
+<div class="tw">
     <table>
       <caption><b>Table 15</b>테스트</caption>
       <thead><tr><th>수준</th><th>범위</th><th>수</th></tr></thead>

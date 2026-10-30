@@ -37,8 +37,13 @@ def main():
     def save(name, obj):
         (out / f"{name}.json").write_text(json.dumps(obj, ensure_ascii=False, separators=(",", ":")))
 
-    for path, name in [("/api/stats", "stats"), ("/api/assets", "assets"), ("/api/models", "models"), ("/api/weather/cached", "weather_cached")]:
+    for path, name in [("/api/stats", "stats"), ("/api/assets", "assets"), ("/api/models", "models"), ("/api/weather/cached", "weather_cached"),
+                       ("/api/threats", "threats")]:
         save(name, c.get(path).json())
+    an = c.get("/api/analyses", params={"limit": 100}).json()
+    save("analyses", an)
+    for x in an["items"]:
+        save(f"analyses_{x['id']}", c.get(f"/api/analyses/{x['id']}").json())
     page = c.get("/api/scenarios", params={"limit": 100}).json()
     save("scenarios", page)
     for s in page["items"]:

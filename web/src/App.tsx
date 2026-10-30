@@ -11,6 +11,8 @@ import { ModelsPage } from "./pages/ModelsPage";
 import { ScenarioDetailPage } from "./pages/ScenarioDetailPage";
 import { ScenarioNewPage } from "./pages/ScenarioNewPage";
 import { ScenariosPage } from "./pages/ScenariosPage";
+import { AnalysesPage } from "./pages/AnalysesPage";
+import { AnalysisDetailPage } from "./pages/AnalysisDetailPage";
 import { WeatherPage } from "./pages/WeatherPage";
 
 function Guard({ role, children }: { role?: Role; children: JSX.Element }) {
@@ -43,6 +45,7 @@ export function App() {
           {can("analyst") && <NavLink to="/scenarios/new">새 시나리오</NavLink>}
           <span className="sec">자료</span>
           <NavLink to="/weather">기상 프로파일</NavLink>
+          <NavLink to="/analyses">기상 영향 분석</NavLink>
           <NavLink to="/assets">보호 자산</NavLink>
           <NavLink to="/models">모델 레지스트리</NavLink>
           {can("admin") && <><span className="sec">관리</span><NavLink to="/admin">사용자 · 감사 로그</NavLink></>}
@@ -63,6 +66,8 @@ export function App() {
           <Route path="/scenarios/new" element={<Guard role="analyst"><ScenarioNewPage /></Guard>} />
           <Route path="/scenarios/:id" element={<Guard><ScenarioDetailPage /></Guard>} />
           <Route path="/weather" element={<Guard><WeatherPage /></Guard>} />
+          <Route path="/analyses" element={<Guard><AnalysesPage /></Guard>} />
+          <Route path="/analyses/:id" element={<Guard><AnalysisDetailPage /></Guard>} />
           <Route path="/assets" element={<Guard><AssetsPage /></Guard>} />
           <Route path="/models" element={<Guard><ModelsPage /></Guard>} />
           <Route path="/admin" element={<Guard role="admin"><AdminPage /></Guard>} />

@@ -32,7 +32,49 @@ def _parse(hourly: dict, hour: int) -> dict:
     return dict(p=[l * 100.0 for l in wx.LEVELS], z=z, T=T, u=[float(a) for a in u], v=[float(a) for a in v])
 
 
+GRID_DEG = 0.25        # Open-Meteo pressure-level resolution; snapping keeps the cache effective
+
+
+def snap(lat: float | None, lon: float | None) -> tuple[float, float]:
+    """Requested location -> provider grid point (defaults to the configured engagement area)."""
+    s = get_settings()
+    lat = s.weather_lat if lat is None else lat
+    lon = s.weather_lon if lon is None else lon
+    return round(round(lat / GRID_DEG) * GRID_DEG, 2), round(round(lon / GRID_DEG) * GRID_DEG, 2)
+
+
+_day_cache: dict[tuple, dict] = {}       # one provider call returns all 24 hours of a day; reuse it within the process
+
+
 def fetch_levels(day: date, hour: int, lat: float, lon: float) -> dict:
+    key = (day.isoformat(), lat, lon)
+    if key not in _day_cache:
+        _day_cache[key] = _fetch_day(day, lat, lon)
+        if len(_day_cache) > 64:
+            _day_cache.pop(next(iter(_day_cache)))
+    return _parse(_day_cache[key], hour)
+
+
+def _from_archive(day: date, lat: float, lon: float) -> dict | None:
+    """Monthly provider downloads kept by scripts/weather_experiment.py (data/weather/*.json): no network, no rate limit."""
+    import json
+    from pathlib import Path
+    d = Path(get_settings().weather_archive_dir)
+    if not d.is_dir():
+        return None
+    for f in d.glob(f"*_{lat}_{lon}.json"):
+        a, b = f.name.split("_")[:2]
+        if a <= day.isoformat() <= b:
+            hourly = json.loads(f.read_text())["hourly"]
+            i0 = hourly["time"].index(f"{day.isoformat()}T00:00")
+            return {k: v[i0: i0 + 24] for k, v in hourly.items()}
+    return None
+
+
+def _fetch_day(day: date, lat: float, lon: float) -> dict:
+    arch = _from_archive(day, lat, lon)
+    if arch is not None:
+        return arch
     s = get_settings()
     if s.weather_offline:
         raise HTTPException(503, "weather provider disabled (offline mode)")
@@ -51,26 +93,34 @@ def fetch_levels(day: date, hour: int, lat: float, lon: float) -> dict:
         raise HTTPException(503, "weather provider rate limit reached, retry in a minute")
     if r.status_code != 200:
         raise HTTPException(502, f"weather provider error {r.status_code}")
-    return _parse(r.json()["hourly"], hour)
+    return r.json()["hourly"]
 
 
 FETCHER = {"fn": fetch_levels}          # swappable (tests use a synthetic profile)
 
 
-def get_or_fetch(db: Session, day: date, hour: int, fetcher=None) -> WeatherProfile:
-    s = get_settings()
+def get_or_fetch(db: Session, day: date, hour: int, lat: float | None = None, lon: float | None = None,
+                 fetcher=None) -> WeatherProfile:
+    lat, lon = snap(lat, lon)
     vt = datetime(day.year, day.month, day.day, hour, tzinfo=timezone.utc)
-    row = db.scalar(select(WeatherProfile).where(WeatherProfile.valid_time == vt, WeatherProfile.lat == s.weather_lat,
-                                                 WeatherProfile.lon == s.weather_lon))
+    row = db.scalar(select(WeatherProfile).where(WeatherProfile.valid_time == vt, WeatherProfile.lat == lat,
+                                                 WeatherProfile.lon == lon))
     if row:
         return row
-    lv = (fetcher or FETCHER["fn"])(day, hour, s.weather_lat, s.weather_lon)
+    lv = (fetcher or FETCHER["fn"])(day, hour, lat, lon)
     speed = np.hypot(lv["u"], lv["v"])
     i = int(np.argmax(speed))
-    row = WeatherProfile(valid_time=vt, lat=s.weather_lat, lon=s.weather_lon, levels=lv,
+    row = WeatherProfile(valid_time=vt, lat=lat, lon=lon, levels=lv,
                          max_wind=float(speed[i]), max_wind_alt=float(lv["z"][i]))
     db.add(row); db.commit(); db.refresh(row)
     return row
+
+
+def bank_of_many(rows: list[WeatherProfile]):
+    """One ProfileBank holding several cached profiles (index i <-> rows[i])."""
+    profs = [dict(time=r.valid_time.isoformat(), z=np.array(r.levels["z"]), p=np.array(r.levels["p"]), T=np.array(r.levels["T"]),
+                  u=np.array(r.levels["u"]), v=np.array(r.levels["v"])) for r in rows]
+    return wx.build_grid(profs)
 
 
 def bank_of(row: WeatherProfile | None):

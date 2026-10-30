@@ -1,5 +1,6 @@
 // Thin typed client for the FastAPI server, with a read-only static "demo" adapter for GitHub Pages.
 import type {
+  Analysis, AnalysisIn, AnalysisRow, ThreatRow,
   Asset, AssetIn, AuditRow, Estimate, Method, ModelVersion, Page, Scenario, ScenarioIn, ScenarioSummary, Stats, Token, User,
   Weather, WeatherCurves,
 } from "./types";
@@ -92,7 +93,8 @@ export const api = {
   updateAsset: (id: number, b: AssetIn) => request<Asset>("PUT", `/api/assets/${id}`, b),
   deleteAsset: (id: number) => request<void>("DELETE", `/api/assets/${id}`),
 
-  weather: (date: string, hour: number) => request<Weather>("GET", DEMO ? `/api/weather/${date}T${String(hour).padStart(2, "0")}` : `/api/weather${qs({ date, hour })}`),
+  weather: (date: string, hour: number, lat?: number, lon?: number) =>
+    request<Weather>("GET", DEMO ? `/api/weather/${date}T${String(hour).padStart(2, "0")}` : `/api/weather${qs({ date, hour, lat, lon })}`),
   weatherCached: () => request<Weather[]>("GET", "/api/weather/cached"),
   weatherCurves: (id: number) => request<WeatherCurves>("GET", `/api/weather/${id}/curves`),
 
@@ -106,6 +108,11 @@ export const api = {
   models: () => request<ModelVersion[]>("GET", "/api/models"),
   activateModel: (id: number) => request<ModelVersion>("POST", `/api/models/${id}/activate`),
   stats: () => request<Stats>("GET", "/api/stats"),
+  threats: () => request<ThreatRow[]>("GET", "/api/threats"),
+  analyses: () => request<Page<AnalysisRow>>("GET", "/api/analyses?limit=50"),
+  analysis: (id: number) => request<Analysis>("GET", `/api/analyses/${id}`),
+  createAnalysis: (b: AnalysisIn) => request<Analysis>("POST", "/api/analyses", b),
+  deleteAnalysis: (id: number) => request<void>("DELETE", `/api/analyses/${id}`),
   audit: () => request<AuditRow[]>("GET", "/api/audit"),
 };
 

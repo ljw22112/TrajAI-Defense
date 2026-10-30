@@ -4,7 +4,7 @@ import { api } from "../api/client";
 import { METHOD_LABEL, modelShort, type MethodStat } from "../api/types";
 import { useState } from "react";
 import { useAuth } from "../auth/AuthContext";
-import { Card, Empty, ErrorBox, PageHead, Spinner, Stat, Term, fmt, km } from "../components/ui";
+import { Card, Empty, ErrorBox, PageHead, Spinner, Stat, Term, ThreatBadge, fmt, km } from "../components/ui";
 
 const label = (m: MethodStat) => METHOD_LABEL[m.method] + (modelShort(m.model) ? ` · ${modelShort(m.model)}` : "");
 const GUIDE_KEY = "trajai.guide.hidden";
@@ -14,6 +14,7 @@ export function DashboardPage() {
   const nav = useNavigate();
   const { can } = useAuth();
   const stats = useQuery({ queryKey: ["stats"], queryFn: api.stats });
+  const threats = useQuery({ queryKey: ["threats"], queryFn: api.threats });
   const recent = useQuery({ queryKey: ["scenarios", { limit: 8 }], queryFn: () => api.scenarios({ limit: 8 }) });
   const s = stats.data;
   const best = s?.by_method.filter(m => m.n > 0 && m.median_miss_m !== null).sort((a, b) => a.median_miss_m! - b.median_miss_m!)[0];
@@ -32,6 +33,7 @@ export function DashboardPage() {
             <li><b>시나리오 열기</b><p>아래 표에서 "10/15 00Z 제트기류"처럼 기상이 반영된 시나리오를 고릅니다. 실제 궤적과 레이더 측정이 그려져 있습니다.</p></li>
             <li><b>추정기 비교</b><p>측면 궤적·탄착 영역에서 EKF, UKF, PINN의 예측을 겹쳐 봅니다. 표의 용어에 마우스를 올리면 뜻이 나옵니다. 원이 CEP(50% 확률 반경)입니다.</p></li>
             <li><b>실시간 재생</b><p>"재생"을 누르면 측정이 시간 순서대로 들어오며 필터가 탄도계수 β를 좁혀 가는 과정을 볼 수 있습니다. 기상 반영을 끄고 다시 재생해 비교해 보세요.</p></li>
+            <li><b>기상 영향 분석</b><p>기간과 위치를 정해 그 사이의 실제 기상이 궤적과 예측 오차를 얼마나 바꾸는지 봅니다. 왼쪽 메뉴 "기상 영향 분석"에 저장된 예시가 있습니다.</p></li>
           </ol>
         </Card>
       )}
@@ -44,6 +46,30 @@ export function DashboardPage() {
             <Stat label="최선 추정기 (IP 오차 중앙값)" value={best ? fmt(best.median_miss_m) : "—"} unit={best ? `m · ${label(best)}` : ""} tone="acc" />
             <Stat label="캐시된 기상 프로파일" value={fmt(s.weather_profiles)} />
           </div>
+          <Card title="교전 우선순위 (시나리오별 최신·최정확 추정 기준)" aside={<small className="label">위협 등급 → 탄착 확률 → 남은 시간 순</small>}>
+            <ErrorBox error={threats.error} />
+            {!threats.data?.length ? <Empty>위협 평가가 있는 추정이 아직 없습니다.</Empty> : (
+              <div className="tw">
+                <table>
+                  <thead><tr><th>등급</th><th>시나리오</th><th>위협 자산</th><th className="n">탄착 확률</th><th className="n">탄착까지</th><th className="n"><Term k="교전 창">교전 창 열림</Term></th><th>근거 추정기</th></tr></thead>
+                  <tbody>
+                    {threats.data.slice(0, 8).map(r => (
+                      <tr key={r.scenario_id} className="clickable" onClick={() => nav(`/scenarios/${r.scenario_id}`)}>
+                        <td><ThreatBadge level={r.level} /></td>
+                        <td>{r.scenario}</td>
+                        <td>{r.top_asset && r.max_prob > 0.001 ? r.top_asset : "—"}</td>
+                        <td className="n">{r.max_prob > 0.001 ? `${fmt(r.max_prob * 100, 1)}%` : "—"}</td>
+                        <td className="n">{fmt(r.time_to_impact)} s</td>
+                        <td className="n">{r.first_window_open === null ? "—" : r.first_window_open <= 0 ? "열림" : `+${fmt(r.first_window_open)} s`}</td>
+                        <td className="nowrap">{METHOD_LABEL[r.method]}{modelShort(r.model) && <span className="chip model">{modelShort(r.model)}</span>}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <small className="label">탄착까지·교전 창은 레이더 관측 종료 시점 기준. 추정기는 §9.4 비교에서 더 정확했던 순서(기상 반영 EKF → UKF → PINN → 표준 EKF)로 고릅니다.</small>
+          </Card>
           <div className="grid g2">
             <Card title="추정기별 성능 (전체 추정 실행 기준)">
               <div className="tw">
