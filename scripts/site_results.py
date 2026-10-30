@@ -29,10 +29,11 @@ def main():
     ap.add_argument("--train-note", default="공칭 잡음만으로 학습")
     ap.add_argument("--pair2k", nargs=2, default=None)
     ap.add_argument("--lstm", default=None)
+    ap.add_argument("--pinn-label", default="PINN-Transformer")
     ap.add_argument("--prev", nargs=3, default=None, help="previous hybrid/pinn/data names for the comparison table")
     a = ap.parse_args()
     H, P, D = a.hybrid, a.pinn, a.data
-    methods = [("ekf", "EKF + MC"), ("ukf", "UKF + MC"), (D, "Transformer (data only)"), (P, "PINN-Transformer")]
+    methods = [("ekf", "EKF + MC"), ("ukf", "UKF + MC"), (D, "Transformer (data only)"), (P, a.pinn_label)]
     if a.lstm:
         methods.append((a.lstm, "PINN-BiLSTM"))
     methods.append((H, "PINN-Transformer + EKF"))
@@ -72,11 +73,19 @@ def main():
     </table>
   </div>"""
 
+    pd_, pp_ = (a.prev[2], a.prev[1]) if a.prev else (D, P)
+    rd, rp = med(pd_, "test_id_f10", "phys_rms_g"), med(pp_, "test_id_f10", "phys_rms_g")
+    md, mp = med(pd_, "test_id_f10", "miss"), med(pp_, "test_id_f10", "miss")
+    cond = "같은 v1 학습 조건에서 " if a.prev else ""
+    phys_txt = (f"{cond}ID 10%의 물리 잔차 RMS가 {rd:.2f} g(data only)에서 {rp:.2f} g(PINN)로 줄었고, IP 오차도 {f0(md)} m에서 {f0(mp)} m로 "
+                + ("줄었습니다." if mp < md else "달라졌습니다.") + f" 잡음 증강 하이브리드({a.label})의 잔차는 {med(H, 'test_id_f10', 'phys_rms_g'):.3f} g입니다.")
     prev = ""
     if a.prev:
         ph, pp, pd = a.prev
         pv = []
         for (m0, m1, lab) in [(pd, D, "Transformer (data only)"), (pp, P, "PINN-Transformer"), (ph, H, "PINN-Transformer + EKF")]:
+            if m0 == m1:
+                continue
             pv.append(f"<tr><td>{lab}</td>" + "".join(f'<td class="n">{f0(med(m0, t, "miss"))} → <b>{f0(med(m1, t, "miss"))}</b></td>' for t in TESTS) + "</tr>")
         prev = f"""
   <div class="tw">
@@ -131,7 +140,7 @@ def main():
     <figcaption><b>Fig. 8</b>단일 표적 지연 (CPU 1스레드, 다른 학습 작업과 동시 실행). PINN은 ONNX Runtime 기준 p50 {L["onnxruntime_cpu"]["p50_ms"]:.2f} ms, EKF + Monte Carlo(100 표본, NumPy)는 {L["ekf_plus_mc100"]["p50_ms"]:.0f} ms로 약 {speed:,.0f}배 차이입니다. ONNX 출력은 PyTorch와 최대 {L["onnx_vs_torch_max_diff_m"]*100:.1f} cm 이내로 일치합니다.</figcaption></figure>
   <h3 class="sub"><span class="no">9.2</span>해석</h3>
   <div class="prose">
-    <p><b>물리 손실은 의도대로 작동합니다.</b> ID 10%에서 물리 잔차 RMS가 {res_d:.2f} g(data only)에서 {res_p:.2f} g(PINN)로 줄었고, IP 오차도 {f0(med(D, "test_id_f10", "miss"))} m에서 {f0(med(P, "test_id_f10", "miss"))} m로 줄었습니다. 다만 REQ-F-03의 목표(0.05 g)에는 아직 못 미칩니다.</p>
+    <p><b>물리 손실은 의도대로 작동합니다.</b> {phys_txt} 다만 REQ-F-03의 목표(0.05 g)에는 아직 못 미칩니다.</p>
     <p><b>EKF 정보 결합이 가장 효과가 큽니다.</b> EKF 사후 상태를 입력으로 받는 하이브리드 모델이 신경망 중 가장 정확하며(ID 15%에서 {f0(med(H, "test_id_f15", "miss"))} m), 필터가 단기 상태를, 신경망이 장기 궤적을 맡는 Table 6의 구조를 뒷받침합니다.</p>
     <p><b>정확도는 아직 고전 필터에 못 미칩니다.</b> 신경망의 최선 IP 오차(ID 15% {f0(best_nn_15)} m)는 EKF({f0(med("ekf", "test_id_f15", "miss"))} m)와 UKF({f0(med("ukf", "test_id_f15", "miss"))} m)보다 큽니다. 모델 불일치가 없는 합성 환경에서는 정확한 물리 모델을 가진 필터가 상한에 가깝기 때문입니다. 신경망의 이점은 현재로서는 정확도보다 지연(약 {speed:,.0f}배)과 일정한 추론 시간에 있습니다.</p>
     <p><b>분포 이동에 취약합니다.</b> 학습 분포 밖의 OOD 조건에서는 모든 신경망의 IP 오차가 10 km 이상으로 커지고 CEP 포함률이 0.1 수준으로 떨어집니다. 반면 EKF/UKF는 물리 모델이 그대로 성립하므로 영향이 작습니다. 물리 잔차를 손실에 넣는 것만으로는 외삽 일반화가 보장되지 않는다는 결과입니다.</p>

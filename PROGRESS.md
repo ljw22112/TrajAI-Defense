@@ -1,5 +1,13 @@
 # 작업 진행 현황
 
+## 2026-10-30 (4차 세션, 완료)
+- v2(잡음 증강, 4,500 step) 평가: 하이브리드 ID 15% 428 m, 고잡음 1,026 m (v1 12,239 m)
+- 기상 실험: Open-Meteo 기압면 자료, 직전 1년 1,460개 프로파일로 학습, 2026-10 112개로 시험. EKF 2,633 → 339 m, 채택
+- wx_hybrid_clim (720 m), wx_hybrid_date (683 m) 학습·평가, ONNX 변환
+- 풀스택 콘솔: 모델 레지스트리에 wx_hybrid_date(활성)·pinn_tf_hybrid_v2 등록. 기상 없는 시나리오는 표준 대기 모델로 자동 대체
+- 수정: model_versions.kind VARCHAR(40) 초과로 PostgreSQL 기동 실패 → 라벨 단축, 길이 검사 테스트 추가
+- 미실행(선택): pinn_tf_v2, pinn_lstm_v2, 2k 저데이터 v2 ablation
+
 ## 2026-10-30 (3차 세션)
 - v1 결과(data_tf, pinn_tf, pinn_tf_hybrid; 공칭 잡음, 1,500 step) 평가 → 사이트 §9.1/9.2, Table 2 측정값, README 반영, main 배포
 - ONNX 변환 완료: ONNX Runtime p50 0.87 ms / p99 5.3 ms, PyTorch와 3.3 cm 이내 일치. EKF+MC(100) 228 ms

@@ -391,12 +391,12 @@ footer b{color:var(--ink); font-weight:600}
       <thead><tr><th>ID</th><th>요구사항</th><th>목표값</th><th>측정값</th><th>판정</th><th>검증</th></tr></thead>
       <tbody>
 <!-- REQ:BEGIN -->
-        <tr><td class="id">REQ-F-01</td><td>초기 관측 구간만으로 탄착까지의 전 궤적 예측</td><td class="c">관측 ≤ 15 %</td><td>전 구간 출력, IP 오차 875 m (ID 15%)</td><td><span class="st part">부분 충족</span></td><td><span class="vm">T</span></td></tr>
-        <tr><td class="id">REQ-F-02</td><td>IP, ToT, CEP<sub>50</sub> 동시 출력</td><td class="c">3종 + 1σ</td><td>출력됨, CEP 포함률 0.50 (ID) / 0.09 (OOD)</td><td><span class="st part">부분 충족</span></td><td><span class="vm">D</span></td></tr>
-        <tr><td class="id">REQ-F-03</td><td>예측 궤적의 물리 일관성 (운동 방정식 잔차)</td><td class="c">잔차 RMS ≤ 0.05 g</td><td>0.22 g (ID 10%)</td><td><span class="st no">미충족</span></td><td><span class="vm">A</span></td></tr>
+        <tr><td class="id">REQ-F-01</td><td>초기 관측 구간만으로 탄착까지의 전 궤적 예측</td><td class="c">관측 ≤ 15 %</td><td>전 구간 출력, IP 오차 428 m (ID 15%)</td><td><span class="st part">부분 충족</span></td><td><span class="vm">T</span></td></tr>
+        <tr><td class="id">REQ-F-02</td><td>IP, ToT, CEP<sub>50</sub> 동시 출력</td><td class="c">3종 + 1σ</td><td>출력됨, CEP 포함률 0.59 (ID) / 0.14 (OOD)</td><td><span class="st part">부분 충족</span></td><td><span class="vm">D</span></td></tr>
+        <tr><td class="id">REQ-F-03</td><td>예측 궤적의 물리 일관성 (운동 방정식 잔차)</td><td class="c">잔차 RMS ≤ 0.05 g</td><td>0.09 g (ID 10%)</td><td><span class="st no">미충족</span></td><td><span class="vm">A</span></td></tr>
         <tr><td class="id">REQ-F-04</td><td>보호 자산 DB 대비 위협 등급과 요격 고도 창 산출</td><td class="c">5단계</td><td>구현, 가상 자산으로 시연 (3D 뷰어)</td><td><span class="st ok">충족</span></td><td><span class="vm">D</span></td></tr>
         <tr><td class="id">REQ-P-01</td><td>단일 표적 추론 지연 (전처리 제외, p99)</td><td class="c">≤ 50 ms</td><td>5.3 ms (ONNX Runtime, CPU)</td><td><span class="st ok">충족</span></td><td><span class="vm">T</span></td></tr>
-        <tr><td class="id">REQ-P-02</td><td>IP / CEP 추정 오차, EKF baseline 대비</td><td class="c">−40 %</td><td>+251 % (최선 신경망, ID 10%)</td><td><span class="st no">미충족</span></td><td><span class="vm">T</span></td></tr>
+        <tr><td class="id">REQ-P-02</td><td>IP / CEP 추정 오차, EKF baseline 대비</td><td class="c">−40 %</td><td>+70 % (최선 신경망, ID 10%)</td><td><span class="st no">미충족</span></td><td><span class="vm">T</span></td></tr>
         <tr><td class="id">REQ-P-03</td><td>교전 판단 가용 시간 증가</td><td class="c">+25 s</td><td>계산 시간 단축 0.23 s, 25 s 근거 없음</td><td><span class="st no">미충족</span></td><td><span class="vm">A</span></td></tr>
         <tr><td class="id">REQ-I-01</td><td>센서 트랙 스트리밍 입력 (gRPC / Socket)</td><td class="c">≥ 20 Hz</td><td>오프라인 배치 평가만</td><td><span class="st no">미구현</span></td><td><span class="vm">I</span></td></tr>
 <!-- REQ:END -->
@@ -670,9 +670,9 @@ footer b{color:var(--ink); font-weight:600}
   </div>
   <div class="prose"><p>Ablation은 물리 손실 유무, 학습 데이터 규모(20k / 2k), 관측 비율(5 / 10 / 15 %), 센서 잡음 수준(공칭 / 고잡음), 분포 이동(OOD)으로 구성했습니다. 물리 제약의 이점은 데이터가 적고 OOD 조건일 때 가장 크게 나타날 것으로 예상했으며, 이를 반증할 수 있도록 같은 조건의 data-only 모델과 짝지어 비교합니다. 결과는 §9.1에 있습니다.</p></div>
 <!-- RESULTS:BEGIN -->
-  <h3 class="sub" id="sec-results"><span class="no">9.1</span>실험 결과 (v1)</h3>
+  <h3 class="sub" id="sec-results"><span class="no">9.1</span>실험 결과 (v2)</h3>
   <div class="prose">
-    <p>모든 수치는 각 시험 분할 1,000개 궤적의 중앙값입니다. 신경망은 CPU에서 1,500 step(batch 128) 학습했고 공칭 잡음만으로 학습했습니다. EKF/UKF는 데이터 생성기와 같은 동역학 모델을 쓰므로 모델 불일치가 없는, baseline에 유리한 조건입니다. 재현 방법은 저장소의 README에 있습니다.</p>
+    <p>모든 수치는 각 시험 분할 1,000개 궤적의 중앙값입니다. 신경망은 CPU에서 4,500 step(batch 128) 학습했고 잡음 증강 데이터로 학습했습니다. EKF/UKF는 데이터 생성기와 같은 동역학 모델을 쓰므로 모델 불일치가 없는, baseline에 유리한 조건입니다. 재현 방법은 저장소의 README에 있습니다.</p>
   </div>
   <div class="tw">
     <table>
@@ -681,9 +681,9 @@ footer b{color:var(--ink); font-weight:600}
       <tbody>
 <tr><td>EKF + MC</td><td class="n">1,429 <span class="sub-c">(0.37)</span></td><td class="n">340 <span class="sub-c">(0.70)</span></td><td class="n">225 <span class="sub-c">(0.84)</span></td><td class="n">629 <span class="sub-c">(0.54)</span></td><td class="n">438 <span class="sub-c">(0.77)</span></td></tr>
 <tr><td>UKF + MC</td><td class="n">1,207 <span class="sub-c">(0.54)</span></td><td class="n">303 <span class="sub-c">(0.78)</span></td><td class="n">212 <span class="sub-c">(0.89)</span></td><td class="n">608 <span class="sub-c">(0.63)</span></td><td class="n">357 <span class="sub-c">(0.89)</span></td></tr>
-<tr><td>Transformer (data only)</td><td class="n">3,537 <span class="sub-c">(0.20)</span></td><td class="n">1,674 <span class="sub-c">(0.46)</span></td><td class="n">1,394 <span class="sub-c">(0.55)</span></td><td class="n">13,952 <span class="sub-c">(0.01)</span></td><td class="n">23,406 <span class="sub-c">(0.12)</span></td></tr>
-<tr class="prop"><td>PINN-Transformer</td><td class="n">3,404 <span class="sub-c">(0.22)</span></td><td class="n">1,516 <span class="sub-c">(0.52)</span></td><td class="n">1,321 <span class="sub-c">(0.57)</span></td><td class="n">11,009 <span class="sub-c">(0.02)</span></td><td class="n">23,612 <span class="sub-c">(0.14)</span></td></tr>
-<tr class="prop"><td>PINN-Transformer + EKF</td><td class="n">3,279 <span class="sub-c">(0.19)</span></td><td class="n">1,193 <span class="sub-c">(0.50)</span></td><td class="n">875 <span class="sub-c">(0.59)</span></td><td class="n">12,239 <span class="sub-c">(0.01)</span></td><td class="n">21,119 <span class="sub-c">(0.09)</span></td></tr>
+<tr><td>Transformer (data only)</td><td class="n">1,884 <span class="sub-c">(0.34)</span></td><td class="n">794 <span class="sub-c">(0.55)</span></td><td class="n">615 <span class="sub-c">(0.59)</span></td><td class="n">1,596 <span class="sub-c">(0.45)</span></td><td class="n">18,081 <span class="sub-c">(0.15)</span></td></tr>
+<tr class="prop"><td>PINN-Transformer (v1, 공칭 잡음)</td><td class="n">3,404 <span class="sub-c">(0.22)</span></td><td class="n">1,516 <span class="sub-c">(0.52)</span></td><td class="n">1,321 <span class="sub-c">(0.57)</span></td><td class="n">11,009 <span class="sub-c">(0.02)</span></td><td class="n">23,612 <span class="sub-c">(0.14)</span></td></tr>
+<tr class="prop"><td>PINN-Transformer + EKF</td><td class="n">1,615 <span class="sub-c">(0.32)</span></td><td class="n">578 <span class="sub-c">(0.59)</span></td><td class="n">428 <span class="sub-c">(0.62)</span></td><td class="n">1,026 <span class="sub-c">(0.45)</span></td><td class="n">10,404 <span class="sub-c">(0.14)</span></td></tr>
       </tbody>
     </table>
   </div>
@@ -697,15 +697,25 @@ footer b{color:var(--ink); font-weight:600}
 <tr><td colspan="5" class="grp">ID 10%</td></tr>
 <tr><td>EKF + MC</td><td class="n">187</td><td class="n">0.24</td><td class="n">595</td><td class="n">—</td></tr>
 <tr><td>UKF + MC</td><td class="n">179</td><td class="n">0.19</td><td class="n">613</td><td class="n">—</td></tr>
-<tr><td>Transformer (data only)</td><td class="n">1,734</td><td class="n">3.63</td><td class="n">1,512</td><td class="n">0.567</td></tr>
-<tr class="prop"><td>PINN-Transformer</td><td class="n">1,734</td><td class="n">2.49</td><td class="n">1,511</td><td class="n">0.223</td></tr>
-<tr class="prop"><td>PINN-Transformer + EKF</td><td class="n">1,579</td><td class="n">2.84</td><td class="n">1,181</td><td class="n">0.226</td></tr>
+<tr><td>Transformer (data only)</td><td class="n">788</td><td class="n">1.47</td><td class="n">963</td><td class="n">0.404</td></tr>
+<tr class="prop"><td>PINN-Transformer (v1, 공칭 잡음)</td><td class="n">1,734</td><td class="n">2.49</td><td class="n">1,511</td><td class="n">0.223</td></tr>
+<tr class="prop"><td>PINN-Transformer + EKF</td><td class="n">687</td><td class="n">1.23</td><td class="n">703</td><td class="n">0.086</td></tr>
 <tr><td colspan="5" class="grp">OOD 12%</td></tr>
 <tr><td>EKF + MC</td><td class="n">241</td><td class="n">0.44</td><td class="n">673</td><td class="n">—</td></tr>
 <tr><td>UKF + MC</td><td class="n">206</td><td class="n">0.16</td><td class="n">673</td><td class="n">—</td></tr>
-<tr><td>Transformer (data only)</td><td class="n">16,251</td><td class="n">8.11</td><td class="n">6,553</td><td class="n">0.772</td></tr>
-<tr class="prop"><td>PINN-Transformer</td><td class="n">20,307</td><td class="n">9.91</td><td class="n">9,017</td><td class="n">0.705</td></tr>
-<tr class="prop"><td>PINN-Transformer + EKF</td><td class="n">20,259</td><td class="n">12.90</td><td class="n">7,456</td><td class="n">0.626</td></tr>
+<tr><td>Transformer (data only)</td><td class="n">15,823</td><td class="n">8.32</td><td class="n">6,380</td><td class="n">0.735</td></tr>
+<tr class="prop"><td>PINN-Transformer (v1, 공칭 잡음)</td><td class="n">20,307</td><td class="n">9.91</td><td class="n">9,017</td><td class="n">0.705</td></tr>
+<tr class="prop"><td>PINN-Transformer + EKF</td><td class="n">11,038</td><td class="n">6.00</td><td class="n">5,171</td><td class="n">0.530</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="tw">
+    <table>
+      <caption><b>Table R4</b>v1 → v2: IP 오차 중앙값 [m]. v1은 공칭 잡음 학습·1,500 step, v2는 잡음 증강 학습·4,500 step</caption>
+      <thead><tr><th>모델</th><th>ID 5%</th><th>ID 10%</th><th>ID 15%</th><th>ID 고잡음</th><th>OOD 12%</th></tr></thead>
+      <tbody>
+<tr><td>Transformer (data only)</td><td class="n">3,537 → <b>1,884</b></td><td class="n">1,674 → <b>794</b></td><td class="n">1,394 → <b>615</b></td><td class="n">13,952 → <b>1,596</b></td><td class="n">23,406 → <b>18,081</b></td></tr>
+<tr><td>PINN-Transformer + EKF</td><td class="n">3,279 → <b>1,615</b></td><td class="n">1,193 → <b>578</b></td><td class="n">875 → <b>428</b></td><td class="n">12,239 → <b>1,026</b></td><td class="n">21,119 → <b>10,404</b></td></tr>
       </tbody>
     </table>
   </div>
@@ -719,9 +729,9 @@ footer b{color:var(--ink); font-weight:600}
     <figcaption><b>Fig. 8</b>단일 표적 지연 (CPU 1스레드, 다른 학습 작업과 동시 실행). PINN은 ONNX Runtime 기준 p50 0.87 ms, EKF + Monte Carlo(100 표본, NumPy)는 228 ms로 약 262배 차이입니다. ONNX 출력은 PyTorch와 최대 3.3 cm 이내로 일치합니다.</figcaption></figure>
   <h3 class="sub"><span class="no">9.2</span>해석</h3>
   <div class="prose">
-    <p><b>물리 손실은 의도대로 작동합니다.</b> ID 10%에서 물리 잔차 RMS가 0.57 g(data only)에서 0.22 g(PINN)로 줄었고, IP 오차도 1,674 m에서 1,516 m로 줄었습니다. 다만 REQ-F-03의 목표(0.05 g)에는 아직 못 미칩니다.</p>
-    <p><b>EKF 정보 결합이 가장 효과가 큽니다.</b> EKF 사후 상태를 입력으로 받는 하이브리드 모델이 신경망 중 가장 정확하며(ID 15%에서 875 m), 필터가 단기 상태를, 신경망이 장기 궤적을 맡는 Table 6의 구조를 뒷받침합니다.</p>
-    <p><b>정확도는 아직 고전 필터에 못 미칩니다.</b> 신경망의 최선 IP 오차(ID 15% 875 m)는 EKF(225 m)와 UKF(212 m)보다 큽니다. 모델 불일치가 없는 합성 환경에서는 정확한 물리 모델을 가진 필터가 상한에 가깝기 때문입니다. 신경망의 이점은 현재로서는 정확도보다 지연(약 262배)과 일정한 추론 시간에 있습니다.</p>
+    <p><b>물리 손실은 의도대로 작동합니다.</b> 같은 v1 학습 조건에서 ID 10%의 물리 잔차 RMS가 0.57 g(data only)에서 0.22 g(PINN)로 줄었고, IP 오차도 1,674 m에서 1,516 m로 줄었습니다. 잡음 증강 하이브리드(v2)의 잔차는 0.086 g입니다. 다만 REQ-F-03의 목표(0.05 g)에는 아직 못 미칩니다.</p>
+    <p><b>EKF 정보 결합이 가장 효과가 큽니다.</b> EKF 사후 상태를 입력으로 받는 하이브리드 모델이 신경망 중 가장 정확하며(ID 15%에서 428 m), 필터가 단기 상태를, 신경망이 장기 궤적을 맡는 Table 6의 구조를 뒷받침합니다.</p>
+    <p><b>정확도는 아직 고전 필터에 못 미칩니다.</b> 신경망의 최선 IP 오차(ID 15% 428 m)는 EKF(225 m)와 UKF(212 m)보다 큽니다. 모델 불일치가 없는 합성 환경에서는 정확한 물리 모델을 가진 필터가 상한에 가깝기 때문입니다. 신경망의 이점은 현재로서는 정확도보다 지연(약 262배)과 일정한 추론 시간에 있습니다.</p>
     <p><b>분포 이동에 취약합니다.</b> 학습 분포 밖의 OOD 조건에서는 모든 신경망의 IP 오차가 10 km 이상으로 커지고 CEP 포함률이 0.1 수준으로 떨어집니다. 반면 EKF/UKF는 물리 모델이 그대로 성립하므로 영향이 작습니다. 물리 잔차를 손실에 넣는 것만으로는 외삽 일반화가 보장되지 않는다는 결과입니다.</p>
     <p><b>필터 쪽의 결과.</b> 관측 5%에서 EKF는 CEP 포함률 0.37로 과신하고 UKF는 0.54로 보정이 유지되어, 공분산이 큰 초기 구간에서 선형화 오차가 문제가 된다는 §6.1의 예상과 일치합니다.</p>
   </div>
@@ -752,12 +762,15 @@ footer b{color:var(--ink); font-weight:600}
       <thead><tr><th>모델</th><th>ADE</th><th>IP 오차</th><th>ToT</th><th>CEP</th><th>포함률</th></tr></thead>
       <tbody>
 <tr><td>하이브리드 v1 (표준 대기 학습)</td><td class="n">2,536</td><td class="n">3,488</td><td class="n">11.60</td><td class="n">1,256</td><td class="n">0.14</td></tr>
+<tr><td>하이브리드 v2 (표준 대기, 잡음 증강)</td><td class="n">1,616</td><td class="n">2,779</td><td class="n">8.38</td><td class="n">682</td><td class="n">0.11</td></tr>
+<tr><td>하이브리드, 직전 1년 기상으로 학습 (일자 입력 없음)</td><td class="n">697</td><td class="n">720</td><td class="n">1.23</td><td class="n">870</td><td class="n">0.63</td></tr>
+<tr class="prop"><td>하이브리드, 직전 1년 기상 학습 + 선택 일자 기상 입력</td><td class="n">695</td><td class="n">683</td><td class="n">1.40</td><td class="n">781</td><td class="n">0.60</td></tr>
       </tbody>
     </table>
   </div>
   <div class="prose">
     <p><b>대기 모델이 IP 예측 오차의 가장 큰 원인이었습니다.</b> 지수 밀도 모델은 30 km 부근에서 실제보다 밀도를 약 2배 크게 잡아 IP 오차가 2,633 m입니다. USSA-1976으로 바꾸면 1,062 m, 기후값이면 524 m, 선택 일자 프로파일이면 339 m로 줄어듭니다. 일자 선택은 기후값 대비 35%, 표준 모델 대비 87%의 오차 감소이며, CEP 포함률도 0.08에서 0.65로 회복됩니다. 분석장 오차를 모르는 상한(실제 대기)은 264 m입니다.</p>
-    
+    <p><b>신경망도 같은 경향입니다.</b> 직전 1년의 실제 기상으로 시뮬레이션한 발사 자료로 학습하면 표준 대기로 학습한 하이브리드(2,779 m)보다 IP 오차가 720 m로 줄고, 선택 일자의 기상을 입력과 물리 잔차에 함께 넣으면 683 m(-5%)가 됩니다. 다만 같은 조건의 EKF(339 m)보다는 여전히 큽니다.</p>
     <p><b>채택.</b> 기상 반영의 효과가 크므로 Fig. 1 시연에 날짜 선택을 넣었고, 기본 추정기 설정을 "선택 일자 기상 반영"으로 바꿨습니다. 바람 자료가 없는 31 km 이상은 바람을 0으로 줄여 나가므로, 고고도 구간의 바람 영향은 아직 반영되지 않습니다.</p>
   </div>
 <!-- WX:END -->

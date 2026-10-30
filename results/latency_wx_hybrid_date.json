@@ -1,0 +1,22 @@
+{
+ "model": "wx_hybrid_date",
+ "onnx_file": "export/wx_hybrid_date.onnx",
+ "onnx_size_kb": 321.9970703125,
+ "onnx_vs_torch_max_diff_m": 0.04470348358154297,
+ "torch_cpu": {
+  "p50_ms": 2.153785499103833,
+  "p99_ms": 4.641917641129112
+ },
+ "onnxruntime_cpu": {
+  "p50_ms": 1.4377275001606904,
+  "p99_ms": 1.8911312998534402
+ },
+ "ekf_filter_only": {
+  "p50_ms": 55.58782499974768,
+  "p99_ms": 90.54329219059582
+ },
+ "ekf_plus_mc100": {
+  "p50_ms": 338.4154519990261,
+  "p99_ms": 402.8104961776262
+ }
+}
