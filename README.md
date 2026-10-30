@@ -28,7 +28,7 @@ export TRAJAI_JWT_SECRET=$(openssl rand -hex 32)
 docker compose up --build                         # http://localhost:8000
 
 # 테스트
-python -m pytest -q tests server/tests            # 코어 17 + API 16
+python -m pytest -q tests server/tests            # 코어 17 + API 17
 cd web && npm test                                # 프론트엔드 9
 E2E_BASE=http://127.0.0.1:8000 python -m pytest e2e   # Playwright 6 (서버 실행 + seed_demo.py 필요)
 ```

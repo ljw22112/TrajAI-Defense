@@ -8,7 +8,19 @@ import json
 from datetime import datetime
 from pathlib import Path
 
+import asyncio
+
 import httpx
+import websockets
+
+
+async def record_live(base: str, tok: str, sid: int, weather: int) -> list:
+    url = base.replace("http", "ws", 1) + f"/api/ws/scenarios/{sid}/live?token={tok}&speed=100000&weather={weather}"
+    msgs = []
+    async with websockets.connect(url, max_size=None) as ws:
+        async for m in ws:
+            msgs.append(json.loads(m))
+    return msgs
 
 
 def main():
@@ -31,6 +43,9 @@ def main():
     save("scenarios", page)
     for s in page["items"]:
         save(f"scenarios_{s['id']}", c.get(f"/api/scenarios/{s['id']}").json())
+        # record the live replay (streaming EKF) so the static demo can play it back without a server
+        for w in ((0, 1) if s.get("weather_id") else (0,)):
+            save(f"live_{s['id']}_{w}", asyncio.run(record_live(a.base, tok, s["id"], w)))
     for w in c.get("/api/weather/cached").json():
         utc = datetime.fromisoformat(w["valid_time"]).astimezone(__import__("datetime").timezone.utc)
         save(f"weather_{utc:%Y-%m-%dT%H}", w)

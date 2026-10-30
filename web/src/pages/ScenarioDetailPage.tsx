@@ -2,11 +2,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Fragment, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { api } from "../api/client";
-import { METHOD_LABEL, type Estimate, type Method } from "../api/types";
+import { METHOD_LABEL, modelShort, type Estimate, type Method } from "../api/types";
 import { useAuth } from "../auth/AuthContext";
 import { Legend, Plot, type Series } from "../components/Plot";
 import { ProfileChart } from "../components/ProfileChart";
-import { Card, Empty, ErrorBox, PageHead, Spinner, Stat, ThreatBadge, fmt, km } from "../components/ui";
+import { Card, Empty, ErrorBox, PageHead, Spinner, Stat, Term, ThreatBadge, fmt, km } from "../components/ui";
 import { useLiveTrack } from "../hooks/useLiveTrack";
 
 const METHOD_COLOR: Record<Method, string> = { ekf_std: "--truth", ekf_wx: "--ekf", ukf_wx: "--ukf", pinn: "--pred" };
@@ -34,6 +34,7 @@ export function ScenarioDetailPage() {
     s?.estimates.forEach(e => m.set(e.method, e));
     return [...m.values()];
   }, [s]);
+  const latestIds = useMemo(() => new Set(latest.map(e => e.id)), [latest]);
 
   const sideSeries = useMemo<Series[]>(() => {
     if (!s) return [];
@@ -120,13 +121,13 @@ export function ScenarioDetailPage() {
           {s.estimates.length === 0 ? <Empty>아직 추정이 없습니다.</Empty> : (
             <div className="tw">
               <table>
-                <thead><tr><th>추정기</th><th className="n">IP 오차</th><th className="n">CEP</th><th>포함</th><th className="n">ToT</th><th className="n">β̂</th><th className="n">지연</th><th>위협</th></tr></thead>
+                <thead><tr><th>추정기</th><th className="n"><Term k="IP 오차" /></th><th className="n"><Term k="CEP" /></th><th><Term k="포함" /></th><th className="n"><Term k="ToT" /></th><th className="n"><Term k="β̂" /></th><th className="n"><Term k="지연" /></th><th>위협</th></tr></thead>
                 <tbody>
                   {[...s.estimates].reverse().map(e => (
-                    <tr key={e.id}>
-                      <td className="nowrap">{METHOD_LABEL[e.method]}</td>
+                    <tr key={e.id} className={latestIds.has(e.id) ? "" : "muted-row"} title={latestIds.has(e.id) ? undefined : "같은 추정기의 이전 실행"}>
+                      <td className="nowrap">{METHOD_LABEL[e.method]}{modelShort(e.model_name) && <span className="chip model">{modelShort(e.model_name)}</span>}</td>
                       <td className="n">{fmt(e.miss_m)} m</td><td className="n">{fmt(e.cep)} m</td>
-                      <td className={e.inside_cep ? "ok" : "bad"}>{e.inside_cep ? "안" : "밖"}</td>
+                      <td className={`nowrap ${e.inside_cep ? "ok" : "bad"}`}>{e.inside_cep ? "✓ 포함" : "✗ 밖"}</td>
                       <td className="n">{fmt(e.tot, 1)} s</td><td className="n">{fmt(e.beta_hat)}</td>
                       <td className="n">{fmt(e.latency_ms, 1)} ms</td>
                       <td>{e.threat && <ThreatBadge level={e.threat.level} />}</td>
@@ -146,7 +147,7 @@ export function ScenarioDetailPage() {
               const top = Object.entries(t.probabilities).sort((a, b) => b[1] - a[1]).slice(0, 3);
               return (
                 <div key={e.id} className="card" style={{ padding: 12 }}>
-                  <div className="card-h"><span>{METHOD_LABEL[e.method]}</span><ThreatBadge level={t.level} /></div>
+                  <div className="card-h"><span>{METHOD_LABEL[e.method]}{modelShort(e.model_name) && <span className="chip model">{modelShort(e.model_name)}</span>}</span><ThreatBadge level={t.level} /></div>
                   <dl className="kv">
                     {top.map(([n, p]) => <Fragment key={n}><dt>{n}</dt><dd>{fmt(p * 100, 1)}%</dd></Fragment>)}
                     {Object.entries(t.windows).map(([b, w]) => <Fragment key={b}><dt>{b === "upper" ? "상층" : "하층"} 교전 창</dt>
@@ -162,7 +163,7 @@ export function ScenarioDetailPage() {
         <div className="toolbar">
           <label className="chk">속도 <select value={speed} onChange={e => setSpeed(Number(e.target.value))} style={{ width: 80 }}>{[1, 4, 8, 20].map(v => <option key={v} value={v}>×{v}</option>)}</select></label>
           {s.weather && <label className="chk"><input type="checkbox" checked={liveWx} onChange={e => setLiveWx(e.target.checked)} /> 기상 반영</label>}
-          {live.status === "running" ? <button className="btn ghost sm" onClick={live.stop}>정지</button> : <button className="btn sm" onClick={() => live.start(speed, liveWx)}>재생</button>}
+          {live.status === "running" ? <button className="btn ghost sm" onClick={live.stop}>정지</button> : <button className="btn sm" onClick={() => live.start(speed, liveWx && !!s.weather)}>재생</button>}
         </div>
       }>
         {live.error && <div className="error">{live.error}</div>}

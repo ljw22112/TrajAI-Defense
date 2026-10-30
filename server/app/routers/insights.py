@@ -34,13 +34,17 @@ def activate(mid: int, db: Session = Depends(get_db), admin: User = Depends(requ
 def stats(db: Session = Depends(get_db), _: User = Depends(current_user)):
     by = []
     for meth in Method:
-        rows = db.execute(select(Estimate.miss_m, Estimate.inside_cep, Estimate.latency_ms).where(Estimate.method == meth)).all()
-        if rows:
-            a = np.array([[r[0], float(r[1]), r[2]] for r in rows])
-            by.append(MethodStat(method=meth, n=len(rows), median_miss_m=float(np.median(a[:, 0])), coverage=float(a[:, 1].mean()),
-                                 median_latency_ms=float(np.median(a[:, 2]))))
-        else:
+        rows = db.execute(select(Estimate.miss_m, Estimate.inside_cep, Estimate.latency_ms, ModelVersion.name)
+                          .outerjoin(ModelVersion, Estimate.model_version_id == ModelVersion.id).where(Estimate.method == meth)).all()
+        groups: dict[str | None, list] = {}
+        for r in rows:
+            groups.setdefault(r[3], []).append(r[:3])
+        if not groups:
             by.append(MethodStat(method=meth, n=0, median_miss_m=None, coverage=None, median_latency_ms=None))
+        for model, g in sorted(groups.items(), key=lambda kv: kv[0] or ""):
+            a = np.array([[m, float(c), lat] for m, c, lat in g])
+            by.append(MethodStat(method=meth, model=model, n=len(g), median_miss_m=float(np.median(a[:, 0])),
+                                 coverage=float(a[:, 1].mean()), median_latency_ms=float(np.median(a[:, 2]))))
     levels = {str(lv): n for lv, n in db.execute(select(ThreatAssessment.level, func.count()).group_by(ThreatAssessment.level))}
     return Stats(scenarios=db.scalar(select(func.count(Scenario.id))), estimates=db.scalar(select(func.count(Estimate.id))),
                  weather_profiles=db.scalar(select(func.count(WeatherProfile.id))), assets=db.scalar(select(func.count(Asset.id))),

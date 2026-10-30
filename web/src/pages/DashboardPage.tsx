@@ -1,9 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "react-router-dom";
 import { api } from "../api/client";
-import { METHOD_LABEL } from "../api/types";
+import { METHOD_LABEL, modelShort, type MethodStat } from "../api/types";
+import { useState } from "react";
 import { useAuth } from "../auth/AuthContext";
-import { Card, Empty, ErrorBox, PageHead, Spinner, Stat, fmt, km } from "../components/ui";
+import { Card, Empty, ErrorBox, PageHead, Spinner, Stat, Term, fmt, km } from "../components/ui";
+
+const label = (m: MethodStat) => METHOD_LABEL[m.method] + (modelShort(m.model) ? ` · ${modelShort(m.model)}` : "");
+const GUIDE_KEY = "trajai.guide.hidden";
+const readHidden = () => { try { return localStorage.getItem(GUIDE_KEY) === "1"; } catch { return false; } };
 
 export function DashboardPage() {
   const nav = useNavigate();
@@ -12,6 +17,8 @@ export function DashboardPage() {
   const recent = useQuery({ queryKey: ["scenarios", { limit: 8 }], queryFn: () => api.scenarios({ limit: 8 }) });
   const s = stats.data;
   const best = s?.by_method.filter(m => m.n > 0 && m.median_miss_m !== null).sort((a, b) => a.median_miss_m! - b.median_miss_m!)[0];
+  const [hideGuide, setHideGuide] = useState(readHidden);
+  const closeGuide = () => { setHideGuide(true); try { localStorage.setItem(GUIDE_KEY, "1"); } catch { /* storage blocked */ } };
   const maxMiss = Math.max(1, ...(s?.by_method.map(m => m.median_miss_m ?? 0) ?? [1]));
 
   return (
@@ -19,24 +26,33 @@ export function DashboardPage() {
       <PageHead kicker="Overview" title="대시보드" actions={can("analyst") && <Link className="btn" to="/scenarios/new">새 시나리오</Link>}>
         시뮬레이션한 교전 시나리오와 추정기별 성능, 위협 등급 분포를 한눈에 봅니다.
       </PageHead>
+      {!hideGuide && (
+        <Card title="처음이라면 이렇게 둘러보세요" aside={<button className="btn ghost sm" onClick={closeGuide} aria-label="안내 닫기">닫기</button>}>
+          <ol className="guide" style={{ margin: 0, padding: 0 }}>
+            <li><b>시나리오 열기</b><p>아래 표에서 "10/15 00Z 제트기류"처럼 기상이 반영된 시나리오를 고릅니다. 실제 궤적과 레이더 측정이 그려져 있습니다.</p></li>
+            <li><b>추정기 비교</b><p>측면 궤적·탄착 영역에서 EKF, UKF, PINN의 예측을 겹쳐 봅니다. 표의 용어에 마우스를 올리면 뜻이 나옵니다. 원이 CEP(50% 확률 반경)입니다.</p></li>
+            <li><b>실시간 재생</b><p>"재생"을 누르면 측정이 시간 순서대로 들어오며 필터가 탄도계수 β를 좁혀 가는 과정을 볼 수 있습니다. 기상 반영을 끄고 다시 재생해 비교해 보세요.</p></li>
+          </ol>
+        </Card>
+      )}
       <ErrorBox error={stats.error || recent.error} />
       {stats.isLoading ? <Spinner /> : s && (
         <>
           <div className="grid g4">
             <Stat label="시나리오" value={fmt(s.scenarios)} />
             <Stat label="추정 실행" value={fmt(s.estimates)} />
-            <Stat label="최선 추정기 (IP 오차 중앙값)" value={best ? fmt(best.median_miss_m) : "—"} unit={best ? `m · ${METHOD_LABEL[best.method]}` : ""} tone="acc" />
+            <Stat label="최선 추정기 (IP 오차 중앙값)" value={best ? fmt(best.median_miss_m) : "—"} unit={best ? `m · ${label(best)}` : ""} tone="acc" />
             <Stat label="캐시된 기상 프로파일" value={fmt(s.weather_profiles)} />
           </div>
           <div className="grid g2">
             <Card title="추정기별 성능 (전체 추정 실행 기준)">
               <div className="tw">
                 <table>
-                  <thead><tr><th>추정기</th><th className="n">실행</th><th>IP 오차 중앙값</th><th className="n">CEP 포함률</th><th className="n">지연 중앙값</th></tr></thead>
+                  <thead><tr><th>추정기</th><th className="n">실행</th><th><Term k="IP 오차">IP 오차 중앙값</Term></th><th className="n"><Term k="CEP 포함률" /></th><th className="n"><Term k="지연">지연 중앙값</Term></th></tr></thead>
                   <tbody>
                     {s.by_method.map(m => (
-                      <tr key={m.method}>
-                        <td>{METHOD_LABEL[m.method]}</td>
+                      <tr key={`${m.method}:${m.model ?? ""}`}>
+                        <td>{METHOD_LABEL[m.method]}{modelShort(m.model) && <span className="chip model">{modelShort(m.model)}</span>}</td>
                         <td className="n">{m.n}</td>
                         <td>
                           {m.median_miss_m === null ? "—" : (

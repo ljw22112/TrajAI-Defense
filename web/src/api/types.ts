@@ -25,7 +25,7 @@ export interface Threat {
   windows: Record<string, Window | null>; top_asset_id: number | null;
 }
 export interface Estimate {
-  id: number; scenario_id: number; method: Method; model_version_id: number | null; created_at: string;
+  id: number; scenario_id: number; method: Method; model_version_id: number | null; model_name?: string | null; created_at: string;
   ip_x: number; ip_y: number; cep: number; tot: number; tot_std: number | null; beta_hat: number | null;
   nis: number | null; latency_ms: number; miss_m: number; inside_cep: boolean; trajectory: Trajectory; threat: Threat | null;
 }
@@ -44,7 +44,7 @@ export interface ScenarioIn {
   sigma_r: number; sigma_ang_mrad: number; weather_date: string | null; weather_hour: number; seed?: number | null;
 }
 export interface ModelVersion { id: number; name: string; kind: string; uses_weather: boolean; metrics: Record<string, any>; is_active: boolean; created_at: string }
-export interface MethodStat { method: Method; n: number; median_miss_m: number | null; coverage: number | null; median_latency_ms: number | null }
+export interface MethodStat { method: Method; model?: string | null; n: number; median_miss_m: number | null; coverage: number | null; median_latency_ms: number | null }
 export interface Stats { scenarios: number; estimates: number; weather_profiles: number; assets: number; by_method: MethodStat[]; threat_levels: Record<string, number> }
 export interface AuditRow { id: number; user_id: number | null; action: string; entity: string; entity_id: number | null; detail: Record<string, unknown>; at: string }
 
@@ -59,4 +59,24 @@ export const METHOD_LABEL: Record<Method, string> = {
   ekf_wx: "EKF · 일자 기상",
   ukf_wx: "UKF · 일자 기상",
   pinn: "PINN 하이브리드",
+};
+
+/** Short, human-readable names for registered PINN versions. */
+export const MODEL_SHORT: Record<string, string> = {
+  wx_hybrid_date: "기상 입력",
+  pinn_tf_hybrid_v2: "표준 대기 v2",
+  pinn_tf_hybrid: "v1 (구버전)",
+};
+export const modelShort = (m: string | null | undefined) => (m ? MODEL_SHORT[m] ?? m : null);
+
+/** Glossary used for hover definitions across the console. */
+export const TERMS: Record<string, string> = {
+  "IP 오차": "예측 탄착점(Impact Point)과 실제 탄착점 사이의 수평 거리",
+  CEP: "원형 공산 오차(CEP50): 실제 탄착점이 50% 확률로 들어갈 것으로 예측한 원의 반경",
+  포함: "실제 탄착점이 예측 CEP 원 안에 들어갔는지. 잘 보정된 추정기라면 약 절반이 '포함'",
+  ToT: "탄착 시각(Time on Target), 발사 기준 초",
+  "β̂": "추정 탄도계수 β = m / (C_D·A) [kg/m²]. 클수록 공기 저항의 영향을 덜 받음",
+  NIS: "정규화 혁신 제곱. 3 근처면 필터가 측정 잡음과 일관됨(χ²₃)",
+  지연: "추정 한 번에 걸린 서버 계산 시간",
+  "CEP 포함률": "실제 탄착점이 예측 CEP50 원 안에 든 비율. 보정된 추정기는 0.50",
 };

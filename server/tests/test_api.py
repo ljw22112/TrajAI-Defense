@@ -167,3 +167,12 @@ def test_estimates_csv_export(scenarios, client, users):
     assert rows and {"method", "miss_m", "threat_level"} <= set(rows[0])
     assert any(row["scenario_id"] == str(std["id"]) and row["method"] == "ekf_std" for row in rows)
     assert client.get("/api/scenarios/export.csv").status_code == 401
+
+
+def test_estimate_and_stats_expose_model(scenarios, client, users):
+    std, _ = scenarios
+    e = client.post(f"/api/scenarios/{std['id']}/estimates", json={"method": "ekf_std"}, headers=users["analyst"]).json()
+    assert "model_name" in e and e["model_name"] is None          # filters have no model version
+    st = client.get("/api/stats", headers=users["viewer"]).json()
+    assert all("model" in m for m in st["by_method"])
+    assert {m["method"] for m in st["by_method"]} >= {"ekf_std", "ekf_wx", "ukf_wx", "pinn"}

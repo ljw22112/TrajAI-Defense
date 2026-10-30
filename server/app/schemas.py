@@ -130,6 +130,7 @@ class EstimateOut(ORM):
     scenario_id: int
     method: Method
     model_version_id: int | None
+    model_name: str | None = None
     created_at: datetime
     ip_x: float
     ip_y: float
@@ -193,6 +194,7 @@ class ModelVersionOut(ORM):
 
 class MethodStat(BaseModel):
     method: Method
+    model: str | None = None          # PINN rows are split by model version
     n: int
     median_miss_m: float | None
     coverage: float | None

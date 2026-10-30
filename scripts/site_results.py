@@ -160,13 +160,13 @@ def main():
         ("REQ-F-01", "초기 관측 구간만으로 탄착까지의 전 궤적 예측", "관측 ≤ 15 %",
          f"전 구간 출력, IP 오차 {f0(med(best, 'test_id_f15', 'miss'))} m (ID 15%)", "part", "T"),
         ("REQ-F-02", "IP, ToT, CEP<sub>50</sub> 동시 출력", "3종 + 1σ",
-         f"출력됨, CEP 포함률 {M[H]['test_id_f10']['coverage']:.2f} (ID) / {M[H]['test_ood']['coverage']:.2f} (OOD)", "part", "D"),
+         f"출력됨, CEP 포함률 {M[H]['test_id_f10']['coverage']:.2f} (ID) / {M[H]['test_ood']['coverage']:.2f} (OOD). split-conformal 보정 후 ID 0.50, OOD는 보장 안 됨 (§9.5)", "part", "D"),
         ("REQ-F-03", "예측 궤적의 물리 일관성 (운동 방정식 잔차)", "잔차 RMS ≤ 0.05 g", f"{res_best:.2f} g (ID 10%)", "no", "A"),
-        ("REQ-F-04", "보호 자산 DB 대비 위협 등급과 요격 고도 창 산출", "5단계", "구현, 가상 자산으로 시연 (3D 뷰어)", "ok", "D"),
+        ("REQ-F-04", "보호 자산 DB 대비 위협 등급과 요격 고도 창 산출", "5단계", "구현, 가상 자산으로 시연 (운용 콘솔, 3D 뷰어)", "ok", "D"),
         ("REQ-P-01", "단일 표적 추론 지연 (전처리 제외, p99)", "≤ 50 ms", f"{L['onnxruntime_cpu']['p99_ms']:.1f} ms (ONNX Runtime, CPU)", "ok", "T"),
         ("REQ-P-02", "IP / CEP 추정 오차, EKF baseline 대비", "−40 %", f"{rel:+.0f} % (최선 신경망, ID 10%)", "no", "T"),
         ("REQ-P-03", "교전 판단 가용 시간 증가", "+25 s", f"계산 시간 단축 {saved_s:.2f} s, 25 s 근거 없음", "no", "A"),
-        ("REQ-I-01", "센서 트랙 스트리밍 입력 (gRPC / Socket)", "≥ 20 Hz", "오프라인 배치 평가만", "ni", "I"),
+        ("REQ-I-01", "센서 트랙 스트리밍 입력 (gRPC / Socket)", "≥ 20 Hz", "WebSocket 측정 스트림 + 측정당 증분 EKF 갱신 (처리량 약 660 Hz, CPU). 실제 센서 연동이 아닌 시뮬레이션 재생", "part", "D"),
     ]
     req_html = "<!-- REQ:BEGIN -->\n" + "\n".join(
         f'        <tr><td class="id">{i}</td><td>{d}</td><td class="c">{t}</td><td>{m}</td><td>{st(v)}</td><td><span class="vm">{vm}</span></td></tr>'

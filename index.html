@@ -75,6 +75,14 @@ main{min-width:0; display:flex; flex-direction:column; gap:80px}
 .cover h1{font-size:clamp(38px,6vw,64px); font-weight:700; letter-spacing:-.025em}
 .cover h1 i{font-style:normal; color:var(--pred)}
 .cover .sub{font-size:clamp(17px,2vw,21px); font-weight:500; color:var(--ink-2); max-width:44ch}
+.keys{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin:22px 0 4px}
+.key{display:flex; flex-direction:column; gap:4px; padding:12px 14px; background:var(--sheet); border:1px solid var(--rule); border-left:3px solid var(--ink-3); border-radius:3px; text-decoration:none; color:var(--ink)}
+.key:hover{border-color:var(--ink)}
+.key b{font-family:var(--font-mono); font-size:20px; font-weight:600; font-variant-numeric:tabular-nums}
+.key span:last-child{font-size:13px; line-height:1.5; color:var(--ink-2)}
+.key.ok{border-left-color:var(--obs)} .key.part{border-left-color:var(--pred)} .key.no{border-left-color:#b23b3b}
+pre.code{background:var(--sheet); border:1px solid var(--rule); border-radius:3px; padding:14px 16px; overflow-x:auto; font:12.5px/1.6 var(--font-mono); max-width:100%}
+@media (max-width:860px){.keys{grid-template-columns:1fr}}
 .abstract{border-left:3px solid var(--ink); padding:4px 0 4px 20px; max-width:78ch}
 .abstract p{font-size:15.5px}
 .abstract p + p{margin-top:10px}
@@ -251,7 +259,7 @@ footer b{color:var(--ink); font-weight:600}
 <header class="mast">
   <div class="mast-in">
     <span class="brand">TrajAI<i>-</i>Defense</span>
-    <span class="doc">TAD-TR-001 · Rev 1.0 · 2026-10</span>
+    <span class="doc">TAD-TR-001 · Rev 2.0 · 2026-10-30</span>
     <span class="sp"></span>
     <a class="gh" href="app/">Console</a>
     <a class="gh" href="prototype/viewer.html">3D Viewer</a>
@@ -294,6 +302,16 @@ footer b{color:var(--ink); font-weight:600}
     <p>요격 체계의 교전 판단은 표적의 탄착점(IP)과 탄착 시각(ToT)을 얼마나 빨리, 얼마나 믿을 수 있게 아느냐에 달려 있습니다. 확장 칼만 필터(EKF)나 수치 적분 기반 예측은 대기 밀도 변화, 마하수에 따른 항력 변화, 기동이 있으면 연산 비용과 추정 오차가 함께 커집니다. 순수 데이터 기반 신경망은 빠르지만 관측이 적은 초기 구간에서 운동 방정식을 위반하는 궤적을 출력할 수 있습니다.</p>
     <p>TrajAI-Defense는 비행 초기 10~15% 구간의 레이더 트랙을 시계열 인코더(Transformer / Bi-LSTM)로 요약하고, 운동 방정식 잔차를 손실에 포함한 물리 제약 신경망(PINN)으로 잔여 궤적, IP, ToT, CEP를 추론합니다. 목표는 단일 표적 추론 50 ms 이하, 기존 대비 CEP 추정 오차 40% 감소입니다. 이 문서는 운용 개념, 동역학 모델, 추정 문제 정식화, 학습 설계, 데이터셋, 검증 방법과 <a href="#sec-results">실험 결과</a>를 정리합니다. 현재 결과로는 지연 목표는 충족하지만, 정확도는 같은 물리 모델을 쓰는 EKF/UKF에 아직 못 미칩니다. 선택 일자의 실제 기온·바람을 대기 모델에 반영하면 IP 오차가 크게 줄어(<a href="#sec-weather">§9.3</a>) 이를 기본 설정으로 채택했습니다.</p>
   </div>
+<!-- KEY:BEGIN -->
+  <div class="keys" aria-label="핵심 결과">
+    <a class="key ok" href="#sec-results"><span class="label">지연 목표 충족</span><b>0.87 ms</b><span>ONNX Runtime p50, CPU 1스레드. EKF + Monte Carlo 228 ms보다 약 262배 빠름</span></a>
+    <a class="key no" href="#sec-stats"><span class="label">정확도는 필터가 우세</span><b>428 m vs 212 m</b><span>최선 신경망(하이브리드) 대 UKF, ID 15% IP 오차 중앙값. 차이는 통계적으로 유의</span></a>
+    <a class="key ok" href="#sec-weather"><span class="label">실제 기상 반영이 가장 큰 개선</span><b>−87%</b><span>EKF IP 오차 2,633 → 339 m (표준 대기 → 선택 일자 기상). 기본 설정으로 채택</span></a>
+    <a class="key ok" href="#sec-stats"><span class="label">신경망도 기상으로 학습하면 개선</span><b>2,779 → 720 m</b><span>직전 1년 실제 기상 속 발사 2만 회로 학습. 일자 기상 입력의 추가 효과(Δ -36 m)는 불확실</span></a>
+    <a class="key part" href="#sec-calib"><span class="label">불확실성은 보정 필요</span><b>CEP50 → 0.50</b><span>계수 하나로 50% 포함률은 맞지만, 같은 계수의 90% 포함률은 16개 중 11개가 0.85 미만(0.76–0.82). 오차 꼬리가 두꺼움</span></a>
+    <a class="key no" href="#sec-validity"><span class="label">분포 밖 일반화 실패</span><b>10.4 km</b><span>OOD(고속·고β) 시험에서 하이브리드 IP 오차. 물리 손실만으로는 외삽이 보장되지 않음</span></a>
+  </div>
+<!-- KEY:END -->
   <div class="meta">
     <div><span class="label">과제</span><b>AI 서비스 프로젝트</b></div>
     <div><span class="label">팀</span><b>인공지능 프론티어</b></div>
@@ -398,13 +416,13 @@ footer b{color:var(--ink); font-weight:600}
       <tbody>
 <!-- REQ:BEGIN -->
         <tr><td class="id">REQ-F-01</td><td>초기 관측 구간만으로 탄착까지의 전 궤적 예측</td><td class="c">관측 ≤ 15 %</td><td>전 구간 출력, IP 오차 428 m (ID 15%)</td><td><span class="st part">부분 충족</span></td><td><span class="vm">T</span></td></tr>
-        <tr><td class="id">REQ-F-02</td><td>IP, ToT, CEP<sub>50</sub> 동시 출력</td><td class="c">3종 + 1σ</td><td>출력됨, CEP 포함률 0.59 (ID) / 0.14 (OOD)</td><td><span class="st part">부분 충족</span></td><td><span class="vm">D</span></td></tr>
+        <tr><td class="id">REQ-F-02</td><td>IP, ToT, CEP<sub>50</sub> 동시 출력</td><td class="c">3종 + 1σ</td><td>출력됨, CEP 포함률 0.59 (ID) / 0.14 (OOD). split-conformal 보정 후 ID 0.50, OOD는 보장 안 됨 (§9.5)</td><td><span class="st part">부분 충족</span></td><td><span class="vm">D</span></td></tr>
         <tr><td class="id">REQ-F-03</td><td>예측 궤적의 물리 일관성 (운동 방정식 잔차)</td><td class="c">잔차 RMS ≤ 0.05 g</td><td>0.09 g (ID 10%)</td><td><span class="st no">미충족</span></td><td><span class="vm">A</span></td></tr>
-        <tr><td class="id">REQ-F-04</td><td>보호 자산 DB 대비 위협 등급과 요격 고도 창 산출</td><td class="c">5단계</td><td>구현, 가상 자산으로 시연 (3D 뷰어)</td><td><span class="st ok">충족</span></td><td><span class="vm">D</span></td></tr>
+        <tr><td class="id">REQ-F-04</td><td>보호 자산 DB 대비 위협 등급과 요격 고도 창 산출</td><td class="c">5단계</td><td>구현, 가상 자산으로 시연 (운용 콘솔, 3D 뷰어)</td><td><span class="st ok">충족</span></td><td><span class="vm">D</span></td></tr>
         <tr><td class="id">REQ-P-01</td><td>단일 표적 추론 지연 (전처리 제외, p99)</td><td class="c">≤ 50 ms</td><td>5.3 ms (ONNX Runtime, CPU)</td><td><span class="st ok">충족</span></td><td><span class="vm">T</span></td></tr>
         <tr><td class="id">REQ-P-02</td><td>IP / CEP 추정 오차, EKF baseline 대비</td><td class="c">−40 %</td><td>+70 % (최선 신경망, ID 10%)</td><td><span class="st no">미충족</span></td><td><span class="vm">T</span></td></tr>
         <tr><td class="id">REQ-P-03</td><td>교전 판단 가용 시간 증가</td><td class="c">+25 s</td><td>계산 시간 단축 0.23 s, 25 s 근거 없음</td><td><span class="st no">미충족</span></td><td><span class="vm">A</span></td></tr>
-        <tr><td class="id">REQ-I-01</td><td>센서 트랙 스트리밍 입력 (gRPC / Socket)</td><td class="c">≥ 20 Hz</td><td>오프라인 배치 평가만</td><td><span class="st no">미구현</span></td><td><span class="vm">I</span></td></tr>
+        <tr><td class="id">REQ-I-01</td><td>센서 트랙 스트리밍 입력 (gRPC / Socket)</td><td class="c">≥ 20 Hz</td><td>WebSocket 측정 스트림 + 측정당 증분 EKF 갱신 (처리량 약 660 Hz, CPU). 실제 센서 연동이 아닌 시뮬레이션 재생</td><td><span class="st part">부분 충족</span></td><td><span class="vm">D</span></td></tr>
 <!-- REQ:END -->
       </tbody>
     </table>
@@ -429,10 +447,10 @@ footer b{color:var(--ink); font-weight:600}
 
         <g class="bx"><rect x="24" y="66" width="150" height="76" rx="2"/><text class="t" x="99" y="96" text-anchor="middle">센서</text><text class="s" x="99" y="116" text-anchor="middle">Radar · EO/IR</text><text class="s" x="99" y="131" text-anchor="middle">R, Az, El</text></g>
         <g class="bx"><rect x="198" y="66" width="150" height="76" rx="2"/><text class="t" x="273" y="96" text-anchor="middle">수집</text><text class="s" x="273" y="116" text-anchor="middle">gRPC stream</text><text class="s" x="273" y="131" text-anchor="middle">≥ 20 Hz</text></g>
-        <g class="bx"><rect x="372" y="66" width="150" height="76" rx="2"/><text class="t" x="447" y="96" text-anchor="middle">전처리</text><text class="s" x="447" y="116" text-anchor="middle">polar → ENU</text><text class="s" x="447" y="131" text-anchor="middle">EKF · RTS smoother</text></g>
+        <g class="bx"><rect x="372" y="66" width="150" height="76" rx="2"/><text class="t" x="447" y="96" text-anchor="middle">전처리</text><text class="s" x="447" y="116" text-anchor="middle">polar → ENU</text><text class="s" x="447" y="131" text-anchor="middle">S-G 미분 · EKF 사후</text></g>
         <g class="bx hl"><rect x="546" y="56" width="170" height="96" rx="2"/><text class="t" x="631" y="86" text-anchor="middle">추론 엔진</text><text class="s" x="631" y="106" text-anchor="middle">Transformer / Bi-LSTM</text><text class="s" x="631" y="121" text-anchor="middle">+ PINN decoder</text><text class="s" x="631" y="136" text-anchor="middle">ensemble M = 5</text></g>
         <g class="bx"><rect x="740" y="66" width="140" height="76" rx="2"/><text class="t" x="810" y="96" text-anchor="middle">위협 평가</text><text class="s" x="810" y="116" text-anchor="middle">IP · CEP · ToT</text><text class="s" x="810" y="131" text-anchor="middle">PIP · 등급 1–5</text></g>
-        <g class="bx"><rect x="904" y="66" width="132" height="76" rx="2"/><text class="t" x="970" y="96" text-anchor="middle">C2 상황도</text><text class="s" x="970" y="116" text-anchor="middle">CesiumJS</text><text class="s" x="970" y="131" text-anchor="middle">1-click 승인</text></g>
+        <g class="bx"><rect x="904" y="66" width="132" height="76" rx="2"/><text class="t" x="970" y="96" text-anchor="middle">C2 상황도</text><text class="s" x="970" y="116" text-anchor="middle">React 콘솔 · 3D</text><text class="s" x="970" y="131" text-anchor="middle">1-click 승인</text></g>
         <path class="ln" d="M174 104 H196" marker-end="url(#a1)"/>
         <path class="ln" d="M348 104 H370" marker-end="url(#a1)"/>
         <path class="ln" d="M522 104 H544" marker-end="url(#a1)"/>
@@ -442,7 +460,7 @@ footer b{color:var(--ink); font-weight:600}
         <g class="bx"><rect x="198" y="266" width="150" height="76" rx="2"/><text class="t" x="273" y="296" text-anchor="middle">비행 시뮬레이터</text><text class="s" x="273" y="316" text-anchor="middle">3-DOF → 6-DOF</text><text class="s" x="273" y="331" text-anchor="middle">Monte Carlo</text></g>
         <g class="bx"><rect x="372" y="266" width="150" height="76" rx="2"/><text class="t" x="447" y="296" text-anchor="middle">합성 데이터셋</text><text class="s" x="447" y="316" text-anchor="middle">목표 10⁶ 궤적</text><text class="s" x="447" y="331" text-anchor="middle">ID / OOD split</text></g>
         <g class="bx"><rect x="546" y="266" width="170" height="76" rx="2"/><text class="t" x="631" y="296" text-anchor="middle">학습</text><text class="s" x="631" y="316" text-anchor="middle">L_data + λ·L_phys</text><text class="s" x="631" y="331" text-anchor="middle">λ curriculum</text></g>
-        <g class="bx"><rect x="740" y="266" width="140" height="76" rx="2"/><text class="t" x="810" y="296" text-anchor="middle">경량화</text><text class="s" x="810" y="316" text-anchor="middle">ONNX → TensorRT</text><text class="s" x="810" y="331" text-anchor="middle">FP16 / INT8</text></g>
+        <g class="bx"><rect x="740" y="266" width="140" height="76" rx="2"/><text class="t" x="810" y="296" text-anchor="middle">경량화</text><text class="s" x="810" y="316" text-anchor="middle">ONNX Runtime</text><text class="s" x="810" y="331" text-anchor="middle">(TensorRT 계획)</text></g>
         <g class="bx ghost"><rect x="24" y="266" width="150" height="76" rx="2"/><text class="t" x="99" y="296" text-anchor="middle">대기 · 중력 모델</text><text class="s" x="99" y="316" text-anchor="middle">USSA-1976</text><text class="s" x="99" y="331" text-anchor="middle">g(h), Cd(M)</text></g>
         <path class="ln" d="M174 304 H196" marker-end="url(#a1)"/>
         <path class="ln" d="M348 304 H370" marker-end="url(#a1)"/>
@@ -454,17 +472,17 @@ footer b{color:var(--ink); font-weight:600}
         <text class="s" x="300" y="226">물리 잔차 항 (같은 모델 공유)</text>
       </svg>
     </div>
-    <figcaption><b>Fig. 3</b>블록도. 학습과 추론이 같은 대기·중력·항력 모델을 공유하므로, 시뮬레이터로 만든 데이터와 PINN 물리 잔차가 서로 다른 물리를 가정하는 일이 생기지 않습니다.</figcaption>
+    <figcaption><b>Fig. 3</b>블록도. 학습과 추론이 같은 대기·중력·항력 모델을 공유하므로, 시뮬레이터로 만든 데이터와 PINN 물리 잔차가 서로 다른 물리를 가정하는 일이 생기지 않습니다. 괄호 안은 계획 단계 항목입니다.</figcaption>
   </figure>
   <div class="tw">
     <table>
       <caption><b>Table 3</b>계층별 구성과 개발 환경</caption>
       <thead><tr><th>계층</th><th>역할</th><th>기술</th></tr></thead>
       <tbody>
-        <tr><td>Data</td><td>비행 시뮬레이션, Monte Carlo 파라미터 표본 추출, 센서 잡음 주입</td><td class="c">Python 3.10 · NumPy · pandas · OpenRocket</td></tr>
-        <tr><td>AI Engine</td><td>시계열 인코딩, PINN 디코딩, 앙상블 불확실성, 추론 서빙</td><td class="c">PyTorch · ONNX · TensorRT</td></tr>
-        <tr><td>Presentation</td><td>3D 상황도, CEP 타원, PIP, 위협 평가 패널</td><td class="c">CesiumJS · Three.js · Plotly</td></tr>
-        <tr><td>환경</td><td>개발 및 학습</td><td class="c">Ubuntu 22.04 / Windows 11 · VS Code · Colab</td></tr>
+        <tr><td>Data</td><td>비행 시뮬레이션, Monte Carlo 파라미터 표본 추출, 센서 잡음 주입</td><td class="c">Python 3.11+ · NumPy · SciPy · Open-Meteo API</td></tr>
+        <tr><td>AI Engine</td><td>시계열 인코딩, PINN 디코딩, 이분산 불확실성, 추론 서빙</td><td class="c">PyTorch 2 · ONNX · ONNX Runtime</td></tr>
+        <tr><td>Presentation</td><td>운용 콘솔(시나리오·추정·위협 평가), 3D 뷰어</td><td class="c">React 18 · TypeScript · FastAPI · PostgreSQL · Three.js</td></tr>
+        <tr><td>환경</td><td>개발 및 학습</td><td class="c">Linux, CPU 전용 학습(GPU 없음) · GitHub Actions CI · Docker</td></tr>
       </tbody>
     </table>
   </div>
@@ -484,7 +502,7 @@ footer b{color:var(--ink); font-weight:600}
     <div class="eq"><span class="e">연소 종료 후 (<i>T</i> = 0):&nbsp;&nbsp; <span class="frac"><span>d<b class="vec">v</b></span><span>d<i>t</i></span></span><span class="op">=</span>−<span class="frac"><span><i>ρ</i>(<i>h</i>) ‖<b class="vec">v</b>‖ <b class="vec">v</b></span><span>2<i>β</i></span></span> <span class="frac"><span><i>C<sub>D</sub></i>(<i>M</i>)</span><span><i>C</i><sub><i>D</i>,ref</sub></span></span><span class="op">−</span><i>g</i>(<i>h</i>) <b class="vec">e</b><sub><i>z</i></sub>,&nbsp;&nbsp; <i>β</i> ≡ <span class="frac"><span><i>m</i></span><span><i>C</i><sub><i>D</i>,ref</sub> <i>A</i></span></span></span><span class="tag">(5.5)</span></div>
   </div>
   <div class="prose">
-    <p>식 (5.5)에서 보듯 탄도 비행 구간의 궤적은 질량, 형상, 항력을 묶은 탄도계수 <span class="m">β</span> 하나로 매개화됩니다. 따라서 IP 예측 문제는 사실상 "초기 상태와 <span class="m">β</span>를 얼마나 정확히 아느냐"의 문제가 됩니다. 수치 적분은 4차 Runge–Kutta(RK4)를 쓰며, <span class="m">Δt</span> = 0.05 s에서 전역 오차는 <span class="m">O(Δt<sup>4</sup>)</span>입니다. 현재 생성기의 명시적 Euler(1차)보다 같은 정확도에서 훨씬 큰 시간 간격을 쓸 수 있습니다.</p>
+    <p>식 (5.5)에서 보듯 탄도 비행 구간의 궤적은 질량, 형상, 항력을 묶은 탄도계수 <span class="m">β</span> 하나로 매개화됩니다. 따라서 IP 예측 문제는 사실상 "초기 상태와 <span class="m">β</span>를 얼마나 정확히 아느냐"의 문제가 됩니다. 수치 적분은 4차 Runge–Kutta(RK4)를 쓰며, <span class="m">Δt</span> = 0.05 s에서 전역 오차는 <span class="m">O(Δt<sup>4</sup>)</span>입니다. 초기 프로토타입의 명시적 Euler(1차)를 대체했으며, 수렴 차수는 단위 시험으로 확인합니다. 데이터 생성은 Δt = 0.1 s를 씁니다. 대기는 지수 밀도(식 5.4) 외에 USSA-1976과 날짜별 기상 격자(§9.3)를 고를 수 있습니다.</p>
   </div>
   <div class="nom">
     <div class="tw"><table>
@@ -522,7 +540,7 @@ footer b{color:var(--ink); font-weight:600}
     <div class="eq"><span class="e"><b class="vec">x</b><span class="op">=</span>[ <b class="vec">r</b><sup>T</sup>, <b class="vec">v</b><sup>T</sup>, ln <i>β</i> ]<sup>T</sup> ∈ ℝ<sup>7</sup>,&nbsp;&nbsp; <i>p</i>(ln <i>β</i> | <b class="vec">z</b><sub>1:<i>k</i></sub>) ∝ <i>p</i>(<b class="vec">z</b><sub>1:<i>k</i></sub> | <i>β</i>) <i>p</i>(ln <i>β</i>)</span><span class="tag">(6.3)</span></div>
   </div>
   <div class="prose">
-    <p>레이더는 거리, 방위각, 고각을 측정하므로 직교 좌표에서의 잡음은 등방성이 아닙니다. 식 (6.2)처럼 횡방향 오차는 거리에 비례해 커지며, 같은 각도 정밀도라도 원거리 표적일수록 측방 위치가 불확실합니다. 전처리 단계는 극좌표 측정을 ENU로 변환하고(변환 편향 보정 포함) Rauch–Tung–Striebel(RTS) 고정 구간 평활기로 관측 구간 전체를 평활해 학습 입력과 같은 분포로 맞춥니다.</p>
+    <p>레이더는 거리, 방위각, 고각을 측정하므로 직교 좌표에서의 잡음은 등방성이 아닙니다. 식 (6.2)처럼 횡방향 오차는 거리에 비례해 커지며, 같은 각도 정밀도라도 원거리 표적일수록 측방 위치가 불확실합니다. 전처리 단계는 극좌표 측정을 ENU로 변환하고 Savitzky–Golay 필터(2차 다항식)로 속도·가속도를 미분해 신경망 입력 특징을 만듭니다. Rauch–Tung–Striebel(RTS) 평활기 [4]로 바꾸면 측정 잡음 모델을 일관되게 쓸 수 있으나 아직 구현하지 않았습니다.</p>
     <p>탄도계수는 상태에 ln <span class="m">β</span>로 확장해 추정합니다. 로그 매개화는 <span class="m">β</span> &gt; 0을 보장하고 수 배 범위에 걸친 사전분포를 다루기 쉽게 합니다. 항력 가속도 <span class="m">ρv²/2β</span>가 측정 잡음이 만드는 가속도 불확실성보다 작으면 <span class="m">β</span>는 관측 불가능합니다.</p>
   </div>
 
@@ -552,7 +570,7 @@ footer b{color:var(--ink); font-weight:600}
     </table>
   </div>
   <div class="prose">
-    <p>실제 레이더의 측정은 극좌표이므로 운용 버전은 <span class="m">H</span> 대신 식 (6.1)의 <span class="m">h(x)</span>와 그 야코비안을 쓰는 EKF 갱신, 또는 시그마 포인트로 비선형 측정을 다루는 UKF를 씁니다. 선형화 오차가 큰 초기 구간(공분산이 큰 구간)에서는 UKF가 EKF보다 일관성이 좋다는 것이 일반적인 결과이며, 이 비교는 Table 11에 포함됩니다.</p>
+    <p>Table 5는 브라우저 시연의 단순화(변환 측정)입니다. 실험에 쓴 Python baseline(<code>trajai/filters.py</code>)은 <span class="m">H</span> 대신 식 (6.1)의 <span class="m">h(x)</span>와 그 야코비안으로 극좌표 측정을 직접 갱신하고, UKF는 시그마 포인트로 같은 비선형 측정을 다룹니다. 선형화 오차가 큰 초기 구간(공분산이 큰 구간)에서는 UKF가 EKF보다 일관성이 좋다는 것이 일반적인 결과이며, 이 비교는 Table 11에 포함됩니다.</p>
   </div>
 
   <h3 class="sub"><span class="no">6.2</span>칼만 필터와 PINN의 결합</h3>
@@ -561,9 +579,9 @@ footer b{color:var(--ink); font-weight:600}
       <caption><b>Table 6</b>시스템 안에서 칼만 필터가 맡는 세 가지 역할</caption>
       <thead><tr><th>역할</th><th>방식</th><th>효과</th></tr></thead>
       <tbody>
-        <tr><td>전처리</td><td>RTS 고정 구간 평활기로 관측 구간 트랙을 평활하고 속도·가속도 특징 생성</td><td>미분으로 증폭되는 잡음을 억제해 인코더 입력 분포를 안정화</td></tr>
+        <tr><td>전처리</td><td>Savitzky–Golay 미분으로 속도·가속도 특징 생성 (RTS 평활은 계획)</td><td>미분으로 증폭되는 잡음을 억제해 인코더 입력 분포를 안정화</td></tr>
         <tr><td>Baseline</td><td>EKF / UKF + Monte Carlo 분산 전파 (Fig. 1)</td><td>같은 물리 모델 위에서 PINN의 속도·정확도 이득을 정량화</td></tr>
-        <tr class="prop"><td><b>하이브리드</b></td><td>EKF 사후 <span class="m">(x̂, P)</span>를 PINN 인코더의 추가 입력으로 넣고, PINN 예측 궤적을 다음 측정 시 EKF 예측 단계의 사전분포로 되먹임</td><td>필터가 단기 상태를, PINN이 장기 궤적과 β 사전을 담당. 새 측정마다 증분 갱신이 가능</td></tr>
+        <tr class="prop"><td><b>하이브리드</b></td><td>EKF 사후 <span class="m">(x̂, P)</span>를 PINN 인코더의 추가 입력으로 넣고, PINN 예측을 EKF 예측 단계의 사전분포로 되먹이는 것은 계획 단계</td><td>필터가 단기 상태를, PINN이 장기 궤적을 담당. 구현된 부분은 EKF → PINN 방향이며 §9에서 효과를 검증</td></tr>
       </tbody>
     </table>
   </div>
@@ -595,7 +613,7 @@ footer b{color:var(--ink); font-weight:600}
         <tr><td>출력</td><td class="c">다음 1-step 위치</td><td class="c">r̂(τ) 전 구간, ln β̂, Δ = t<sub>I</sub> − t<sub>c</sub>, IP σ<sub>x</sub>, σ<sub>y</sub></td><td class="c">—</td></tr>
         <tr><td>물리 손실</td><td class="c">z축 1-step 잔차</td><td class="c">식 (7.2) 3축 잔차, autograd 2계 미분</td><td class="c">—</td></tr>
         <tr><td>λ<sub>p</sub></td><td class="c">0.05 고정</td><td class="c">0 → 1 선형 커리큘럼 (40%)</td><td class="c">적응 가중 [5]</td></tr>
-        <tr><td>최적화</td><td class="c">Adam 1e-3</td><td class="c">AdamW 1e-3, OneCycle, 1,500 step, batch 128, grad clip 1</td><td class="c">L-BFGS 미세 조정</td></tr>
+        <tr><td>최적화</td><td class="c">Adam 1e-3</td><td class="c">AdamW 1e-3, OneCycle, 4,500 step (v2), batch 128, grad clip 1, 잡음 증강</td><td class="c">L-BFGS 미세 조정</td></tr>
         <tr><td>불확실성</td><td class="c">—</td><td class="c">IP 이분산 가우시안 헤드 (NLL)</td><td class="c">Deep ensemble [6]</td></tr>
       </tbody>
     </table>
@@ -623,6 +641,7 @@ footer b{color:var(--ink); font-weight:600}
         <tr><td>탄도계수</td><td><span class="m">β</span></td><td class="n">600 – 10,000 kg/m²</td><td class="n">10,000 – 16,000 kg/m²</td></tr>
         <tr><td>관측 비율</td><td><span class="m">f</span></td><td class="n">8 – 20 %</td><td class="n">12 %</td></tr>
         <tr><td>레이더 잡음 (공칭 / 고잡음)</td><td><span class="m">σ<sub>R</sub>, σ<sub>θ</sub></span></td><td class="n">15 m, 0.4 mrad / 50 m, 1.5 mrad</td><td class="n">15 m, 0.4 mrad</td></tr>
+        <tr><td>학습 잡음 증강 (v2)</td><td><span class="m">σ<sub>R</sub>, σ<sub>θ</sub></span></td><td class="n">10–60 m, 0.3–1.8 mrad (로그 균등, 궤적마다)</td><td class="n">—</td></tr>
         <tr><td>적분 / 측정 간격</td><td><span class="m">Δt</span></td><td class="n">RK4 0.1 s / 0.5 s</td><td class="n">—</td></tr>
       </tbody>
     </table>
@@ -634,8 +653,8 @@ footer b{color:var(--ink); font-weight:600}
       <tbody>
         <tr><td>입력</td><td class="c">[B, K, 12],  K = 13 – 134 측정 (가변 길이, 패딩 마스크)</td></tr>
         <tr><td>정답</td><td class="c">r(τ) 129점, τ ∈ [0, 1];  (x<sub>I</sub>, y<sub>I</sub>);  t<sub>I</sub>;  β</td></tr>
-        <tr><td>규모</td><td class="c">train 20,000 / val 2,000 / test 5종 × 1,000 (생성 약 2분, CPU)</td></tr>
-        <tr><td>시험 분할</td><td class="c">ID 관측 5 / 10 / 15 %,  ID 고잡음 12 %,  OOD 12 % (Table 8)</td></tr>
+        <tr><td>규모</td><td class="c">train 20,000 / val 2,000 / test 6종 × 1,000. 기상 실험은 train_wx 20,000 / val_wx 2,000 별도</td></tr>
+        <tr><td>시험 분할</td><td class="c">ID 관측 5 / 10 / 15 %,  ID 고잡음 12 %,  OOD 12 % (Table 8),  기상 12 % (2026-10 실제 기상 + 분석장 오차, §9.3)</td></tr>
         <tr><td>정규화</td><td class="c">L = 100 km, τ = 100 s 무차원화</td></tr>
       </tbody>
     </table>
@@ -655,7 +674,7 @@ footer b{color:var(--ink); font-weight:600}
         <tr><td>ToT error</td><td><span class="m">|t̂<sub>I</sub> − t<sub>I</sub>|</span></td><td class="id">REQ-F-02</td></tr>
         <tr><td>CEP 보정도</td><td>예측 CEP<sub>50</sub> 원 안에 실제 IP가 들어간 비율. 잘 보정된 모델은 0.5</td><td class="id">REQ-F-02</td></tr>
         <tr><td>물리 잔차</td><td><span class="m">RMS ‖ℛ(t)‖ / g<sub>0</sub></span>, 식 (7.2)</td><td class="id">REQ-F-03</td></tr>
-        <tr><td>지연</td><td>단일 표적 추론 p50 / p99, 배치 1, FP16</td><td class="id">REQ-P-01</td></tr>
+        <tr><td>지연</td><td>단일 표적 추론 p50 / p99, 배치 1, FP32, CPU 1스레드</td><td class="id">REQ-P-01</td></tr>
       </tbody>
     </table>
   </div>
@@ -667,14 +686,14 @@ footer b{color:var(--ink); font-weight:600}
         <tr><td>EKF + Monte Carlo</td><td>식 (5.5), ln β 상태 확장</td><td>공분산 선형 전파 + 표본</td><td>고전 baseline, Fig. 1의 방식</td></tr>
         <tr><td>UKF + Monte Carlo</td><td>식 (5.5), 극좌표 측정</td><td>시그마 포인트</td><td>선형화 오차 비교</td></tr>
         <tr><td>IMM (CV / CA / 탄도)</td><td>다중 모델</td><td>모델 확률 혼합</td><td>기동 표적 대응 [3], 미구현</td></tr>
-        <tr><td>Transformer (data only)</td><td>—</td><td>이분산 헤드</td><td>λ<sub>p</sub> = 0 ablation, 20k / 2k</td></tr>
-        <tr class="prop"><td><b>PINN–Bi-LSTM</b></td><td>식 (7.2)</td><td>이분산 헤드</td><td>인코더 비교</td></tr>
-        <tr class="prop"><td><b>PINN–Transformer</b></td><td>식 (7.2)</td><td>이분산 헤드</td><td>제안, 20k / 2k</td></tr>
+        <tr><td>Transformer (data only)</td><td>—</td><td>이분산 헤드</td><td>λ<sub>p</sub> = 0 ablation (v1, v2)</td></tr>
+        <tr class="prop"><td><b>PINN–Bi-LSTM</b></td><td>식 (7.2)</td><td>이분산 헤드</td><td>인코더 비교 (v1만, v2 미실행)</td></tr>
+        <tr class="prop"><td><b>PINN–Transformer</b></td><td>식 (7.2)</td><td>이분산 헤드</td><td>제안 (v1, v2)</td></tr>
         <tr class="prop"><td><b>PINN–Transformer + EKF</b></td><td>식 (7.2)</td><td>이분산 헤드</td><td>제안 (하이브리드, Table 6)</td></tr>
       </tbody>
     </table>
   </div>
-  <div class="prose"><p>Ablation은 물리 손실 유무, 학습 데이터 규모(20k / 2k), 관측 비율(5 / 10 / 15 %), 센서 잡음 수준(공칭 / 고잡음), 분포 이동(OOD)으로 구성했습니다. 물리 제약의 이점은 데이터가 적고 OOD 조건일 때 가장 크게 나타날 것으로 예상했으며, 이를 반증할 수 있도록 같은 조건의 data-only 모델과 짝지어 비교합니다. 결과는 §9.1에 있습니다.</p></div>
+  <div class="prose"><p>Ablation은 물리 손실 유무, 관측 비율(5 / 10 / 15 %), 센서 잡음 수준(공칭 / 고잡음), 분포 이동(OOD)으로 구성했습니다. 물리 제약의 이점은 데이터가 적고 OOD 조건일 때 가장 크게 나타날 것으로 예상했으며, 이를 반증할 수 있도록 같은 조건의 data-only 모델과 짝지어 비교합니다. 학습 데이터 규모(20k / 2k) ablation은 CPU 학습 시간 제약으로 v2에서 끝내지 못했습니다. 결과는 §9.1에 있습니다.</p></div>
 <!-- RESULTS:BEGIN -->
   <h3 class="sub" id="sec-results"><span class="no">9.1</span>실험 결과 (v2)</h3>
   <div class="prose">
@@ -781,7 +800,7 @@ footer b{color:var(--ink); font-weight:600}
   </div>
 <!-- WX:END -->
 <!-- STATS:BEGIN -->
-  <h3 class="sub"><span class="no">9.4</span>통계적 유의성</h3>
+  <h3 class="sub" id="sec-stats"><span class="no">9.4</span>통계적 유의성</h3>
   <div class="prose">
     <p>모든 비교는 같은 1,000개 시험 궤적에 대한 쌍대 비교입니다. 중앙값의 95% 신뢰구간은 percentile bootstrap(B = 2,000), 중앙값 차이의 구간은 쌍대 bootstrap, p값은 Wilcoxon 부호순위 검정이며 표 전체 12개 비교에 Holm–Bonferroni 보정을 했습니다. 승률은 같은 궤적에서 A의 IP 오차가 B보다 작은 비율입니다.</p>
   </div>
@@ -808,7 +827,7 @@ footer b{color:var(--ink); font-weight:600}
   <div class="prose">
     <p>12개 비교 중 11개가 보정 후 유의수준 0.05에서 유의하고 중앙값 차이의 95% 구간도 0을 포함하지 않습니다(두 조건을 모두 만족할 때만 "우세"로 판정). 일자 기상 입력의 효과(Δ -36 m, 95% CI [-78, +5], Holm p = 0.001, 승률 0.53)는 부호순위 검정으로는 유의하지만 중앙값 차이의 신뢰구간이 0을 포함하고 승률도 0.5에 가깝습니다. 작고 일관된 이동은 있으나 크기는 불확실하며, 개선의 대부분은 직전 1년 기상으로 학습한 데서 나옵니다.</p>
   </div>
-  <h3 class="sub"><span class="no">9.5</span>불확실성 보정 (split conformal)</h3>
+  <h3 class="sub" id="sec-calib"><span class="no">9.5</span>불확실성 보정 (split conformal)</h3>
   <div class="prose">
     <p>CEP 포함률이 0.5에서 벗어나면 위협 평가의 확률이 틀립니다. 각 추정기의 CEP<sub>50</sub> 반경을 스칼라 s 하나로 늘리거나 줄이되, s는 시험 분할의 절반(보정용)에서 IP 오차 / CEP 비의 중앙값으로 정하고 나머지 절반에서 포함률을 쟀습니다. 두 절반을 바꿔 가며 50번 무작위 분할한 평균입니다. 90% 열은 같은 s에 원형 Rayleigh 비 √(ln 10 / ln 2) ≈ 1.823를 곱한 반경으로, 따로 맞추지 않으므로 오차 분포 꼬리의 모양을 검사합니다. 마지막 열은 ID 10%에서 정한 s를 다시 맞추지 않고 분포가 바뀐 분할에 그대로 쓴 결과입니다.</p>
   </div>
@@ -837,9 +856,25 @@ footer b{color:var(--ink); font-weight:600}
     </table>
   </div>
   <div class="prose">
-    <p>스칼라 하나로 50% 포함률은 모든 추정기에서 목표에 맞춰집니다. 같은 s로 잰 90% 포함률이 0.85 미만인 경우(EKF + MC (ID 10% 0.76), EKF + MC (고잡음 0.78), EKF + MC (OOD 0.82), UKF + MC (ID 10% 0.80), UKF + MC (고잡음 0.81), Transformer (data only) (ID 10% 0.80), Transformer (data only) (고잡음 0.79), PINN + EKF 하이브리드 (ID 10% 0.82), PINN + EKF 하이브리드 (고잡음 0.81), EKF, 선택 일자 기상 (기상 0.79), PINN + EKF 하이브리드 (기상 0.81))는 오차 꼬리가 가우시안보다 두껍다는 뜻이므로, 높은 신뢰수준이 필요한 위협 판정에는 수준별 보정이 따로 필요합니다. 분포가 바뀌면 ID에서 정한 s가 통하지 않습니다(OOD 50% 포함률: EKF + MC 0.48, UKF + MC 0.55, Transformer (data only) 0.13, PINN + EKF 하이브리드 0.11). 그래서 콘솔은 모델마다 학습 분포에 맞는 분할에서 정한 s(<code>results/calibration.json</code>)를 PINN의 CEP에 곱해 위협 확률을 계산하고, 분포 밖 입력의 보정은 보장하지 않습니다.</p>
+    <p>스칼라 하나로 50% 포함률은 모든 추정기에서 목표에 맞춰집니다. 하지만 같은 s로 잰 90% 포함률은 16개 중 11개에서 0.85 미만(0.76–0.82)입니다. 오차 분포의 꼬리가 가우시안보다 두껍다는 뜻이므로, 높은 신뢰수준이 필요한 위협 판정에는 수준별 보정이 따로 필요합니다. 분포가 바뀌면 ID에서 정한 s가 통하지 않습니다(OOD 50% 포함률: EKF + MC 0.48, UKF + MC 0.55, Transformer (data only) 0.13, PINN + EKF 하이브리드 0.11). 그래서 콘솔은 모델마다 학습 분포에 맞는 분할에서 정한 s(<code>results/calibration.json</code>)를 PINN의 CEP에 곱해 위협 확률을 계산하고, 분포 밖 입력의 보정은 보장하지 않습니다.</p>
   </div>
 <!-- STATS:END -->
+  <h3 class="sub" id="sec-validity"><span class="no">9.6</span>타당성 위협과 한계</h3>
+  <div class="tw">
+    <table>
+      <caption><b>Table R7</b>결론을 약하게 만들 수 있는 요인과 이 연구에서의 대응</caption>
+      <thead><tr><th>구분</th><th>위협</th><th>영향</th><th>대응 / 남은 일</th></tr></thead>
+      <tbody>
+        <tr><td style="white-space:nowrap">내적</td><td>학습 seed 1개</td><td>Table R5의 신뢰구간은 시험 표본의 변동만 반영하고 학습 무작위성은 반영하지 않음</td><td>차이가 작은 비교(일자 기상 입력, −36 m)는 결론을 유보. 다중 seed 학습 필요</td></tr>
+        <tr><td style="white-space:nowrap">내적</td><td>CPU 학습 4,500 step에서 중단</td><td>검증 ADE가 마지막 구간까지 감소(하이브리드 v2: 703 → 580 m), 신경망 성능이 과소평가되었을 수 있음</td><td>GPU 장기 학습으로 상한 재측정</td></tr>
+        <tr><td style="white-space:nowrap">내적</td><td>"inverse crime": 필터와 데이터 생성기가 같은 동역학</td><td>EKF/UKF에 유리한 조건 (§9.1)</td><td>기상 실험은 분석장 오차 섭동(바람 4 m/s, 기온 1.5 K)으로 일부 완화</td></tr>
+        <tr><td style="white-space:nowrap">내적</td><td>보정 계수를 시험 분할 안에서 교차 적합</td><td>보고한 포함률은 out-of-fold지만, 같은 분포의 자료를 재사용</td><td>운용에는 별도 보정 세트와 주기적 재보정 필요</td></tr>
+        <tr><td style="white-space:nowrap">외적</td><td>합성 데이터, 3-DOF 점질량, 기동 없음, 단일 레이더</td><td>실제 표적·센서로의 일반화는 검증되지 않음</td><td>공개 궤적 자료로 정성 검증 (R-01), IMM·6-DOF 확장</td></tr>
+        <tr><td style="white-space:nowrap">외적</td><td>기압면 자료 상한 약 31 km, 그 위 바람 0</td><td>고고도 바람의 영향 누락</td><td>재분석 자료(ERA5 모델 레벨)로 확장</td></tr>
+        <tr><td style="white-space:nowrap">구성</td><td>중앙값 중심 보고</td><td>꼬리 위험(드문 대형 오차)이 가려질 수 있음</td><td><code>results/metrics.json</code>에 평균·p90 함께 기록, §9.5에서 90% 포함률로 꼬리 점검</td></tr>
+      </tbody>
+    </table>
+  </div>
 </section>
 
 <!-- 10 IMPL -->
@@ -855,14 +890,26 @@ footer b{color:var(--ink); font-weight:600}
         <tr><td class="id">trajai/dataset.py</td><td>Monte Carlo 데이터셋 v2 (Table 8), 잡음 증강 분할</td><td><span class="st ok">구현</span></td></tr>
         <tr><td class="id">trajai/filters.py</td><td>배치 EKF / UKF, Joseph 갱신, NIS, Monte Carlo 탄착 분산 전파</td><td><span class="st ok">구현</span></td></tr>
         <tr><td class="id">trajai/model.py</td><td>Transformer / Bi-LSTM 인코더, 연속시간 디코더, autograd 물리 잔차, 하이브리드</td><td><span class="st ok">구현</span></td></tr>
+        <tr><td class="id">trajai/features.py · weather.py</td><td>입력 특징·EKF 전역 특징, Open-Meteo 기압면 수집과 250 m 대기 격자</td><td><span class="st ok">구현</span></td></tr>
         <tr><td class="id">trajai/threat.py</td><td>가상 보호 자산 대비 탄착 확률, 위협 등급 1–5, 교전 고도 창과 PIP</td><td><span class="st ok">구현</span></td></tr>
         <tr><td class="id">scripts/</td><td>데이터 생성, 전처리, 학습, 평가, ONNX 변환·지연 측정, 그림, 사이트 결과 생성</td><td><span class="st ok">구현</span></td></tr>
-        <tr><td class="id">tests/</td><td>대기 기준값, RK4 수렴 차수, 레이더 야코비안, EKF/UKF 일관성, 위협 평가 (GitHub Actions CI)</td><td><span class="st ok">12 통과</span></td></tr>
+        <tr><td class="id">tests/</td><td>대기 기준값, RK4 수렴 차수, 레이더 야코비안, EKF/UKF 일관성, 기상 격자, 위협 평가 (GitHub Actions CI)</td><td><span class="st ok">17 통과</span></td></tr>
+        <tr><td class="id">server/ · web/</td><td>FastAPI + PostgreSQL 백엔드와 React 운용 콘솔 (§12)</td><td><span class="st ok">구현</span></td></tr>
         <tr><td class="id"><a href="prototype/viewer.html">prototype/viewer.html</a></td><td>시험 케이스의 실제 궤적, EKF·PINN 예측, CEP, 위협 평가를 보여주는 Three.js 3D 뷰어</td><td><span class="st ok">구현</span></td></tr>
-        <tr><td class="id">—</td><td>6-DOF 자세 동역학, 추진 구간 학습, IMM, deep ensemble, TensorRT(GPU), gRPC 스트리밍</td><td><span class="st no">미구현</span></td></tr>
+        <tr><td class="id">—</td><td>6-DOF 자세 동역학, 추진 구간 학습, IMM, deep ensemble, RTS 평활, PINN → EKF 되먹임, TensorRT(GPU), 실제 센서 연동</td><td><span class="st no">미구현</span></td></tr>
       </tbody>
     </table>
   </div>
+  <h3 class="sub" id="sec-repro"><span class="no">10.1</span>재현</h3>
+  <div class="prose"><p>모든 수치와 그림은 아래 순서로 다시 만들 수 있습니다. 시드는 고정되어 있고, 사이트의 결과 표(§3 Table 2, §9)는 손으로 쓰지 않고 <code>results/*.json</code>에서 스크립트로 생성합니다. 학습은 CPU 1스레드 기준 모델당 약 1.5–2.5시간입니다.</p></div>
+  <pre class="code"><code>pip install -r requirements.txt
+python scripts/make_dataset.py && python scripts/prepare.py          # 합성 데이터 + EKF/UKF baseline
+python scripts/weather_experiment.py all                            # Open-Meteo 수집, 기상 분할, 기상 필터
+bash scripts/lanes_v2.sh A                                          # v2 학습 (재개 가능, --resume)
+python scripts/evaluate.py pinn_tf_hybrid_v2 data_tf_v2 wx_hybrid_date
+python scripts/export_onnx.py wx_hybrid_date x                      # ONNX + 지연
+python scripts/site_results.py ... && python scripts/site_weather.py ... && python scripts/site_stats.py
+python -m pytest -q tests server/tests</code></pre>
 </section>
 
 <!-- 11 PLAN -->
@@ -912,7 +959,7 @@ footer b{color:var(--ink); font-weight:600}
         <tr><td>프론트엔드</td><td class="c">React 18 · TypeScript (strict) · Vite · TanStack Query</td><td>대시보드, 시나리오 생성(기상 프로파일 미리보기), 상세·탄착 영역·실시간 재생, 자산 CRUD, 모델 레지스트리, 사용자·감사 로그. 역할에 따라 메뉴와 버튼을 숨김</td></tr>
         <tr><td>백엔드</td><td class="c">FastAPI · Pydantic v2 · PyJWT · bcrypt</td><td>REST 24개(health 포함) + WebSocket 1개 엔드포인트, OAuth2 JWT 인증, 로그인 실패 제한(5회/5분, HTTP 429), 추정 결과 CSV 내보내기, 3단계 역할(viewer·analyst·admin), 소유권 검사, 감사 로그, OpenAPI 자동 문서</td></tr>
         <tr><td>데이터베이스</td><td class="c">PostgreSQL 16 · SQLAlchemy 2.0 · Alembic</td><td>9개 테이블(사용자, 자산, 기상 캐시, 시나리오, 측정, 추정, 위협 평가, 모델 버전, 감사 로그), FK·CHECK·UNIQUE 제약, JSONB, 왕복 검증한 마이그레이션</td></tr>
-        <tr><td>모델 서빙</td><td class="c">ONNX Runtime</td><td>PINN 하이브리드를 동적 트랙 길이로 내보내 서버에서 추론(PyTorch 대비 오차 4 cm 이내)</td></tr>
+        <tr><td>모델 서빙</td><td class="c">ONNX Runtime</td><td>모델 레지스트리의 PINN 하이브리드(기상 입력 / 표준 대기 v2)를 동적 트랙 길이로 서빙(PyTorch 대비 오차 4 cm 이내). 기상 없는 시나리오는 표준 대기 모델로 자동 대체, CEP는 split-conformal 계수로 보정</td></tr>
         <tr><td>외부 연동</td><td class="c">Open-Meteo</td><td>기압면 자료를 (시각, 위치) 키로 캐시, 일시적 오류 재시도, 429 제한 시 503으로 안내</td></tr>
         <tr><td>운영</td><td class="c">Docker · Compose · GitHub Actions</td><td>멀티 스테이지 이미지(SPA + API), PostgreSQL 서비스를 띄운 CI에서 마이그레이션·API·웹 테스트</td></tr>
       </tbody>
@@ -924,9 +971,9 @@ footer b{color:var(--ink); font-weight:600}
       <thead><tr><th>수준</th><th>범위</th><th>수</th></tr></thead>
       <tbody>
         <tr><td>코어 단위</td><td>대기, RK4 수렴 차수, 레이더 야코비안, EKF/UKF 일관성, 기상 격자, 위협 평가</td><td class="n">17</td></tr>
-        <tr><td>API 통합</td><td>인증·RBAC·CRUD·검증·기상 캐시·시뮬레이션·추정·통계·WebSocket·감사 (SQLite와 PostgreSQL 각각)</td><td class="n">13</td></tr>
-        <tr><td>프론트엔드</td><td>API 클라이언트 오류 처리, UI 컴포넌트</td><td class="n">9</td></tr>
-        <tr><td>E2E (Playwright)</td><td>로그인, 대시보드, 실시간 재생, 폼 검증, viewer 읽기 전용, 런타임 오류 없음</td><td class="n">6</td></tr>
+        <tr><td>API 통합</td><td>인증·RBAC·CRUD·검증·기상 캐시·시뮬레이션·추정·통계·WebSocket·감사 · 로그인 제한·CSV (SQLite와 PostgreSQL 각각)</td><td class="n">17</td></tr>
+        <tr><td>프론트엔드</td><td>API 클라이언트 오류 처리, CSV 다운로드, UI 컴포넌트</td><td class="n">11</td></tr>
+        <tr><td>E2E (Playwright)</td><td>로그인, 대시보드, 실시간 재생, 폼 검증, viewer 읽기 전용, CSV 다운로드, 런타임 오류 없음</td><td class="n">7</td></tr>
       </tbody>
     </table>
   </div>

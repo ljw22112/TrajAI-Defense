@@ -31,6 +31,7 @@ function parseError(status: number, body: any): ApiError {
 
 // ------------------------------------------------------------------ demo adapter (static JSON snapshot)
 const DEMO_ROOT = `${import.meta.env.BASE_URL}demo/`;
+export const demoFile = (name: string) => `${DEMO_ROOT}${name}`;
 async function demoGet<T>(path: string): Promise<T> {
   const p = path.replace(/^\/api\//, "").replace(/\?.*$/, "");
   const file = p.replace(/\//g, "_") || "index";

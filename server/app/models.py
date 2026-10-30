@@ -162,7 +162,11 @@ class Estimate(Base):
     trajectory: Mapped[dict] = mapped_column(JSONType)       # {x, z} predicted descent (downsampled)
     scenario: Mapped[Scenario] = relationship(back_populates="estimates")
     threat: Mapped[ThreatAssessment | None] = relationship(back_populates="estimate", cascade="all, delete-orphan", uselist=False)
-    model_version: Mapped[ModelVersion | None] = relationship()
+    model_version: Mapped[ModelVersion | None] = relationship(lazy="joined")
+
+    @property
+    def model_name(self) -> str | None:
+        return self.model_version.name if self.model_version else None
 
 
 class ThreatAssessment(Base):
