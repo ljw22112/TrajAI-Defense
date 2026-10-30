@@ -39,11 +39,36 @@ def t_gravity(h):
     return G0 * r * r
 
 
-def t_accel(z_abs, v, beta):
-    """z_abs (...,), v (..., 3), beta (...,) -> acceleration (..., 3) [m/s^2]."""
-    speed = torch.linalg.norm(v, dim=-1).clamp(min=1e-3)
-    k = t_density(z_abs) * speed * t_cd_ratio(speed / t_sos(z_abs)) / (2.0 * beta)
-    a = -k.unsqueeze(-1) * v
+class TorchAtmosphere:
+    """Torch view of a weather ProfileBank: per-sample profile index, linear interpolation on the 250 m grid."""
+
+    def __init__(self, bank, dh=250.0):
+        self.dh = dh
+        self.rho = torch.as_tensor(bank.rho, dtype=torch.float32)
+        self.sos = torch.as_tensor(bank.sos, dtype=torch.float32)
+        self.u = torch.as_tensor(bank.u, dtype=torch.float32)
+        self.v = torch.as_tensor(bank.v, dtype=torch.float32)
+        self.hmax = (self.rho.shape[1] - 1) * dh
+
+    def lookup(self, arr, z, idx):
+        x = z.clamp(0.0, self.hmax - 1e-3) / self.dh
+        i = x.detach().floor().long()
+        f = x - i
+        rows = idx.view(-1, *([1] * (z.dim() - 1))).expand_as(i)
+        return arr[rows, i] * (1 - f) + arr[rows, i + 1] * f
+
+
+def t_accel(z_abs, v, beta, atm=None, idx=None):
+    """z_abs (...,), v (..., 3), beta (...,) -> acceleration (..., 3) [m/s^2].
+    With atm (TorchAtmosphere) and idx (B,), drag uses date-specific density, speed of sound and wind."""
+    if atm is None:
+        rel, rho_h, a_h = v, t_density(z_abs), t_sos(z_abs)
+    else:
+        w = torch.stack([atm.lookup(atm.u, z_abs, idx), atm.lookup(atm.v, z_abs, idx), torch.zeros_like(z_abs)], -1)
+        rel, rho_h, a_h = v - w, atm.lookup(atm.rho, z_abs, idx), atm.lookup(atm.sos, z_abs, idx)
+    speed = torch.linalg.norm(rel, dim=-1).clamp(min=1e-3)
+    k = rho_h * speed * t_cd_ratio(speed / a_h) / (2.0 * beta)
+    a = -k.unsqueeze(-1) * rel
     g = torch.zeros_like(a)
     g[..., 2] = t_gravity(z_abs)
     return a - g
@@ -81,11 +106,12 @@ class BiLSTMEncoder(nn.Module):
 
 
 class PINNPredictor(nn.Module):
-    def __init__(self, encoder="transformer", d=128, hybrid=False, dec_width=160, dec_depth=4):
+    def __init__(self, encoder="transformer", d=128, hybrid=False, dec_width=160, dec_depth=4, n_wx=0):
         super().__init__()
         self.encoder = TransformerEncoder(d) if encoder == "transformer" else BiLSTMEncoder(d)
         self.hybrid = hybrid
-        self.fuse = nn.Sequential(nn.Linear(d + (N_GLOBAL if hybrid else 0), d), nn.SiLU(), nn.Linear(d, d))
+        self.n_wx = n_wx
+        self.fuse = nn.Sequential(nn.Linear(d + (N_GLOBAL if hybrid else 0) + n_wx, d), nn.SiLU(), nn.Linear(d, d))
         self.head = nn.Linear(d, 4)          # [ln beta (normalised), log dT, log sigma_x, log sigma_y]
         layers = [nn.Linear(d + 1, dec_width), nn.Tanh()]
         for _ in range(dec_depth - 1):
@@ -93,10 +119,12 @@ class PINNPredictor(nn.Module):
         layers += [nn.Linear(dec_width, 3)]
         self.dec = nn.Sequential(*layers)
 
-    def context(self, x, pad, g=None):
+    def context(self, x, pad, g=None, wx=None):
         c = self.encoder(x, pad)
         if self.hybrid:
             c = torch.cat([c, g], -1)
+        if self.n_wx:
+            c = torch.cat([c, wx], -1)
         c = self.fuse(c)
         h = self.head(c)
         return c, h
@@ -115,7 +143,7 @@ class PINNPredictor(nn.Module):
         return lb, dT, log_sig
 
 
-def physics_residual(model, c, lnbeta, dT, z0, n_col=32):
+def physics_residual(model, c, lnbeta, dT, z0, n_col=32, atm=None, atm_idx=None):
     """Mean squared residual of Eq. (7.2) at random collocation points, in units of g0^2."""
     B = c.shape[0]
     tau = torch.rand(B, n_col, device=c.device, requires_grad=True)
@@ -131,7 +159,7 @@ def physics_residual(model, c, lnbeta, dT, z0, n_col=32):
     a_nn = L_POS / s ** 2 * d2
     z_abs = r[..., 2] * L_POS + z0.view(B, 1)
     beta = torch.exp(lnbeta).view(B, 1)
-    a_phys = t_accel(z_abs, v, beta.expand_as(z_abs))
+    a_phys = t_accel(z_abs, v, beta.expand_as(z_abs), atm, atm_idx)
     res = (a_nn - a_phys) / G0
     return (res ** 2).sum(-1).mean(), res.detach()
 

@@ -136,6 +136,14 @@ tr.prop td{background:var(--hl)}
 input[type=range]{width:100%; accent-color:var(--pred); margin:6px 0 0}
 .btn{font:inherit; font-size:13.5px; font-weight:600; color:var(--paper); background:var(--ink); border:0; border-radius:3px; padding:9px 14px; cursor:pointer; white-space:nowrap}
 .btn:hover{background:var(--pred)}
+.btn.ghost{background:transparent; color:var(--ink); border:1px solid var(--rule)}
+.btn.ghost:hover{border-color:var(--pred); color:var(--pred); background:transparent}
+.wx-row{align-items:center}
+.wx-row .ctl{flex:0 1 180px; min-width:140px}
+.wx-row input[type=date], .wx-row select{font:inherit; font-size:14px; padding:6px 8px; border:1px solid var(--rule); border-radius:3px; background:var(--sheet); color:var(--ink)}
+.wx-chk{display:flex; gap:8px; align-items:center; font-size:13.5px; color:var(--ink)}
+.wx-status{flex-basis:100%; margin:0; font-size:13px; color:var(--ink-2)}
+.wx-status b{color:var(--ink); font-family:var(--font-mono); font-weight:600}
 .btn:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--pred); outline-offset:2px}
 canvas{display:block; width:100%; height:auto; max-width:100%}
 #cv-main{aspect-ratio:2/1}
@@ -276,7 +284,7 @@ footer b{color:var(--ink); font-weight:600}
   <p class="sub">물리 제약 신경망 기반 실시간 탄도 궤도 예측 및 위협 평가 시스템</p>
   <div class="abstract">
     <p>요격 체계의 교전 판단은 표적의 탄착점(IP)과 탄착 시각(ToT)을 얼마나 빨리, 얼마나 믿을 수 있게 아느냐에 달려 있습니다. 확장 칼만 필터(EKF)나 수치 적분 기반 예측은 대기 밀도 변화, 마하수에 따른 항력 변화, 기동이 있으면 연산 비용과 추정 오차가 함께 커집니다. 순수 데이터 기반 신경망은 빠르지만 관측이 적은 초기 구간에서 운동 방정식을 위반하는 궤적을 출력할 수 있습니다.</p>
-    <p>TrajAI-Defense는 비행 초기 10~15% 구간의 레이더 트랙을 시계열 인코더(Transformer / Bi-LSTM)로 요약하고, 운동 방정식 잔차를 손실에 포함한 물리 제약 신경망(PINN)으로 잔여 궤적, IP, ToT, CEP를 추론합니다. 목표는 단일 표적 추론 50 ms 이하, 기존 대비 CEP 추정 오차 40% 감소입니다. 이 문서는 운용 개념, 동역학 모델, 추정 문제 정식화, 학습 설계, 데이터셋, 검증 방법과 <a href="#sec-results">실험 결과</a>를 정리합니다. 현재 결과로는 지연 목표는 충족하지만, 정확도는 같은 물리 모델을 쓰는 EKF/UKF에 아직 못 미칩니다.</p>
+    <p>TrajAI-Defense는 비행 초기 10~15% 구간의 레이더 트랙을 시계열 인코더(Transformer / Bi-LSTM)로 요약하고, 운동 방정식 잔차를 손실에 포함한 물리 제약 신경망(PINN)으로 잔여 궤적, IP, ToT, CEP를 추론합니다. 목표는 단일 표적 추론 50 ms 이하, 기존 대비 CEP 추정 오차 40% 감소입니다. 이 문서는 운용 개념, 동역학 모델, 추정 문제 정식화, 학습 설계, 데이터셋, 검증 방법과 <a href="#sec-results">실험 결과</a>를 정리합니다. 현재 결과로는 지연 목표는 충족하지만, 정확도는 같은 물리 모델을 쓰는 EKF/UKF에 아직 못 미칩니다. 선택 일자의 실제 기온·바람을 대기 모델에 반영하면 IP 오차가 크게 줄어(<a href="#sec-weather">§9.3</a>) 이를 기본 설정으로 채택했습니다.</p>
   </div>
   <div class="meta">
     <div><span class="label">과제</span><b>AI 서비스 프로젝트</b></div>
@@ -299,6 +307,14 @@ footer b{color:var(--ink); font-weight:600}
         <div class="ctl"><label for="in-sig">레이더 위치 잡음 1σ <span class="mono" id="v-sig">40 m</span></label><input type="range" id="in-sig" min="5" max="150" step="5" value="40"></div>
         <div class="ctl"><label for="in-beta">실제 탄도계수 β <span class="mono" id="v-beta">2,500 kg/m²</span></label><input type="range" id="in-beta" min="0" max="100" step="1" value="50"></div>
         <button class="btn" id="btn-seed" type="button">새 잡음 표본</button>
+      </div>
+      <div class="demo-top wx-row">
+        <div class="ctl wx-date"><label for="in-date">기상 일자 (Open-Meteo)</label><input type="date" id="in-date" value="2026-10-15" min="2022-01-01" max="2026-10-29"></div>
+        <div class="ctl wx-hour"><label for="in-hour">시각 (UTC)</label><select id="in-hour"><option value="0">00Z</option><option value="6">06Z</option><option value="12">12Z</option><option value="18">18Z</option></select></div>
+        <label class="wx-chk"><input type="checkbox" id="in-wxmodel" checked> 추정기(EKF)에 기상 반영</label>
+        <button class="btn" id="btn-wx" type="button">기상 불러오기</button>
+        <button class="btn ghost" id="btn-wx-off" type="button">표준 대기</button>
+        <p class="wx-status" id="wx-status" aria-live="polite">표준 대기 (기상 미적용)</p>
       </div>
       <canvas id="cv-main" width="1600" height="800" aria-label="고도-하향거리 궤적 플롯"></canvas>
       <div class="legend">
@@ -332,7 +348,7 @@ footer b{color:var(--ink); font-weight:600}
         </div>
       </div>
     </div>
-    <figcaption><b>Fig. 1</b>연소 종료 후 탄도 비행 구간의 수직면 궤적. 3-DOF 점질량, RK4 적분, 고도 의존 중력 <span class="m">g(h)</span>, 지수 대기 밀도, ISA 온도 분포 기반 음속, 마하수 의존 항력 계수를 사용합니다. 초기 조건: 고도 15 km, 속도 1.4 km/s, 경로각 45°, 측방 속도 6 m/s. EKF 측정 주기 0.5 s, 예측 앙상블 <span class="m">N</span> = 160 표본입니다. 표시된 연산 시간은 필터링과 분산 전파를 합쳐 이 브라우저에서 실제로 측정한 값입니다. 평균 NIS가 3 근처면 필터가 잡음 통계와 일관된 것입니다.</figcaption>
+    <figcaption><b>Fig. 1</b>연소 종료 후 탄도 비행 구간의 수직면 궤적. 3-DOF 점질량, RK4 적분, 고도 의존 중력 <span class="m">g(h)</span>, 마하수 의존 항력 계수를 사용합니다. 기상 일자를 고르면 Open-Meteo에서 그날의 기압면 자료(1000–10 hPa, 약 0–31 km)를 받아 기온·밀도·바람 분포를 만들고, 비행체는 그 대기 속을 날아갑니다(항력은 공기 상대속도 기준). "추정기에 기상 반영"을 끄면 EKF는 표준 모델(지수 대기, 무풍)로 추정하므로 모델 불일치의 영향을 직접 비교할 수 있습니다. 시연에서는 분석장 오차를 넣지 않았으므로 기상 반영 EKF는 실제보다 유리합니다(§9.3 실험에는 오차를 넣었습니다). 초기 조건: 고도 15 km, 속도 1.4 km/s, 경로각 45°, 측방 속도 6 m/s. EKF 측정 주기 0.5 s, 예측 앙상블 <span class="m">N</span> = 160 표본입니다. 표시된 연산 시간은 필터링과 분산 전파를 합쳐 이 브라우저에서 실제로 측정한 값입니다. 평균 NIS가 3 근처면 필터가 잡음 통계와 일관된 것입니다.</figcaption>
   </figure>
   <div class="callout"><b>관찰 포인트.</b> 대기 밀도가 높은 상승 초기에는 항력 감속이 측정되어 EKF의 <span class="m">β</span> 공분산이 빠르게 줄어듭니다(가운데 그래프). 고도가 올라가 항력 가속도가 잡음 수준 아래로 떨어지면 <span class="m">β</span>를 관측할 수 없게 되어 공분산이 더 줄지 않고, 이 불확실성이 재진입 구간에서 하향거리 분산으로 증폭됩니다. 짧은 관측에서 학습된 사전정보로 이 공백을 메우는 것이 PINN의 역할입니다.</div>
 </section>
@@ -708,6 +724,41 @@ footer b{color:var(--ink); font-weight:600}
     <p><b>필터 쪽의 결과.</b> 관측 5%에서 EKF는 CEP 포함률 0.37로 과신하고 UKF는 0.54로 보정이 유지되어, 공분산이 큰 초기 구간에서 선형화 오차가 문제가 된다는 §6.1의 예상과 일치합니다.</p>
   </div>
 <!-- RESULTS:END -->
+<!-- WX:BEGIN -->
+  <h3 class="sub" id="sec-weather"><span class="no">9.3</span>기상 반영 실험: 선택 일자의 기온·바람</h3>
+  <div class="prose">
+    <p>Open-Meteo 기압면 자료(1000–10 hPa, 약 0–31 km의 기온, 바람, 지오퍼텐셜 고도)를 날짜별로 받아 250 m 격자의 기온·밀도·음속·바람 분포로 만들고, 비행 동역학의 항력을 공기 상대속도 기준으로 계산했습니다. 시험 발사 1,000회는 2026-10-01–28의 프로파일(하루 4회, 112개)을 따르되, 분석장 오차를 흉내 내도록 상관 길이 4 km의 무작위 섭동(바람 1σ 4 m/s, 기온 1σ 1.5 K)을 더한 대기를 실제로 사용했습니다. "그 전 발사 데이터"로는 직전 1년(2025-10–2026-09, 1,460개 프로파일)의 실제 기상 속에서 시뮬레이션한 발사 20,000회를 썼습니다. 실제 발사 기록은 공개 자료가 없어 쓰지 않았습니다.</p>
+  </div>
+  <div class="tw">
+    <table>
+      <caption><b>Table W1</b>추정기의 대기 모델별 성능 (관측 12%, 1,000회 중앙값): ADE [m], IP 오차 [m], CEP<sub>50</sub> [m], CEP 포함률, ln β 오차</caption>
+      <thead><tr><th>필터</th><th>대기 모델</th><th>ADE</th><th>IP 오차</th><th>CEP</th><th>포함률</th><th>|Δ ln β|</th></tr></thead>
+      <tbody>
+<tr><td>EKF</td><td>표준 모델 (지수 대기, 무풍)</td><td class="n">1,391</td><td class="n">2,633</td><td class="n">523</td><td class="n">0.08</td><td class="n">0.352</td></tr>
+<tr><td>UKF</td><td>표준 모델 (지수 대기, 무풍)</td><td class="n">1,233</td><td class="n">2,253</td><td class="n">528</td><td class="n">0.14</td><td class="n">0.440</td></tr>
+<tr><td>EKF</td><td>USSA-1976 (무풍)</td><td class="n">307</td><td class="n">1,062</td><td class="n">508</td><td class="n">0.20</td><td class="n">0.037</td></tr>
+<tr><td>EKF</td><td>기후값 (직전 1년 평균)</td><td class="n">228</td><td class="n">524</td><td class="n">490</td><td class="n">0.47</td><td class="n">0.034</td></tr>
+<tr class="prop"><td>EKF</td><td>선택 일자 API 프로파일</td><td class="n">180</td><td class="n">339</td><td class="n">488</td><td class="n">0.65</td><td class="n">0.021</td></tr>
+<tr class="prop"><td>UKF</td><td>선택 일자 API 프로파일</td><td class="n">172</td><td class="n">320</td><td class="n">500</td><td class="n">0.70</td><td class="n">0.018</td></tr>
+<tr><td>EKF</td><td>실제 대기 (상한, 운용 불가)</td><td class="n">161</td><td class="n">264</td><td class="n">488</td><td class="n">0.76</td><td class="n">0.019</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="tw">
+    <table>
+      <caption><b>Table W2</b>신경망, 같은 기상 시험 분할: ADE [m], IP 오차 [m], ToT 오차 [s], CEP<sub>50</sub> [m], CEP 포함률</caption>
+      <thead><tr><th>모델</th><th>ADE</th><th>IP 오차</th><th>ToT</th><th>CEP</th><th>포함률</th></tr></thead>
+      <tbody>
+<tr><td>하이브리드 v1 (표준 대기 학습)</td><td class="n">2,536</td><td class="n">3,488</td><td class="n">11.60</td><td class="n">1,256</td><td class="n">0.14</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="prose">
+    <p><b>대기 모델이 IP 예측 오차의 가장 큰 원인이었습니다.</b> 지수 밀도 모델은 30 km 부근에서 실제보다 밀도를 약 2배 크게 잡아 IP 오차가 2,633 m입니다. USSA-1976으로 바꾸면 1,062 m, 기후값이면 524 m, 선택 일자 프로파일이면 339 m로 줄어듭니다. 일자 선택은 기후값 대비 35%, 표준 모델 대비 87%의 오차 감소이며, CEP 포함률도 0.08에서 0.65로 회복됩니다. 분석장 오차를 모르는 상한(실제 대기)은 264 m입니다.</p>
+    
+    <p><b>채택.</b> 기상 반영의 효과가 크므로 Fig. 1 시연에 날짜 선택을 넣었고, 기본 추정기 설정을 "선택 일자 기상 반영"으로 바꿨습니다. 바람 자료가 없는 31 km 이상은 바람을 0으로 줄여 나가므로, 고고도 구간의 바람 영향은 아직 반영되지 않습니다.</p>
+  </div>
+<!-- WX:END -->
 </section>
 
 <!-- 10 IMPL -->
@@ -806,10 +857,21 @@ function cdRatio(M){ // C_D(M)/C_D,ref : subsonic plateau, transonic rise, super
   return 0.8+0.55*Math.exp(-(M-1.2)/1.2);
 }
 function grav(h){const r=RE/(RE+h); return G0*r*r}
-function deriv(s,beta,o){ // s=[x,y,z,vx,vy,vz]
-  const vx=s[3],vy=s[4],vz=s[5], v=Math.hypot(vx,vy,vz), h=s[2];
-  const k = v>0 ? rho(h)*v*cdRatio(v/sos(h))/(2*beta) : 0;
-  o[0]=vx;o[1]=vy;o[2]=vz;o[3]=-k*vx;o[4]=-k*vy;o[5]=-k*vz-grav(h);
+/* atmosphere models: STD = exponential density + USSA-1976 speed of sound, no wind;
+   a weather profile (Open-Meteo pressure levels) is sampled on a 250 m grid */
+const STD={name:'표준 (지수 대기, 무풍)', rho, sos, wu:()=>0, wv:()=>0};
+let WX=null, CUR=STD;
+const DHG=250, NG=321;
+function gridAtm(T,P,U,V,label){
+  const at=(A,h)=>{const x=Math.min(Math.max(h,0),(NG-1)*DHG-1e-3)/DHG, i=x|0, f=x-i; return A[i]*(1-f)+A[i+1]*f};
+  const R=new Float64Array(NG), A=new Float64Array(NG);
+  for(let i=0;i<NG;i++){R[i]=P[i]/(RAIR*T[i]); A[i]=Math.sqrt(GAM*RAIR*T[i])}
+  return {name:label, T, U, V, rho:h=>at(R,h), sos:h=>at(A,h), wu:h=>at(U,h), wv:h=>at(V,h)};
+}
+function deriv(s,beta,o){ // s=[x,y,z,vx,vy,vz]; drag acts on the air-relative velocity
+  const a=CUR, h=s[2], rx=s[3]-a.wu(h), ry=s[4]-a.wv(h), rz=s[5], v=Math.hypot(rx,ry,rz);
+  const k = v>0 ? a.rho(h)*v*cdRatio(v/a.sos(h))/(2*beta) : 0;
+  o[0]=s[3];o[1]=s[4];o[2]=s[5];o[3]=-k*rx;o[4]=-k*ry;o[5]=-k*rz-grav(h);
 }
 const k1=new Float64Array(6),k2=new Float64Array(6),k3=new Float64Array(6),k4=new Float64Array(6),tmp=new Float64Array(6);
 function rk4(s,beta,dt){
@@ -837,6 +899,7 @@ const BMIN=Math.log(300), BMAX=Math.log(30000), NB=48;
 const betaFromSlider=u=>Math.exp(Math.log(500)+(Math.log(12500)-Math.log(500))*u/100);
 
 function truthTrajectory(beta){
+  CUR = WX || STD;
   const s=Float64Array.from(S0), out=[]; let t=0;
   const sub=10, dt=DT_MEAS/sub;
   out.push({t,x:s[0],y:s[1],z:s[2]});
@@ -916,6 +979,7 @@ function ekf(meas,sigma){
 }
 
 function estimate(meas,sigma,seed){
+  CUR = (WX && $('in-wxmodel').checked) ? WX : STD;
   const t0=performance.now();
   const tc=meas[meas.length-1].t;
   const F=ekf(meas,sigma);
@@ -937,13 +1001,43 @@ function estimate(meas,sigma,seed){
 
 /* ===================== state & UI ===================== */
 const $=id=>document.getElementById(id);
+
+/* ===================== weather (Open-Meteo, selected date) ===================== */
+const LEV=[1000,925,850,700,600,500,400,300,250,200,150,100,70,50,30,20,10];
+function ussaT(h){h=Math.max(0,h); if(h<11000) return 288.15-0.0065*h; if(h<20000) return 216.65; if(h<32000) return 216.65+0.001*(h-20000); if(h<47000) return 228.65+0.0028*(h-32000); return 270.65}
+function interp(x,xs,ys){if(x<=xs[0]) return ys[0]; for(let i=1;i<xs.length;i++){if(x<=xs[i]){const f=(x-xs[i-1])/(xs[i]-xs[i-1]); return ys[i-1]+f*(ys[i]-ys[i-1])}} return ys[ys.length-1]}
+async function loadWeather(date,hourUTC){
+  const v=LEV.flatMap(l=>['temperature','wind_speed','wind_direction','geopotential_height'].map(q=>q+'_'+l+'hPa')).join(',');
+  const url=`https://historical-forecast-api.open-meteo.com/v1/forecast?latitude=36.5&longitude=127.5&start_date=${date}&end_date=${date}&hourly=${v}&wind_speed_unit=ms&timezone=GMT`;
+  const js=await (await fetch(url)).json();
+  if(!js.hourly) throw new Error(js.reason||'no data');
+  const k=hourUTC, H=js.hourly, z=[],T=[],u=[],w=[],p=[];
+  LEV.forEach(l=>{const zz=H['geopotential_height_'+l+'hPa'][k], tt=H['temperature_'+l+'hPa'][k], ss=H['wind_speed_'+l+'hPa'][k], dd=H['wind_direction_'+l+'hPa'][k]*Math.PI/180;
+    if(zz==null||tt==null||ss==null) throw new Error('missing level '+l); z.push(zz); T.push(tt+273.15); u.push(-ss*Math.sin(dd)); w.push(-ss*Math.cos(dd)); p.push(l*100)});
+  const top=z[z.length-1], Tg=new Float64Array(NG), Pg=new Float64Array(NG), Ug=new Float64Array(NG), Vg=new Float64Array(NG);
+  const off=T[T.length-1]-ussaT(top), lnp=p.map(Math.log);
+  for(let i=0;i<NG;i++){const h=i*DHG;
+    if(h<=top){Tg[i]=interp(h,z,T); Pg[i]=h<z[0]? p[0]*Math.exp(G0*(z[0]-h)/(RAIR*T[0])) : Math.exp(interp(h,z,lnp)); Ug[i]=interp(h,z,u); Vg[i]=interp(h,z,w)}
+    else{const b=Math.min(1,(h-top)/10000); Tg[i]=ussaT(h)+off*(1-b); Pg[i]=Pg[i-1]*Math.exp(-grav(h)*DHG/(RAIR*0.5*(Tg[i]+Tg[i-1])));
+      const d=Math.max(0,1-(h-top)/(45000-top)); Ug[i]=interp(top,z,u)*d; Vg[i]=interp(top,z,w)*d}}
+  let wmax=0,hmax=0; for(let i=0;i<NG;i++){const s=Math.hypot(Ug[i],Vg[i]); if(s>wmax){wmax=s;hmax=i*DHG}}
+  const atm=gridAtm(Tg,Pg,Ug,Vg,`${date} ${String(hourUTC).padStart(2,'0')}Z`); atm.wmax=wmax; atm.hmax=hmax; atm.T30=Tg[120]; return atm;
+}
+async function applyWeather(){
+  const st=$('wx-status'); st.textContent='기상 자료를 불러오는 중…';
+  try{ WX=await loadWeather($('in-date').value, +$('in-hour').value);
+    st.innerHTML=`<b>${WX.name}</b> 적용 · 최대풍 ${fmt(WX.wmax,0)} m/s (고도 ${fmt(WX.hmax/1000,1)} km) · 30 km 기온 ${fmt(WX.T30-273.15,1)} °C`;
+  }catch(e){ WX=null; st.textContent='기상 자료를 불러오지 못해 표준 대기로 계산합니다 ('+e.message+').' }
+  truthBeta=null; schedule();
+}
 const inObs=$('in-obs'), inSig=$('in-sig'), inBeta=$('in-beta');
 let seed=1, truth=null, truthBeta=null, R=null, meas=null;
 const fmt=(v,d=0)=>v.toLocaleString('en-US',{minimumFractionDigits:d,maximumFractionDigits:d});
 
 function run(){
   const beta=betaFromSlider(+inBeta.value);
-  if(beta!==truthBeta){truth=truthTrajectory(beta); truthBeta=beta}
+  const tkey=beta+'|'+(WX?WX.name:'std');
+  if(tkey!==truthBeta){truth=truthTrajectory(beta); truthBeta=tkey}
   const imp=truth[truth.length-1], T=imp.t;
   const frac=+inObs.value/100, sig=+inSig.value;
   $('v-obs').textContent=inObs.value+' %'; $('v-sig').textContent=sig+' m'; $('v-beta').textContent=fmt(Math.round(beta/10)*10)+' kg/m²';
@@ -1068,10 +1162,14 @@ let rz=null; window.addEventListener('resize',()=>{clearTimeout(rz); rz=setTimeo
 let pending=false; function schedule(){ if(pending) return; pending=true; requestAnimationFrame(()=>{pending=false; run()}) }
 [inObs,inSig,inBeta].forEach(el=>el.addEventListener('input',schedule));
 $('btn-seed').addEventListener('click',()=>{seed++; run()});
+$('btn-wx').addEventListener('click',applyWeather);
+$('in-wxmodel').addEventListener('change',schedule);
+$('btn-wx-off').addEventListener('click',()=>{WX=null; truthBeta=null; $('wx-status').textContent='표준 대기 (기상 미적용)'; schedule()});
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change',drawAll);
 new MutationObserver(drawAll).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
 if(document.fonts&&document.fonts.ready) document.fonts.ready.then(drawAll);
 run();
+applyWeather();
 
 /* ===================== TOC highlight ===================== */
 const links=[...document.querySelectorAll('nav.toc a')], secs=links.map(a=>document.querySelector(a.getAttribute('href')));

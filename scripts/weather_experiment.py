@@ -74,13 +74,22 @@ def prep(name, banks, split_kind):
     feats, pad, origin = features.track_features(d["meas"], d["n_meas"])
     models = atm_models(banks, d["wx_idx"], split_kind)
     gs = {}
-    for k in ("clim", "date"):
-        x, P, nis, _ = filters.ekf(d["meas_pol"].astype(float), d["meas"].astype(float), d["n_meas"], 0.5, nz["sigma_r"], nz["sigma_ang"], atm=models[k])
-        gs[k] = features.global_features(x, P, origin)
+    n = len(d["T"])
+    kinds = ("clim", "date", "exp") if split_kind == "test" else ("clim", "date")
+    for k in kinds:
+        parts = []
+        for i in range(0, n, 2500):          # chunked to bound memory
+            sl = slice(i, i + 2500)
+            sr = nz["sigma_r"][sl] if np.ndim(nz["sigma_r"]) else nz["sigma_r"]
+            sa = nz["sigma_ang"][sl] if np.ndim(nz["sigma_ang"]) else nz["sigma_ang"]
+            atm = None if models[k] is None else models[k][sl]
+            x, P, _, _ = filters.ekf(d["meas_pol"][sl].astype(float), d["meas"][sl].astype(float), d["n_meas"][sl], 0.5, sr, sa, atm=atm)
+            parts.append(features.global_features(x, P, origin[sl]))
+        gs[k] = np.concatenate(parts)
     src = banks["test"] if split_kind == "test" else banks["train"]
     wx = src.features(d["wx_idx"])
     fut, dT, lb = features.targets(d, origin)
-    np.savez_compressed(f"{DATA}/prep_{name}.npz", feats=feats, pad=pad, origin=origin, g=gs["clim"], g_date=gs["date"], wx=wx,
+    np.savez_compressed(f"{DATA}/prep_{name}.npz", feats=feats, pad=pad, origin=origin, g=gs["clim"], g_date=gs["date"], **({"g_exp": gs["exp"]} if "exp" in gs else {}), wx=wx,
                         wx_idx=d["wx_idx"], fut=fut, dT=dT, lb=lb, t_c=d["t_c"], T=d["T"], impact=d["impact"], future=d["future"], beta=d["beta"])
     print("prepared", name, flush=True)
 
@@ -98,9 +107,9 @@ def main(step):
     if step in ("all", "filters"):
         run_filters(banks)
     if step in ("all", "prep"):
-        prep("test_wx", banks, "test")
-        prep("val_wx", banks, "train")
-        prep("train_wx", banks, "train")
+        for name, kind in [("test_wx", "test"), ("val_wx", "train"), ("train_wx", "train")]:
+            if name == "test_wx" or not os.path.exists(f"{DATA}/prep_{name}.npz"):
+                prep(name, banks, kind)
 
 
 if __name__ == "__main__":
