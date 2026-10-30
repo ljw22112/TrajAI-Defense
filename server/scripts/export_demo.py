@@ -35,6 +35,7 @@ def main():
         utc = datetime.fromisoformat(w["valid_time"]).astimezone(__import__("datetime").timezone.utc)
         save(f"weather_{utc:%Y-%m-%dT%H}", w)
         save(f"weather_{w['id']}_curves", c.get(f"/api/weather/{w['id']}/curves").json())
+    (out / "estimates.csv").write_text(c.get("/api/scenarios/export.csv").text)
     print(f"exported {len(list(out.glob('*.json')))} files to {out}")
 
 

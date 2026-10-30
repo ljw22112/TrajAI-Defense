@@ -42,7 +42,7 @@ def atm_models(banks, wx_idx, split):
     }
 
 
-def run_filters(banks):
+def run_filters(banks, only=None):
     d = dict(np.load(f"{DATA}/test_wx.npz"))
     nz = radar.NOISE_NOMINAL
     out = {}
@@ -50,11 +50,15 @@ def run_filters(banks):
         for fname, fn in [("ekf", filters.ekf), ("ukf", filters.ukf)]:
             if fname == "ukf" and name not in ("exp", "date"):
                 continue
+            if only and f"{fname}_{name}" not in only:
+                continue
             t0 = time.time()
             x, P, nis, _ = fn(d["meas_pol"].astype(float), d["meas"].astype(float), d["n_meas"], 0.5, nz["sigma_r"], nz["sigma_ang"], atm=atm)
             mc = filters.monte_carlo_impact(x, P, d["t_c"], n_particles=100, seed=1, atm=atm)
             grid = filters.nominal_on_grid(x, d["t_c"], d["T"], atm=atm)
             key = f"{fname}_{name}"
+            np.savez_compressed(f"results/baseline_{key}_test_wx.npz", miss=metrics.ip_miss(mc["mpi"], d["impact"]), cep=mc["cep"],
+                                cov=metrics.cep_coverage(mc["mpi"], mc["cep"], d["impact"]), ade=metrics.ade(grid, d["future"]))
             out[key] = dict(ade=summarize(metrics.ade(grid, d["future"])), miss=summarize(metrics.ip_miss(mc["mpi"], d["impact"])),
                             tot=summarize(metrics.tot_error(mc["tot"], d["T"])), cep=summarize(mc["cep"]),
                             coverage=float(metrics.cep_coverage(mc["mpi"], mc["cep"], d["impact"]).mean()),
@@ -62,6 +66,8 @@ def run_filters(banks):
             print(f"{key:12s} {time.time()-t0:5.0f}s  ADE {out[key]['ade']['median']:7.0f}  miss {out[key]['miss']['median']:7.0f}  "
                   f"CEP {out[key]['cep']['median']:6.0f}  cov {out[key]['coverage']:.2f}  NIS {out[key]['nis']['median']:.2f}  "
                   f"|dlnb| {out[key]['lb_err']['median']:.3f}", flush=True)
+    if only and os.path.exists("results/weather_filters.json"):
+        out = {**json.load(open("results/weather_filters.json")), **out}
     json.dump(out, open("results/weather_filters.json", "w"), indent=1)
 
 
@@ -105,7 +111,7 @@ def main(step):
                 np.savez_compressed(f"{DATA}/{name}.npz", **dataset.generate(ranges=dataset.ID_RANGES, **kw))
                 print(f"generated {name} in {time.time()-t0:.0f}s", flush=True)
     if step in ("all", "filters"):
-        run_filters(banks)
+        run_filters(banks, only=sys.argv[2].split(",") if len(sys.argv) > 2 else None)
     if step in ("all", "prep"):
         for name, kind in [("test_wx", "test"), ("val_wx", "train"), ("train_wx", "train")]:
             if name == "test_wx" or not os.path.exists(f"{DATA}/prep_{name}.npz"):

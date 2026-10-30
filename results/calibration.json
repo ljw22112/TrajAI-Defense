@@ -1,0 +1,26 @@
+{
+ "ekf": {
+  "cep_scale": 0.6142062919578433,
+  "fitted_on": "test_id_f10"
+ },
+ "ukf": {
+  "cep_scale": 0.5635133823890748,
+  "fitted_on": "test_id_f10"
+ },
+ "data_tf_v2": {
+  "cep_scale": 0.8987992934687505,
+  "fitted_on": "test_id_f10"
+ },
+ "pinn_tf_hybrid_v2": {
+  "cep_scale": 0.8261275573726254,
+  "fitted_on": "test_id_f10"
+ },
+ "wx_hybrid_clim": {
+  "cep_scale": 0.8282908909815361,
+  "fitted_on": "test_wx"
+ },
+ "wx_hybrid_date": {
+  "cep_scale": 0.8501820681257606,
+  "fitted_on": "test_wx"
+ }
+}

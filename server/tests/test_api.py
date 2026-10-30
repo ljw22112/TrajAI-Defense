@@ -139,3 +139,31 @@ def test_registry_seed_fits_schema():
     lim = {c.name: getattr(c.type, "length", None) for c in ModelVersion.__table__.columns}
     for name, kind, *_ in MODELS:
         assert len(name) <= lim["name"] and len(kind) <= lim["kind"]
+
+
+def test_login_throttling(client):
+    from app import ratelimit
+    ratelimit.reset()
+    bad = {"username": "nobody@trajai.dev", "password": "wrong"}
+    for _ in range(ratelimit.MAX_FAILURES):
+        assert client.post("/api/auth/login", data=bad).status_code == 401
+    r = client.post("/api/auth/login", data=bad)
+    assert r.status_code == 429 and int(r.headers["Retry-After"]) > 0
+    # other accounts are unaffected, and the window expires
+    assert client.post("/api/auth/login", data={"username": "admin@trajai.dev", "password": "admin1234"}).status_code == 200
+    key = ("nobody@trajai.dev", "testclient")
+    import time
+    assert ratelimit.retry_after(key, now=time.monotonic() + ratelimit.WINDOW_S + 1) == 0
+    ratelimit.reset()
+
+
+def test_estimates_csv_export(scenarios, client, users):
+    std, _ = scenarios
+    client.post(f"/api/scenarios/{std['id']}/estimates", json={"method": "ekf_std"}, headers=users["analyst"])
+    r = client.get("/api/scenarios/export.csv", headers=users["viewer"])
+    assert r.status_code == 200 and r.headers["content-type"].startswith("text/csv")
+    import csv, io
+    rows = list(csv.DictReader(io.StringIO(r.text)))
+    assert rows and {"method", "miss_m", "threat_level"} <= set(rows[0])
+    assert any(row["scenario_id"] == str(std["id"]) and row["method"] == "ekf_std" for row in rows)
+    assert client.get("/api/scenarios/export.csv").status_code == 401
