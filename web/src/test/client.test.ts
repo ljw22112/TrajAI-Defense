@@ -41,3 +41,26 @@ describe("api client", () => {
     await expect(api.stats()).rejects.toMatchObject({ status: 0 });
   });
 });
+
+describe("csv export", () => {
+  it("downloads with the bearer token and a fixed file name", async () => {
+    tokenStore.set("tok");
+    const f = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response("scenario_id,method\n1,ekf_std\n", { status: 200 }));
+    (URL as any).createObjectURL = vi.fn(() => "blob:x");
+    (URL as any).revokeObjectURL = vi.fn();
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
+      expect(this.download).toBe("trajai_estimates.csv");
+    });
+    const { downloadEstimatesCsv } = await import("../api/client");
+    await downloadEstimatesCsv();
+    expect(f.mock.calls[0][0]).toMatch(/\/api\/scenarios\/export\.csv$/);
+    expect((f.mock.calls[0][1] as RequestInit).headers).toMatchObject({ Authorization: "Bearer tok" });
+    expect(click).toHaveBeenCalledOnce();
+  });
+
+  it("surfaces server errors", async () => {
+    mockFetch(429, { detail: "too many failed logins; retry in 60 s" });
+    const { downloadEstimatesCsv } = await import("../api/client");
+    await expect(downloadEstimatesCsv()).rejects.toMatchObject({ status: 429 });
+  });
+});
