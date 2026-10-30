@@ -1,6 +1,9 @@
+import csv
+import io
 import secrets
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi.responses import Response
 from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
@@ -36,6 +39,33 @@ def list_scenarios(limit: int = Query(20, ge=1, le=100), offset: int = Query(0, 
     agg = {sid: (n, best) for sid, n, best in db.execute(
         select(Estimate.scenario_id, func.count(Estimate.id), func.min(Estimate.miss_m)).where(Estimate.scenario_id.in_(ids)).group_by(Estimate.scenario_id))}
     return Page(items=[_summary(r, *agg.get(r.id, (0, None))) for r in rows], total=total, limit=limit, offset=offset)
+
+
+CSV_COLS = ["scenario_id", "scenario", "weather_valid_time", "estimate_id", "method", "model", "created_at", "ip_x_m", "ip_y_m",
+            "cep_m", "miss_m", "inside_cep", "tot_s", "beta_hat", "nis", "latency_ms", "threat_level", "top_asset", "top_asset_prob"]
+
+
+@router.get("/export.csv", summary="All estimates as CSV (one row per estimate, for offline analysis)",
+            response_class=Response, responses={200: {"content": {"text/csv": {}}}})
+def export_csv(db: Session = Depends(get_db), user: User = Depends(current_user)):
+    rows = db.scalars(select(Estimate).options(selectinload(Estimate.scenario).selectinload(Scenario.weather),
+                                               selectinload(Estimate.threat), selectinload(Estimate.model_version))
+                      .order_by(Estimate.scenario_id, Estimate.id)).all()
+    buf = io.StringIO()
+    w = csv.writer(buf)
+    w.writerow(CSV_COLS)
+    for e in rows:
+        th = e.threat
+        probs = sorted((th.probabilities if th else {}).items(), key=lambda kv: -kv[1]) if th else []
+        w.writerow([e.scenario_id, e.scenario.name, e.scenario.weather.valid_time.isoformat() if e.scenario.weather else "",
+                    e.id, e.method.value, e.model_version.name if e.model_version else "", e.created_at.isoformat(),
+                    round(e.ip_x, 1), round(e.ip_y, 1), round(e.cep, 1), round(e.miss_m, 1), int(e.inside_cep), round(e.tot, 2),
+                    "" if e.beta_hat is None else round(e.beta_hat, 1), "" if e.nis is None else round(e.nis, 3),
+                    round(e.latency_ms, 2), th.level if th else "", probs[0][0] if probs else "",
+                    round(probs[0][1], 4) if probs else ""])
+    log(db, user, "export", "estimates", None, {"rows": len(rows)})
+    return Response(buf.getvalue(), media_type="text/csv; charset=utf-8",
+                    headers={"Content-Disposition": 'attachment; filename="trajai_estimates.csv"'})
 
 
 @router.post("", response_model=ScenarioOut, status_code=201, summary="Create and simulate a scenario")

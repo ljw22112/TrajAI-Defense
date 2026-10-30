@@ -90,5 +90,15 @@ def test_viewer_is_read_only(page):
     pw.expect(page.get_by_text("admin 이상 권한")).to_be_visible()
 
 
+def test_viewer_can_export_csv(page):
+    page.goto(f"{BASE}/#/scenarios")
+    with page.expect_download() as dl:
+        page.get_by_role("button", name="추정 결과 CSV").click()
+    d = dl.value
+    assert d.suggested_filename == "trajai_estimates.csv"
+    head = open(d.path(), encoding="utf-8").readline()
+    assert head.startswith("scenario_id,scenario,") and "threat_level" in head
+
+
 def test_no_uncaught_errors(page):
     assert page.errors == []

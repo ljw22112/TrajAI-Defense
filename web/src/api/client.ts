@@ -65,6 +65,20 @@ async function request<T>(method: string, path: string, body?: unknown, form = f
 const qs = (o: Record<string, unknown>) =>
   "?" + Object.entries(o).filter(([, v]) => v !== undefined && v !== null && v !== "").map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`).join("&");
 
+/** Download all estimates as CSV (server: /api/scenarios/export.csv; demo: the exported snapshot). */
+export async function downloadEstimatesCsv(): Promise<void> {
+  let r: Response;
+  try {
+    r = DEMO ? await fetch(`${DEMO_ROOT}estimates.csv`)
+      : await fetch(`${BASE}/api/scenarios/export.csv`, { headers: tokenStore.get() ? { Authorization: `Bearer ${tokenStore.get()}` } : {} });
+  } catch { throw new ApiError(0, "서버에 연결할 수 없습니다."); }
+  if (!r.ok) throw parseError(r.status, await r.json().catch(() => null));
+  const url = URL.createObjectURL(await r.blob());
+  const a = Object.assign(document.createElement("a"), { href: url, download: "trajai_estimates.csv" });
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 export const api = {
   login: (email: string, password: string) => request<Token>("POST", "/api/auth/login", { username: email, password }, true),
   me: () => (DEMO ? Promise.resolve<User>({ id: 0, email: "demo@trajai.dev", full_name: "Demo viewer", role: "viewer", is_active: true, created_at: "" }) : request<User>("GET", "/api/auth/me")),

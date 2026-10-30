@@ -43,6 +43,10 @@ def seed(db) -> None:
             db.add(Asset(name=a["name"], x_km=a["x"], y_km=a["y"], radius_km=a["radius"], priority=5 - i % 3))
     metrics_path = ROOT / "results" / "metrics.json"
     allm = json.loads(metrics_path.read_text()) if metrics_path.exists() else {}
+    cal_path = ROOT / "results" / "calibration.json"
+    for k, v in (json.loads(cal_path.read_text()) if cal_path.exists() else {}).items():
+        if k in allm:
+            allm[k] = {**allm[k], "cep_scale": v["cep_scale"], "cep_scale_fitted_on": v["fitted_on"]}
     have_active = db.scalar(select(ModelVersion.id).where(ModelVersion.is_active.is_(True)))
     for name, kind, fname, uses_wx, key in MODELS:
         path = s.model_dir / fname

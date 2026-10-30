@@ -79,7 +79,10 @@ def run_pinn(scn, bank, model_version) -> dict:
     latency = (time.perf_counter() - t0) * 1000
     pos = traj[0] * features.L_POS + origin[0]
     dT = 100.0 * float(np.exp(head[0, 1]))
-    sig = np.exp(head[0, 2:4]) * 1000.0
+    # split-conformal scale (scripts/site_stats.py): raw heteroscedastic sigmas are mis-calibrated, and the threat
+    # probabilities are computed from sigma, so the scale is applied to sigma (CEP is linear in sigma).
+    scale = float((model_version.metrics or {}).get("cep_scale", 1.0))
+    sig = np.exp(head[0, 2:4]) * 1000.0 * scale
     tau = np.linspace(0, 1, pos.shape[0])
     return dict(ip=pos[-1, :2], cep=float(metrics.gaussian_cep(sig[:1], sig[1:])[0]), tot=scn.t_c + dT, tot_std=None,
                 beta_hat=float(np.exp(head[0, 0] * features.LB_SD + features.LB_MU)), nis=float(nis[0]), latency_ms=latency,

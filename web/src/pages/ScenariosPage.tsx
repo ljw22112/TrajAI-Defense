@@ -1,7 +1,7 @@
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useMutation, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { api, DEMO } from "../api/client";
+import { api, DEMO, downloadEstimatesCsv } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { Card, Empty, ErrorBox, PageHead, Spinner, fmt, km } from "../components/ui";
 
@@ -15,11 +15,15 @@ export function ScenariosPage() {
   const [offset, setOffset] = useState(0);
   const params = { limit: PAGE, offset, q: q || undefined, weather: wx === "all" ? undefined : wx === "wx" };
   const { data, error, isLoading, isFetching } = useQuery({ queryKey: ["scenarios", params], queryFn: () => api.scenarios(params), placeholderData: keepPreviousData });
+  const csv = useMutation({ mutationFn: downloadEstimatesCsv });
   const items = DEMO && data ? data.items.filter(r => (!q || r.name.includes(q)) && (wx === "all" || (wx === "wx") === !!r.weather_id)) : data?.items;
 
   return (
     <div className="page">
-      <PageHead kicker="Scenarios" title="시나리오" actions={can("analyst") && <Link className="btn" to="/scenarios/new">새 시나리오</Link>}>
+      <PageHead kicker="Scenarios" title="시나리오" actions={<div className="toolbar">
+        <button className="btn ghost" disabled={csv.isPending} onClick={() => csv.mutate()}>{csv.isPending ? "내보내는 중…" : "추정 결과 CSV"}</button>
+        {can("analyst") && <Link className="btn" to="/scenarios/new">새 시나리오</Link>}
+      </div>}>
         각 시나리오는 연소 종료 상태, 탄도계수, 레이더 잡음, 대기(표준 또는 선택 일자 기상)로 정의된 모의 교전입니다.
       </PageHead>
       <Card>
@@ -30,7 +34,7 @@ export function ScenariosPage() {
           </select>
           {isFetching && <span className="label">갱신 중</span>}
         </div>
-        <ErrorBox error={error} />
+        <ErrorBox error={error || csv.error} />
         {isLoading ? <Spinner /> : !items?.length ? <Empty>조건에 맞는 시나리오가 없습니다.</Empty> : (
           <div className="tw">
             <table>

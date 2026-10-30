@@ -1,8 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
+from .. import ratelimit
 from ..audit import log
 from ..db import get_db
 from ..models import Role, User
@@ -13,10 +14,17 @@ router = APIRouter(prefix="/api", tags=["auth & users"])
 
 
 @router.post("/auth/login", response_model=Token, summary="OAuth2 password login (username = email)")
-def login(form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+def login(request: Request, form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    key = (form.username.lower(), request.client.host if request.client else "?")
+    wait = ratelimit.retry_after(key)
+    if wait:
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, f"too many failed logins; retry in {wait} s",
+                            headers={"Retry-After": str(wait)})
     user = db.scalar(select(User).where(User.email == form.username.lower()))
     if not user or not verify_password(form.password, user.hashed_password):
+        ratelimit.failure(key)
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "incorrect email or password")
+    ratelimit.success(key)
     if not user.is_active:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "account disabled")
     tok, exp = create_token(user)

@@ -183,16 +183,18 @@ sequenceDiagram
 | 감사 | 로그인, 생성·수정·삭제, 추정 실행을 `audit_log`에 기록 |
 | 비밀값 | `TRAJAI_JWT_SECRET`은 환경 변수로만 주입하며, Compose는 값이 없으면 시작을 거부합니다 |
 | 자기 보호 | admin이 자신의 권한을 낮추거나 계정을 정지하는 것을 막음 |
+| 무차별 대입 방지 | (이메일, 클라이언트 주소)별 슬라이딩 윈도: 5분 안에 5회 실패하면 HTTP 429 + `Retry-After`. 단일 워커 기준 메모리 상태이며, 다중 워커라면 Redis로 옮김 |
+| 불확실성 보정 | PINN의 σ에 모델별 split-conformal 계수(`results/calibration.json`)를 곱한 뒤 위협 확률을 계산 |
 
 ## 5. 테스트 전략
 
 | 수준 | 범위 | 도구 | 수 |
 |---|---|---|---|
 | 단위 (코어) | 대기 기준값, RK4 수렴 차수, 레이더 야코비안, EKF/UKF 일관성(NIS), 기상 격자·바람, 위협 등급 | pytest | 17 |
-| API 통합 | 인증 실패, RBAC, CRUD·검증·중복, 기상 캐시, 시뮬레이션, 추정·위협, 통계, WebSocket, 소유권, 감사 로그 | pytest + TestClient, **SQLite와 PostgreSQL 모두** | 13 |
+| API 통합 | 인증 실패, RBAC, CRUD·검증·중복, 기상 캐시, 시뮬레이션, 추정·위협, 통계, WebSocket, 소유권, 감사 로그, 로그인 제한, CSV, 스키마 길이 | pytest + TestClient, **SQLite와 PostgreSQL 모두** | 16 |
 | 마이그레이션 | upgrade → check(드리프트 없음) → downgrade → upgrade | Alembic | CI |
-| 프론트엔드 단위 | API 클라이언트(토큰, 422 필드 오류, 401 처리, 폼 인코딩, 네트워크 오류), UI 컴포넌트 | Vitest + Testing Library | 9 |
-| E2E | 로그인 실패/성공, 대시보드, 시나리오 상세, 실시간 재생 완료, 폼 검증, viewer 읽기 전용, 런타임 오류 없음 | Playwright (실제 서버 + PostgreSQL) | 6 |
+| 프론트엔드 단위 | API 클라이언트(토큰, 422 필드 오류, 401 처리, 폼 인코딩, 네트워크 오류), UI 컴포넌트, CSV 다운로드 | Vitest + Testing Library | 11 |
+| E2E | 로그인 실패/성공, 대시보드, 시나리오 상세, 실시간 재생 완료, 폼 검증, viewer 읽기 전용, CSV 다운로드, 런타임 오류 없음 | Playwright (실제 서버 + PostgreSQL) | 7 |
 
 E2E 테스트는 viewer에게 "새 시나리오" 버튼이 보이던 권한 표시 버그를 실제로 잡아냈습니다(서버는 403으로 막고 있었음).
 
