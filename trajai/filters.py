@@ -18,22 +18,22 @@ Q_LB = 2e-4                # ln beta random-walk PSD [1/s]
 LB_MIN, LB_MAX = np.log(100.0), np.log(1e5)
 
 
-def phi(x, dt, sub=2):
+def phi(x, dt, sub=2, atm=None):
     s = x[:, :6].copy()
     beta = np.exp(np.clip(x[:, 6], LB_MIN, LB_MAX))
     h = dt / sub
     for _ in range(sub):
-        s = physics.rk4_step(s, beta, h)
+        s = physics.rk4_step(s, beta, h, atm)
     return np.concatenate([s, x[:, 6:7]], 1)
 
 
-def numerical_F(x, dt, fx):
+def numerical_F(x, dt, fx, atm=None):
     n = x.shape[0]
     eps = np.array([1.0, 1.0, 1.0, 0.01, 0.01, 0.01, 1e-4])
     xp = np.repeat(x[None], NX, 0)                    # (7, N, 7)
     for j in range(NX):
         xp[j, :, j] += eps[j]
-    fp = phi(xp.reshape(-1, NX), dt).reshape(NX, n, NX)
+    fp = phi(xp.reshape(-1, NX), dt, atm=None if atm is None else atm.__class__(atm.bank, np.tile(atm.idx, NX))).reshape(NX, n, NX)
     F = (fp - fx[None]) / eps[:, None, None]          # (7=j, N, 7=i)
     return np.transpose(F, (1, 2, 0))                 # (N, i, j)
 
@@ -74,7 +74,7 @@ def _R(n, sigma_r, sigma_ang):
     return R
 
 
-def ekf(meas_pol, meas_c, n_meas, dt, sigma_r, sigma_ang):
+def ekf(meas_pol, meas_c, n_meas, dt, sigma_r, sigma_ang, atm=None):
     """Run the EKF on a batch. Returns x (N,7), P (N,7,7), mean NIS (N,), ln-beta history (N, K, 2).
     sigma_r / sigma_ang may be scalars or per-track arrays (N,)."""
     x, P = _init(meas_c, dt, sigma_r, sigma_ang)
@@ -90,8 +90,9 @@ def ekf(meas_pol, meas_c, n_meas, dt, sigma_r, sigma_ang):
         if not act.any():
             break
         xa, Pa, R = x[act], P[act], Rall[act]
-        xp = phi(xa, dt)
-        F = numerical_F(xa, dt, xp)
+        aa = None if atm is None else atm[act]
+        xp = phi(xa, dt, atm=aa)
+        F = numerical_F(xa, dt, xp, aa)
         Pp = F @ Pa @ np.transpose(F, (0, 2, 1)) + Q
         J = radar.polar_jacobian(xp[:, :3])
         H = np.concatenate([J, np.zeros((xa.shape[0], 3, 4))], 2)
@@ -116,7 +117,7 @@ def ekf(meas_pol, meas_c, n_meas, dt, sigma_r, sigma_ang):
     return x, P, nis_sum / np.maximum(nis_cnt, 1), hist
 
 
-def ukf(meas_pol, meas_c, n_meas, dt, sigma_r, sigma_ang, alpha=1e-1, beta_ut=2.0, kappa=0.0):
+def ukf(meas_pol, meas_c, n_meas, dt, sigma_r, sigma_ang, alpha=1e-1, beta_ut=2.0, kappa=0.0, atm=None):
     """Unscented Kalman filter (additive noise, scaled sigma points)."""
     x, P = _init(meas_c, dt, sigma_r, sigma_ang)
     n = x.shape[0]
@@ -138,7 +139,7 @@ def ukf(meas_pol, meas_c, n_meas, dt, sigma_r, sigma_ang, alpha=1e-1, beta_ut=2.
         m = xa.shape[0]
         Ls = np.linalg.cholesky((L + lam) * Pa + 1e-9 * np.eye(L))
         sig = np.concatenate([xa[:, None], xa[:, None] + np.transpose(Ls, (0, 2, 1)), xa[:, None] - np.transpose(Ls, (0, 2, 1))], 1)
-        sp = phi(sig.reshape(-1, L), dt).reshape(m, 2 * L + 1, L)
+        sp = phi(sig.reshape(-1, L), dt, atm=None if atm is None else atm[act].repeat(2 * L + 1)).reshape(m, 2 * L + 1, L)
         xp = np.einsum("s,nsi->ni", wm, sp)
         dX = sp - xp[:, None]
         Pp = np.einsum("s,nsi,nsj->nij", wc, dX, dX) + Q
@@ -169,7 +170,7 @@ def ukf(meas_pol, meas_c, n_meas, dt, sigma_r, sigma_ang, alpha=1e-1, beta_ut=2.
     return x, P, nis_sum / np.maximum(nis_cnt, 1), None
 
 
-def monte_carlo_impact(x, P, t_c, n_particles=100, seed=0, dt=0.25):
+def monte_carlo_impact(x, P, t_c, n_particles=100, seed=0, dt=0.25, atm=None):
     """Sample N(x, P) and propagate each particle to the ground. Returns per-track impact statistics."""
     rng = np.random.default_rng(seed)
     n = x.shape[0]
@@ -178,7 +179,7 @@ def monte_carlo_impact(x, P, t_c, n_particles=100, seed=0, dt=0.25):
     smp = x[:, None] + np.einsum("nij,npj->npi", Lc, e)
     smp[..., 2] = np.maximum(smp[..., 2], 1.0)
     beta = np.exp(np.clip(smp[..., 6], LB_MIN, LB_MAX))
-    res = physics.propagate_to_ground(smp[..., :6].reshape(-1, 6), beta.reshape(-1), dt=dt)
+    res = physics.propagate_to_ground(smp[..., :6].reshape(-1, 6), beta.reshape(-1), dt=dt, atm=None if atm is None else atm.repeat(n_particles))
     ti = res["t"].reshape(n, n_particles) + t_c[:, None]
     ri = res["r"].reshape(n, n_particles, 3)
     mpi = ri[..., :2].mean(1)
@@ -186,7 +187,7 @@ def monte_carlo_impact(x, P, t_c, n_particles=100, seed=0, dt=0.25):
     return dict(mpi=mpi, cep=np.median(rad, 1), tot=ti.mean(1), tot_std=ti.std(1), samples=ri[..., :2])
 
 
-def nominal_on_grid(x, t_c, T_true, n_tau=129, steps_per_cell=8):
+def nominal_on_grid(x, t_c, T_true, n_tau=129, steps_per_cell=8, atm=None):
     """Propagate the mean state over the true remaining time and sample at tau grid; holds impact point after landing."""
     s = x[:, :6].copy()
     beta = np.exp(np.clip(x[:, 6], LB_MIN, LB_MAX))
@@ -199,8 +200,8 @@ def nominal_on_grid(x, t_c, T_true, n_tau=129, steps_per_cell=8):
     for c in range(n_tau - 1):
         for _ in range(steps_per_cell):
             prev = s
-            k1 = physics._deriv(s, beta); k2 = physics._deriv(s + .5 * hh * k1, beta)
-            k3 = physics._deriv(s + .5 * hh * k2, beta); k4 = physics._deriv(s + hh * k3, beta)
+            k1 = physics._deriv(s, beta, atm); k2 = physics._deriv(s + .5 * hh * k1, beta, atm)
+            k3 = physics._deriv(s + .5 * hh * k2, beta, atm); k4 = physics._deriv(s + hh * k3, beta, atm)
             s = s + hh / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
             newly = (~landed) & (s[:, 2] <= 0)
             if newly.any():

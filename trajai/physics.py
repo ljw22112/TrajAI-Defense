@@ -59,34 +59,43 @@ def cd_ratio(mach):
 
 
 # ----------------------------------------------------------------------------- dynamics
-def ballistic_accel(pos, vel, beta):
-    """Acceleration of an unpowered body. pos, vel: (..., 3); beta: (...,) [kg/m^2]."""
+def ballistic_accel(pos, vel, beta, atm=None):
+    """Acceleration of an unpowered body. pos, vel: (..., 3); beta: (...,) [kg/m^2].
+
+    atm: optional GridAtmosphere (date-specific density, speed of sound and wind). Drag acts on the
+    air-relative velocity v - w(h). With atm=None the standard model (exponential density, USSA-1976
+    speed of sound, no wind) is used.
+    """
     h = pos[..., 2]
-    v = np.linalg.norm(vel, axis=-1)
+    if atm is None:
+        rel, rho_h, a_h = vel, density(h), speed_of_sound(h)
+    else:
+        rel, rho_h, a_h = vel - atm.wind(h), atm.rho(h), atm.sos(h)
+    v = np.linalg.norm(rel, axis=-1)
     safe_v = np.maximum(v, 1e-6)
-    k = density(h) * v * cd_ratio(safe_v / speed_of_sound(h)) / (2.0 * beta)
-    acc = -k[..., None] * vel
+    k = rho_h * v * cd_ratio(safe_v / a_h) / (2.0 * beta)
+    acc = -k[..., None] * rel
     acc[..., 2] -= gravity(h)
     return acc
 
 
-def _deriv(state, beta):
+def _deriv(state, beta, atm=None):
     out = np.empty_like(state)
     out[..., :3] = state[..., 3:6]
-    out[..., 3:6] = ballistic_accel(state[..., :3], state[..., 3:6], beta)
+    out[..., 3:6] = ballistic_accel(state[..., :3], state[..., 3:6], beta, atm)
     return out
 
 
-def rk4_step(state, beta, dt):
+def rk4_step(state, beta, dt, atm=None):
     """One RK4 step of the ballistic model. state: (..., 6) = [r, v]."""
-    k1 = _deriv(state, beta)
-    k2 = _deriv(state + 0.5 * dt * k1, beta)
-    k3 = _deriv(state + 0.5 * dt * k2, beta)
-    k4 = _deriv(state + dt * k3, beta)
+    k1 = _deriv(state, beta, atm)
+    k2 = _deriv(state + 0.5 * dt * k1, beta, atm)
+    k3 = _deriv(state + 0.5 * dt * k2, beta, atm)
+    k4 = _deriv(state + dt * k3, beta, atm)
     return state + dt / 6.0 * (k1 + 2 * k2 + 2 * k3 + k4)
 
 
-def propagate_to_ground(state0, beta, dt=0.25, t0=0.0, t_max=1200.0, record_every=None):
+def propagate_to_ground(state0, beta, dt=0.25, t0=0.0, t_max=1200.0, record_every=None, atm=None):
     """Integrate a batch of ballistic states until each reaches z = 0.
 
     Returns dict with impact time 't', impact position 'r' (N, 3) and, if record_every is given,
@@ -104,7 +113,7 @@ def propagate_to_ground(state0, beta, dt=0.25, t0=0.0, t_max=1200.0, record_ever
     while alive.any() and t < t_max:
         idx = np.nonzero(alive)[0]
         prev = s[idx]
-        new = rk4_step(prev, beta[idx], dt)
+        new = rk4_step(prev, beta[idx], dt, None if atm is None else atm[idx])
         hit = new[:, 2] <= 0
         if hit.any():
             f = prev[hit, 2] / (prev[hit, 2] - new[hit, 2])
@@ -125,7 +134,7 @@ def propagate_to_ground(state0, beta, dt=0.25, t0=0.0, t_max=1200.0, record_ever
     return {"t": t_imp, "r": r_imp, "snaps": snaps}
 
 
-def simulate_ballistic(state0, beta, dt=0.1, out_dt=0.5, t_max=1200.0):
+def simulate_ballistic(state0, beta, dt=0.1, out_dt=0.5, t_max=1200.0, atm=None):
     """Integrate a batch of ballistic trajectories and sample them every out_dt seconds.
 
     Returns times (K,), positions (N, K, 3) with NaN after impact, impact time (N,), impact point (N, 3).
@@ -146,7 +155,7 @@ def simulate_ballistic(state0, beta, dt=0.1, out_dt=0.5, t_max=1200.0):
             if idx.size == 0:
                 break
             prev = s[idx]
-            new = rk4_step(prev, beta[idx], dt)
+            new = rk4_step(prev, beta[idx], dt, None if atm is None else atm[idx])
             hit = new[:, 2] <= 0
             if hit.any():
                 f = prev[hit, 2] / (prev[hit, 2] - new[hit, 2])

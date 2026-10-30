@@ -43,15 +43,19 @@ def initial_state(params):
     return np.stack([0 * h0, 0 * h0, h0, vh * np.cos(psi), vh * np.sin(psi), V0 * np.sin(g)], 1)
 
 
-def generate(n, seed, ranges=ID_RANGES, frac=(0.08, 0.20), noise=radar.NOISE_NOMINAL, chunk=4000):
+def generate(n, seed, ranges=ID_RANGES, frac=(0.08, 0.20), noise=radar.NOISE_NOMINAL, chunk=4000, bank=None):
+    """bank: optional weather ProfileBank; each trajectory then flies through a randomly chosen profile
+    (stored as 'wx_idx'). Without a bank the standard model (exponential density, no wind) is the truth."""
     rng = np.random.default_rng(seed)
-    out = {k: [] for k in ["meas", "meas_pol", "n_meas", "t_c", "T", "future", "state_c", "impact", "beta", "params", "sigma"]}
+    out = {k: [] for k in ["meas", "meas_pol", "n_meas", "t_c", "T", "future", "state_c", "impact", "beta", "params", "sigma", "wx_idx"]}
     done = 0
     while done < n:
         m = min(chunk, n - done)
         p = sample_params(m, rng, ranges)
         s0 = initial_state(p)
-        times, pos, vel, T, r_imp = physics.simulate_ballistic(s0, p[:, 4], dt=0.1, out_dt=DT_MEAS)
+        wx = rng.integers(0, len(bank), m) if bank is not None else np.full(m, -1)
+        atm = bank[wx] if bank is not None else None
+        times, pos, vel, T, r_imp = physics.simulate_ballistic(s0, p[:, 4], dt=0.1, out_dt=DT_MEAS, atm=atm)
         f = rng.uniform(*frac, m) if isinstance(frac, tuple) else np.full(m, frac)
         k_c = np.minimum(np.floor(f * T / DT_MEAS).astype(int), K_MAX - 1)
         k_c = np.maximum(k_c, 12)
@@ -75,14 +79,14 @@ def generate(n, seed, ranges=ID_RANGES, frac=(0.08, 0.20), noise=radar.NOISE_NOM
             # true future on the tau grid: integrate from t_c (exact state) with fine steps
         # future positions: re-integrate from state_c and sample at tau grid (vectorised, piecewise linear on 0.1 s)
         t_rem = T - t_c
-        future[:] = _future_on_grid(state_c, p[:, 4], t_rem, tau)
-        for key, val in zip(out.keys(), [meas, meas_pol.astype(np.float32), k_c + 1, t_c, T, future, state_c, r_imp, p[:, 4], p, np.stack([sr, sa], 1)]):
+        future[:] = _future_on_grid(state_c, p[:, 4], t_rem, tau, atm)
+        for key, val in zip(out.keys(), [meas, meas_pol.astype(np.float32), k_c + 1, t_c, T, future, state_c, r_imp, p[:, 4], p, np.stack([sr, sa], 1), wx]):
             out[key].append(val)
         done += m
     return {k: np.concatenate(v) for k, v in out.items()}
 
 
-def _future_on_grid(state_c, beta, t_rem, tau, dt=0.05):
+def _future_on_grid(state_c, beta, t_rem, tau, atm=None, dt=0.05):
     """Positions at t_c + tau * t_rem for each sample, by RK4 integration with per-sample step dt_i = t_rem/(steps)."""
     n = state_c.shape[0]
     steps_per_cell = 8
@@ -93,18 +97,18 @@ def _future_on_grid(state_c, beta, t_rem, tau, dt=0.05):
     res[:, 0] = s[:, :3]
     for c in range(n_cells):
         for _ in range(steps_per_cell):
-            s = _rk4_var(s, beta, h)
+            s = _rk4_var(s, beta, h, atm)
         res[:, c + 1] = s[:, :3]
     res[:, -1, 2] = np.clip(res[:, -1, 2], -5.0, 5.0)   # lands at z ~ 0 (step-size dependent residue)
     return res
 
 
-def _rk4_var(s, beta, h):
+def _rk4_var(s, beta, h, atm=None):
     hh = h[:, None]
-    k1 = physics._deriv(s, beta)
-    k2 = physics._deriv(s + 0.5 * hh * k1, beta)
-    k3 = physics._deriv(s + 0.5 * hh * k2, beta)
-    k4 = physics._deriv(s + hh * k3, beta)
+    k1 = physics._deriv(s, beta, atm)
+    k2 = physics._deriv(s + 0.5 * hh * k1, beta, atm)
+    k3 = physics._deriv(s + 0.5 * hh * k2, beta, atm)
+    k4 = physics._deriv(s + hh * k3, beta, atm)
     return s + hh / 6.0 * (k1 + 2 * k2 + 2 * k3 + k4)
 
 
