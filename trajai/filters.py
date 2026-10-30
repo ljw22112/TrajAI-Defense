@@ -65,11 +65,21 @@ def _init(meas_c, dt, sigma_r, sigma_ang):
     return x, P
 
 
+def _R(n, sigma_r, sigma_ang):
+    """Per-track measurement covariance (N, 3, 3); sigma_* may be scalars or (N,) arrays."""
+    sr = np.broadcast_to(np.asarray(sigma_r, float), (n,))
+    sa = np.broadcast_to(np.asarray(sigma_ang, float), (n,))
+    R = np.zeros((n, 3, 3))
+    R[:, 0, 0], R[:, 1, 1], R[:, 2, 2] = sr ** 2, sa ** 2, sa ** 2
+    return R
+
+
 def ekf(meas_pol, meas_c, n_meas, dt, sigma_r, sigma_ang):
-    """Run the EKF on a batch. Returns x (N,7), P (N,7,7), mean NIS (N,), ln-beta history (N, K, 2)."""
+    """Run the EKF on a batch. Returns x (N,7), P (N,7,7), mean NIS (N,), ln-beta history (N, K, 2).
+    sigma_r / sigma_ang may be scalars or per-track arrays (N,)."""
     x, P = _init(meas_c, dt, sigma_r, sigma_ang)
     n = x.shape[0]
-    R = np.diag([sigma_r ** 2, sigma_ang ** 2, sigma_ang ** 2])
+    Rall = _R(n, sigma_r, sigma_ang)
     Q = Qd(dt)
     nis_sum = np.zeros(n)
     nis_cnt = np.zeros(n)
@@ -79,7 +89,7 @@ def ekf(meas_pol, meas_c, n_meas, dt, sigma_r, sigma_ang):
         act = k < n_meas
         if not act.any():
             break
-        xa, Pa = x[act], P[act]
+        xa, Pa, R = x[act], P[act], Rall[act]
         xp = phi(xa, dt)
         F = numerical_F(xa, dt, xp)
         Pp = F @ Pa @ np.transpose(F, (0, 2, 1)) + Q
@@ -116,7 +126,7 @@ def ukf(meas_pol, meas_c, n_meas, dt, sigma_r, sigma_ang, alpha=1e-1, beta_ut=2.
     wc = wm.copy()
     wm[0] = lam / (L + lam)
     wc[0] = wm[0] + (1 - alpha ** 2 + beta_ut)
-    R = np.diag([sigma_r ** 2, sigma_ang ** 2, sigma_ang ** 2])
+    Rall = _R(n, sigma_r, sigma_ang)
     Q = Qd(dt)
     nis_sum = np.zeros(n)
     nis_cnt = np.zeros(n)
@@ -124,7 +134,7 @@ def ukf(meas_pol, meas_c, n_meas, dt, sigma_r, sigma_ang, alpha=1e-1, beta_ut=2.
         act = k < n_meas
         if not act.any():
             break
-        xa, Pa = x[act], P[act]
+        xa, Pa, R = x[act], P[act], Rall[act]
         m = xa.shape[0]
         Ls = np.linalg.cholesky((L + lam) * Pa + 1e-9 * np.eye(L))
         sig = np.concatenate([xa[:, None], xa[:, None] + np.transpose(Ls, (0, 2, 1)), xa[:, None] - np.transpose(Ls, (0, 2, 1))], 1)

@@ -77,10 +77,12 @@ def main():
     ap.add_argument("--lr", type=float, default=1e-3)
     ap.add_argument("--seed", type=int, default=0)
     ap.add_argument("--threads", type=int, default=1)
+    ap.add_argument("--train-split", default="train")
+    ap.add_argument("--val-split", default="val")
     a = ap.parse_args()
     torch.manual_seed(a.seed)
     torch.set_num_threads(a.threads)
-    tr, va = load("train", a.n_train), load("val", 1000)
+    tr, va = load(a.train_split, a.n_train), load(a.val_split, 1000)
     model = PINNPredictor(a.encoder, hybrid=a.hybrid)
     opt = torch.optim.AdamW(model.parameters(), lr=a.lr, weight_decay=1e-5)
     n = tr["feats"].shape[0]

@@ -71,7 +71,7 @@ y = np.arange(len(nn))
 for j, (t, lab, hatch) in enumerate([("test_id_f10", "ID 10%", ""), ("test_ood", "OOD", "///")]):
     vals = [val(m, t, "phys_rms_g") for m, _ in nn]
     ax.barh(y + (j - 0.5) * 0.38, vals, 0.36, color=[COL[m] for m, _ in nn], hatch=hatch, edgecolor="white", label=lab)
-ax.set_yticks(y, [l for _, l in nn]); ax.invert_yaxis(); ax.set_xscale("log")
+ax.set_yticks(y, [l for _, l in nn]); ax.invert_yaxis(); ax.set_xlim(left=0)
 ax.set_xlabel("physics residual RMS, median [g]  (Eq. 7.2)")
 ax.legend(loc="lower right", fontsize=8.5)
 fig.tight_layout(); fig.savefig("figures/physics_residual.png", facecolor="white"); plt.close(fig)

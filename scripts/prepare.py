@@ -19,7 +19,9 @@ def noise_of(split):
 
 def main():
     os.makedirs("results", exist_ok=True)
-    for split in ["train", "val"] + TESTS:
+    for split in ["train", "val", "train_aug", "val_aug"] + TESTS:
+        if not os.path.exists(f"{DATA}/{split}.npz"):
+            continue
         nz = noise_of(split)
         done_prep = os.path.exists(f"{DATA}/prep_{split}.npz")
         done_base = split not in TESTS or all(os.path.exists(f"results/baseline_{b}_{split}.npz") for b in ("ekf", "ukf"))
@@ -27,6 +29,8 @@ def main():
             print(f"{split:14s} skip (done)", flush=True)
             continue
         d = dict(np.load(f"{DATA}/{split}.npz"))
+        if "sigma" in d and split.endswith("_aug"):   # per-track noise (augmented splits)
+            nz = dict(sigma_r=d["sigma"][:, 0], sigma_ang=d["sigma"][:, 1])
         t0 = time.time()
         feats, pad, origin = features.track_features(d["meas"], d["n_meas"])
         x, P, nis, _ = filters.ekf(d["meas_pol"].astype(float), d["meas"].astype(float), d["n_meas"], 0.5, nz["sigma_r"], nz["sigma_ang"])

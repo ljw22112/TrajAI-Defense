@@ -102,7 +102,7 @@ def main(names):
                        lb_err=np.abs(p["lb"] - np.log(d["beta"])))
             allm[name][s] = {k: summarize(v) for k, v in res.items()}
             allm[name][s]["coverage"] = float(metrics.cep_coverage(p["ip"][:, :2], cep, d["impact"]).mean())
-            np.savez_compressed(f"results/pred_{name}_{s}.npz", grid=p["grid"].astype(np.float32), ip=p["ip"], tot=p["tot"],
+            np.savez_compressed(f"results/pred_{name}_{s}.npz", grid=p["grid"].astype(np.float32), ip=p["ip"], tot_pred=p["tot"],
                                 sig=p["sig"], **{k: v for k, v in res.items()})
             print(f"{name:18s} {s:14s} ADE {allm[name][s]['ade']['median']:7.0f}  miss {allm[name][s]['miss']['median']:7.0f}  "
                   f"ToT {allm[name][s]['tot']['median']:5.2f}  CEP {allm[name][s]['cep']['median']:6.0f}  cov {allm[name][s]['coverage']:.2f}  "

@@ -45,7 +45,7 @@ def initial_state(params):
 
 def generate(n, seed, ranges=ID_RANGES, frac=(0.08, 0.20), noise=radar.NOISE_NOMINAL, chunk=4000):
     rng = np.random.default_rng(seed)
-    out = {k: [] for k in ["meas", "meas_pol", "n_meas", "t_c", "T", "future", "state_c", "impact", "beta", "params"]}
+    out = {k: [] for k in ["meas", "meas_pol", "n_meas", "t_c", "T", "future", "state_c", "impact", "beta", "params", "sigma"]}
     done = 0
     while done < n:
         m = min(chunk, n - done)
@@ -61,9 +61,14 @@ def generate(n, seed, ranges=ID_RANGES, frac=(0.08, 0.20), noise=radar.NOISE_NOM
         future = np.zeros((m, N_TAU, 3), np.float32)
         state_c = np.zeros((m, 6))
         tau = np.linspace(0, 1, N_TAU)
+        if noise == "mixed":   # augmentation: per-track noise level, log-uniform
+            sr = np.exp(rng.uniform(np.log(10.0), np.log(60.0), m))
+            sa = np.exp(rng.uniform(np.log(0.3e-3), np.log(1.8e-3), m))
+        else:
+            sr, sa = np.full(m, noise["sigma_r"]), np.full(m, noise["sigma_ang"])
         for i in range(m):
             k = k_c[i] + 1
-            zp, zc = radar.measure(pos[i, :k], rng, **noise)
+            zp, zc = radar.measure(pos[i, :k], rng, sigma_r=sr[i], sigma_ang=sa[i])
             meas[i, :k] = zc
             meas_pol[i, :k] = zp
             state_c[i] = np.r_[pos[i, k_c[i]], vel[i, k_c[i]]]
@@ -71,7 +76,7 @@ def generate(n, seed, ranges=ID_RANGES, frac=(0.08, 0.20), noise=radar.NOISE_NOM
         # future positions: re-integrate from state_c and sample at tau grid (vectorised, piecewise linear on 0.1 s)
         t_rem = T - t_c
         future[:] = _future_on_grid(state_c, p[:, 4], t_rem, tau)
-        for key, val in zip(out.keys(), [meas, meas_pol.astype(np.float32), k_c + 1, t_c, T, future, state_c, r_imp, p[:, 4], p]):
+        for key, val in zip(out.keys(), [meas, meas_pol.astype(np.float32), k_c + 1, t_c, T, future, state_c, r_imp, p[:, 4], p, np.stack([sr, sa], 1)]):
             out[key].append(val)
         done += m
     return {k: np.concatenate(v) for k, v in out.items()}
@@ -103,12 +108,14 @@ def _rk4_var(s, beta, h):
     return s + hh / 6.0 * (k1 + 2 * k2 + 2 * k3 + k4)
 
 
-def make_all(out_dir, n_train=20_000, n_val=2_000, seed=2026):
+def make_all(out_dir, n_train=20_000, n_val=2_000, seed=2026, only=None):
     import os
     os.makedirs(out_dir, exist_ok=True)
     sets = {
         "train": dict(n=n_train, seed=seed, ranges=ID_RANGES, frac=(0.08, 0.20)),
         "val": dict(n=n_val, seed=seed + 1, ranges=ID_RANGES, frac=(0.08, 0.20)),
+        "train_aug": dict(n=n_train, seed=seed + 10, ranges=ID_RANGES, frac=(0.08, 0.20), noise="mixed"),
+        "val_aug": dict(n=n_val, seed=seed + 11, ranges=ID_RANGES, frac=(0.08, 0.20), noise="mixed"),
         "test_id_f10": dict(n=1000, seed=seed + 2, ranges=ID_RANGES, frac=0.10),
         "test_id_f15": dict(n=1000, seed=seed + 3, ranges=ID_RANGES, frac=0.15),
         "test_id_f05": dict(n=1000, seed=seed + 6, ranges=ID_RANGES, frac=0.05),
@@ -116,6 +123,8 @@ def make_all(out_dir, n_train=20_000, n_val=2_000, seed=2026):
         "test_ood": dict(n=1000, seed=seed + 5, ranges=OOD_RANGES, frac=0.12),
     }
     for name, kw in sets.items():
+        if only and name not in only:
+            continue
         d = generate(**kw)
         np.savez_compressed(os.path.join(out_dir, f"{name}.npz"), **d)
         print(f"{name:14s} n={len(d['T']):6d}  T=[{d['T'].min():.0f},{d['T'].max():.0f}] s  "

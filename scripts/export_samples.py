@@ -37,7 +37,7 @@ def main(model):
                 meas=km(raw["meas"][i, :n:2]), truth=km(raw["future"][i]),
                 ekf=dict(grid=km(ekf["grid"][i]), ip=km(ekf["mpi"][i]), cep=float(ekf["cep"][i]), miss=float(ekf["miss"][i])),
                 pinn=dict(grid=km(grid), ip=km(pr["ip"][i, :2]), cep=float(pr["cep"][i]), miss=float(pr["miss"][i]),
-                          tot=float(pr["tot"][i]), sigma=np.round(pr["sig"][i], 1).tolist()),
+                          tot=float(pr["tot_pred"][i]), sigma=np.round(pr["sig"][i], 1).tolist()),
                 impact=km(raw["impact"][i, :2]),
                 threat=th,
             ))

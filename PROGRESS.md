@@ -1,4 +1,12 @@
-# 작업 진행 현황 (2026-10-29 22:50 중단 시점, 브랜치 `wip`)
+# 작업 진행 현황
+
+## 2026-10-30 (3차 세션)
+- v1 결과(data_tf, pinn_tf, pinn_tf_hybrid; 공칭 잡음, 1,500 step) 평가 → 사이트 §9.1/9.2, Table 2 측정값, README 반영, main 배포
+- ONNX 변환 완료: ONNX Runtime p50 0.87 ms / p99 5.3 ms, PyTorch와 3.3 cm 이내 일치. EKF+MC(100) 228 ms
+- 발견: 공칭 잡음만 학습한 신경망은 고잡음 시험에서 IP 오차 11–14 km로 붕괴 → 잡음 증강 데이터(train_aug, val_aug) 추가
+- v2 재학습 진행: 잡음 증강 + 4,500 step (pinn_tf_hybrid_v2, data_tf_v2, data_tf_2k_v2, 이후 pinn_tf_v2, pinn_tf_2k_v2, pinn_lstm_v2)
+
+## 2026-10-29 중단 시점 기록 (브랜치 `wip`)
 
 ## 완료
 - **GitHub Pages 사이트** (`index.html`): 기술 보고서 형식, 7-상태 EKF + Monte Carlo 궤도 추정 시연 (브라우저 실시간 계산)
