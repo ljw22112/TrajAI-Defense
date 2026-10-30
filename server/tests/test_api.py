@@ -130,3 +130,12 @@ def test_delete_scenario_owner_only(client, users, admin):
 def test_audit_trail(client, admin):
     rows = client.get("/api/audit", headers=admin).json()
     assert any(r["action"] == "estimate" for r in rows)
+
+
+def test_registry_seed_fits_schema():
+    """PostgreSQL enforces VARCHAR lengths (SQLite does not), so check the seed list statically."""
+    from app.main import MODELS
+    from app.models import ModelVersion
+    lim = {c.name: getattr(c.type, "length", None) for c in ModelVersion.__table__.columns}
+    for name, kind, *_ in MODELS:
+        assert len(name) <= lim["name"] and len(kind) <= lim["kind"]

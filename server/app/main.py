@@ -27,8 +27,9 @@ from .routers import assets, auth, insights, scenarios, stream, weather  # noqa:
 from .security import hash_password  # noqa: E402
 
 MODELS = [  # registry seed: (name, kind, onnx file, uses weather, metrics key)
-    ("pinn_tf_hybrid", "pinn-hybrid (std atmosphere, v1)", "pinn_tf_hybrid.onnx", False, "pinn_tf_hybrid"),
-    ("wx_hybrid_date", "pinn-hybrid (weather input, v2)", "wx_hybrid_date.onnx", True, "wx_hybrid_date"),
+    ("wx_hybrid_date", "pinn-hybrid · weather input", "wx_hybrid_date.onnx", True, "wx_hybrid_date"),
+    ("pinn_tf_hybrid_v2", "pinn-hybrid · std atm · v2", "pinn_tf_hybrid_v2.onnx", False, "pinn_tf_hybrid_v2"),
+    ("pinn_tf_hybrid", "pinn-hybrid · std atm · v1", "pinn_tf_hybrid.onnx", False, "pinn_tf_hybrid"),
 ]
 
 
@@ -50,6 +51,8 @@ def seed(db) -> None:
             m = {k: v for k, v in allm.get(key, {}).items() if k != "args"}
             row = ModelVersion(name=name, kind=kind, file_path=str(path), uses_weather=uses_wx, metrics=m)
             db.add(row)
+        elif row is not None and key in allm:
+            row.metrics = {k: v for k, v in allm[key].items() if k != "args"}  # refresh after re-evaluation
         if row is not None and not have_active and path.exists():
             row.is_active = True
             have_active = True
