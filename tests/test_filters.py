@@ -70,3 +70,14 @@ def test_rts_smoother_beats_filter_and_beta_prior_is_used():
     x0, P0, _, _ = filters.ekf(pol[:, :4], car[:, :4], np.full(N, 4), dt, nz["sigma_r"], nz["sigma_ang"],
                                lb_prior=lb_true, slb_prior=0.05)
     assert np.abs(x0[:, 6] - lb_true).max() < 0.3 and np.all(np.sqrt(P0[:, 6, 6]) < 0.06)
+
+
+def test_imm_on_ballistic_tracks_stays_in_ballistic_mode():
+    d = _data(30, 5)
+    nz = radar.NOISE_NOMINAL
+    x, P, mu, nis = filters.imm(d["meas_pol"].astype(float), d["meas"].astype(float), d["n_meas"], 0.5, nz["sigma_r"], nz["sigma_ang"])
+    assert 1.5 < np.nanmedian(nis) < 5.0                        # nominal-mode innovations consistent
+    assert np.nanmean(mu) < 0.5                                 # manoeuvre mode not preferred on ballistic flights
+    assert np.all(np.linalg.eigvalsh(P) > 0)                    # mixed covariance positive definite
+    xe, *_ = filters.ekf(d["meas_pol"].astype(float), d["meas"].astype(float), d["n_meas"], 0.5, nz["sigma_r"], nz["sigma_ang"])
+    assert np.median(np.linalg.norm(x[:, :3] - xe[:, :3], axis=1)) < 100.0

@@ -81,6 +81,14 @@ if MM and "pinn_rts_mm" in MM["test_mm_lift"]:
     claim(r"필터를 넘지 못함\(양력 [\d,]+ m vs EKF ([\d,]+) m", lf["ekf"]["miss"], 0.01, "RQ1 EKF lift")
     if "넘지 못함" in html and lf["pinn_rts_mm"]["miss"] < lf["ekf"]["miss"]:
         fails.append("BAD RQ1: retrained model does beat the EKF under lift")
+MN = load("maneuver.json")
+if MN:
+    claim(r"기동 가설을 넣으면 포함률 ([\d.]+)까지", MN["robust"]["test_mm_lift"]["0.10"]["coverage"], 0.02, "RQ5 manoeuvre-hypothesis coverage")
+    ratio = MN["robust"]["test_mm_lift"]["0.10"]["cep"] / MN["robust"]["test_mm_lift"]["0.00"]["cep"]
+    if "CEP가 약 2배" in html and not 1.8 <= ratio <= 2.2:
+        fails.append(f"BAD RQ5: CEP widening is x{ratio:.2f}, not about 2")
+    if MN["splits"]["long_lift"]["auroc"]["nis_w"] > 0.65 and "감지되지 않음" in html:
+        fails.append("BAD RQ5: innovation test does detect the lift")
 DT = load("decision_time.json")
 if DT:
     c = DT["radii"]["cal"]["300"]

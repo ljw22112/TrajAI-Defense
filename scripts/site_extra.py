@@ -103,6 +103,56 @@ def ood_block():
   </div>"""
 
 
+def maneuver_block():
+    """Longer tracking, IMM, innovation test and a manoeuvre-hypothesis CEP (scripts/maneuver.py)."""
+    if not os.path.exists("results/maneuver.json"):
+        return ""
+    R = json.load(open("results/maneuver.json"))
+    S, rb, la = R["splits"], R["robust"], R.get("lift_accel")
+    lab = {"long_nom": "공칭 비행", "long_lift": "약한 양력", "long_cd": "Cd(M) 곡선 오차"}
+    rows = []
+    for k, e in S.items():
+        au = e.get("auroc", {}).get("nis_w")
+        rows.append(f'<tr><td>{lab[k]}</td><td class="n">{f0(e["ekf"]["miss"])} <small class="muted">({e["ekf"]["coverage"]:.2f})</small></td>'
+                    f'<td class="n">{f0(e["imm"]["miss"])} <small class="muted">({e["imm"]["coverage"]:.2f})</small></td>'
+                    f'<td class="n">{e["flagged"] * 100:.0f}%</td><td class="n">{"—" if au is None else f"{au:.2f}"}</td></tr>')
+    rrows = []
+    for ld in ("0.00", "0.05", "0.10"):
+        a, b, c = rb["test_id_f10"][ld], rb["test_mm_lift"][ld], rb["test_mm_cd"][ld]
+        rrows.append(f'<tr><td>{"없음 (기본 EKF + MC)" if ld == "0.00" else f"L/D ≤ {ld}"}</td>'
+                     + "".join(f'<td class="n">{f0(z["cep"])} / {z["coverage"]:.2f}</td>' for z in (a, b, c)) + "</tr>")
+    nom, lift = S["long_nom"], S["long_lift"]
+    acc = (f" 양력 가속도는 공기가 짙은 하강 후반에 커져, 레이더 창 안의 최대값은 중앙값 {la['window_median']:.2f} m/s²로 비행 전체 최대값({la['flight_median']:.1f} m/s²)의 "
+           f"{la['window_median'] / la['flight_median'] * 100:.0f}%에 불과합니다. 관측 동안에는 측정 잡음(15 m)과 구분하기 어려운 크기라, 기동 오차는 대부분 관측이 끝난 뒤에 생깁니다.") if la else ""
+    b0, b1 = rb["test_mm_lift"]["0.00"], rb["test_mm_lift"]["0.10"]
+    _mm = json.load(open("results/mismatch.json"))["test_mm_lift"]
+    mlc = f'{_mm["pinn_rts_mm"]["coverage"]:.2f}' if "pinn_rts_mm" in _mm else "—"
+    n0, n1 = rb["test_id_f10"]["0.00"], rb["test_id_f10"]["0.10"]
+    return f"""
+  <div class="tw">
+    <table>
+      <caption><b>Table R14</b>정점 이후까지 추적(관측 {R["frac"] * 100:.0f}%, 최대 100 s, 정점 통과 트랙 {nom["past_apogee"]:.0%}): IP 오차 중앙값 [m]과 CEP 포함률, 혁신(NIS) 검정 감지율과 AUROC</caption>
+      <thead><tr><th>실제 비행</th><th class="n">EKF</th><th class="n">IMM (탄도 + 기동 모드)</th><th class="n">감지율 (오경보 기준 5%)</th><th class="n">AUROC</th></tr></thead>
+      <tbody>
+        {chr(10).join("        " + r for r in rows).strip()}
+      </tbody>
+    </table>
+  </div>
+  <div class="tw">
+    <table>
+      <caption><b>Table R15</b>기동 가설 CEP: Monte Carlo 입자마다 L/D ~ U(0, 상한)의 양력을 무작위 부호로 넣어 전파. CEP 중앙값 [m] / 포함률, 관측 12%</caption>
+      <thead><tr><th>가정한 기동</th><th class="n">공칭 (ID 10%)</th><th class="n">약한 양력</th><th class="n">Cd(M) 곡선 오차</th></tr></thead>
+      <tbody>
+        {chr(10).join("        " + r for r in rrows).strip()}
+      </tbody>
+    </table>
+  </div>
+  <div class="prose">
+    <p><b>기동을 감지하거나 대비할 수 있는가.</b> 위 시험은 관측 12%에서 끊어 모든 트랙이 아직 상승 중이었으므로, 정점 이후에 시작하는 양력은 측정에 들어 있지 않았습니다. 그래서 추적을 정점 이후까지 이어 두 가지 표준 대응을 시험했습니다. 하나는 최근 {R["window"]}개 측정의 정규화 혁신 제곱(NIS)으로 모델 오차를 감지하는 검정이고(기준은 별도 공칭 트랙의 95번째 백분위수), 다른 하나는 탄도 모드와 큰 가속도 잡음의 기동 모드를 섞는 IMM 필터입니다. 결과는 부정적입니다. 양력 트랙의 감지율은 {lift["flagged"] * 100:.0f}%로 공칭의 오경보율({nom["flagged"] * 100:.0f}%)과 같고(AUROC {lift["auroc"]["nis_w"]:.2f}), IMM도 오차를 줄이지 못하면서 공칭 비행에서는 {f0(nom["ekf"]["miss"])} → {f0(nom["imm"]["miss"])} m로 손해를 봅니다.{acc}</p>
+    <p>관측으로 알 수 없는 기동에는 불확실성을 미리 넓히는 수밖에 없습니다. 예측 입자마다 양력을 무작위로 넣으면(L/D ≤ 0.10) 양력 트랙의 포함률이 {b0["coverage"]:.2f}에서 {b1["coverage"]:.2f}까지 오르지만, CEP가 {f0(b0["cep"])} → {f0(b1["cep"])} m로 넓어지고 공칭 트랙에서도 {f0(n0["cep"])} → {f0(n1["cep"])} m(포함률 {n1["coverage"]:.2f})로 지나치게 보수적이 됩니다. 이 상한은 시험 자료를 만든 범위와 같아 낙관적인 가정입니다. 불일치 데이터로 학습한 신경망(포함률 {mlc})이 같은 문제를 데이터로 푸는 다른 길이며, 어느 쪽이든 위협 목록(예상 기동 범위)을 먼저 정해야 한다는 것이 운용상 결론입니다.</p>
+  </div>"""
+
+
 def mismatch_block():
     if not os.path.exists("results/mismatch.json"):
         return ""
@@ -160,7 +210,7 @@ def mismatch_block():
   </div>
   <div class="prose">
     <p>불일치가 생기면 모든 추정기의 오차가 커지지만, 필터와 신경망의 격차는 줄어듭니다. RTS 입력 PINN은 불일치가 없을 때 EKF의 {rts0:.2f}배였으나 Cd 오차에서 {rts_e[0]:.2f}배, 양력에서 {rts_e[1]:.2f}배입니다. 여기의 신경망도 공칭 동역학으로만 학습했으므로 같은 불일치를 겪고 있다는 점에 유의해야 합니다. 더 심각한 문제는 불확실성입니다. 양력 기동에서는 공칭 모델만 아는 모든 추정기의 CEP 포함률이 {min(cov):.2f}–{max(cov):.2f}로 떨어져, 예측 반경이 실제 오차를 크게 과소평가합니다. 모르는 기동 앞에서 필터와 신경망 모두 과신한다는 뜻이며, §9.8의 감지 장치도 이를 잡지 못합니다.{retrain}</p>
-  </div>"""
+  </div>{maneuver_block()}"""
 
 
 def decision_block():

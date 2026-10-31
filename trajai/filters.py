@@ -296,3 +296,68 @@ class StreamingEKF:
         return dict(k=self.k, r=x[:3].tolist(), v=x[3:6].tolist(), beta=float(np.exp(x[6])),
                     sigma_pos=float(np.sqrt(np.trace(P[:3, :3]))), sigma_lnb=float(np.sqrt(P[6, 6])),
                     nis=self.nis[-1] if self.nis else None)
+
+
+Q_MAN = 20.0               # manoeuvre-mode white-noise acceleration PSD [m^2/s^3] (~6 m/s^2 per 0.5 s step)
+PI_MODE = np.array([[0.98, 0.02], [0.05, 0.95]])   # mode transition per step: ballistic <-> manoeuvring
+
+
+def imm(meas_pol, meas_c, n_meas, dt, sigma_r, sigma_ang, q_man=Q_MAN, trans=PI_MODE, atm=None):
+    """Two-mode interacting multiple model filter (Blom & Bar-Shalom): both modes use the ballistic dynamics,
+    mode 1 with the nominal process noise, mode 2 with a large acceleration noise for an unmodelled manoeuvre
+    (lift, Cd error). Returns the combined x (N,7), P (N,7,7), the manoeuvre-mode probability history (N,K)
+    and the per-step nominal-mode NIS (N,K) for windowed innovation tests."""
+    x0, P0 = _init(meas_c, dt, sigma_r, sigma_ang)
+    n = x0.shape[0]
+    Rall = _R(n, sigma_r, sigma_ang)
+    Qs = [Qd(dt), Qd(dt) * 0]
+    Qs[1] = Qd(dt) * (q_man / Q_ACC)
+    Qs[1][6, 6] = Qd(dt)[6, 6]
+    xs = np.stack([x0, x0.copy()], 1)                       # (N, 2, 7)
+    Ps = np.stack([P0, P0.copy()], 1)
+    mu = np.tile([0.95, 0.05], (n, 1))
+    mu_hist = np.full((n, meas_c.shape[1]), np.nan)
+    nis_hist = np.full((n, meas_c.shape[1]), np.nan)
+    I = np.eye(NX)
+    for k in range(2, int(n_meas.max())):
+        act = k < n_meas
+        if not act.any():
+            break
+        idx = np.nonzero(act)[0]
+        m, xa, Pa, R = mu[act], xs[act], Ps[act], Rall[act]
+        # mixing
+        c = m @ trans                                       # (n, 2) predicted mode probabilities
+        w = m[:, :, None] * trans[None] / np.maximum(c[:, None, :], 1e-300)   # w[i -> j]
+        x0j = np.einsum("nij,nik->njk", w, xa)
+        d = xa[:, :, None, :] - x0j[:, None, :, :]          # (n, i, j, 7)
+        P0j = np.einsum("nij,nikl->njkl", w, Pa) + np.einsum("nij,nijk,nijl->njkl", w, d, d)
+        lik = np.zeros((len(idx), 2))
+        aa = None if atm is None else atm[act]
+        for j in range(2):
+            xj, Pj = x0j[:, j], P0j[:, j]
+            xp = phi(xj, dt, atm=aa)
+            F = numerical_F(xj, dt, xp, aa)
+            Pp = F @ Pj @ np.transpose(F, (0, 2, 1)) + Qs[j]
+            J = radar.polar_jacobian(xp[:, :3])
+            H = np.concatenate([J, np.zeros((len(idx), 3, 4))], 2)
+            nu = meas_pol[act, k] - radar.to_polar(xp[:, :3])
+            nu[:, 1:] = _wrap(nu[:, 1:])
+            S = H @ Pp @ np.transpose(H, (0, 2, 1)) + R
+            Si = np.linalg.inv(S)
+            K = Pp @ np.transpose(H, (0, 2, 1)) @ Si
+            xu = xp + np.einsum("nij,nj->ni", K, nu)
+            xu[:, 6] = np.clip(xu[:, 6], LB_MIN, LB_MAX)
+            IKH = I - K @ H
+            Pu = IKH @ Pp @ np.transpose(IKH, (0, 2, 1)) + K @ R @ np.transpose(K, (0, 2, 1))
+            e = np.einsum("ni,nij,nj->n", nu, Si, nu)
+            lik[:, j] = np.exp(-0.5 * np.minimum(e, 200)) / np.sqrt(np.linalg.det(2 * np.pi * S))
+            xs[idx, j], Ps[idx, j] = xu, 0.5 * (Pu + np.transpose(Pu, (0, 2, 1)))
+            if j == 0:
+                nis_hist[idx, k] = e
+        post = c * lik + 1e-300
+        mu[idx] = post / post.sum(1, keepdims=True)
+        mu_hist[idx, k] = mu[idx, 1]
+    x = np.einsum("nj,njk->nk", mu, xs)
+    d = xs - x[:, None]
+    P = np.einsum("nj,njkl->nkl", mu, Ps) + np.einsum("nj,njk,njl->nkl", mu, d, d)
+    return x, P, mu_hist, nis_hist
