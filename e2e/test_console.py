@@ -36,6 +36,36 @@ def page():
         b.close()
 
 
+def _api(method, path, tok=None, data=None):
+    import json
+    import urllib.parse
+    import urllib.request
+    req = urllib.request.Request(f"{BASE}{path}", method=method,
+                                 data=urllib.parse.urlencode(data).encode() if data else None,
+                                 headers={"Authorization": f"Bearer {tok}"} if tok else {})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        body = r.read()
+    return json.loads(body) if body else None
+
+
+def _ids(tok):
+    return {"scenarios": {x["id"] for x in _api("GET", "/api/scenarios?limit=100", tok)["items"]},
+            "analyses": {x["id"] for x in _api("GET", "/api/analyses?limit=100", tok)["items"]},
+            "raids": {x["id"] for x in _api("GET", "/api/raids", tok)}}
+
+
+@pytest.fixture(scope="module", autouse=True)
+def leave_no_trace():
+    """Everything the tests create (scenarios, analyses, raids) is deleted afterwards,
+    so the database stays exactly the seeded demo data that export_demo.py publishes."""
+    tok = _api("POST", "/api/auth/login", data={"username": "admin@trajai.dev", "password": "admin1234"})["access_token"]
+    before = _ids(tok)
+    yield
+    for kind, ids in _ids(tok).items():
+        for i in ids - before[kind]:
+            _api("DELETE", f"/api/{kind}/{i}", tok)
+
+
 def shot(page, name):
     if SHOTS:
         page.screenshot(path=f"{SHOTS}/{name}.png", full_page=True)

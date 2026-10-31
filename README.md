@@ -30,7 +30,7 @@ docker compose up --build                         # http://localhost:8000
 # 테스트
 python -m pytest -q tests server/tests            # 코어 21 + API 24
 cd web && npm test                                # 프론트엔드 9
-E2E_BASE=http://127.0.0.1:8000 python -m pytest e2e   # Playwright 6 (서버 실행 + seed_demo.py 필요)
+E2E_BASE=http://127.0.0.1:8000 python -m pytest e2e   # Playwright 12 (서버 실행 + seed_demo.py 필요, 만든 데이터는 끝나고 삭제)
 ```
 
 ## 구성
@@ -95,13 +95,13 @@ python -m pytest -q tests
 - 잡음 증강으로 고잡음 붕괴(v1 12.2 km)가 사라졌고, 물리 잔차는 0.23 g → 0.086 g으로 줄었습니다.
 - 물리 손실(PINN 대 data only, 같은 v2 조건)은 잔차를 0.40 → 0.10 g으로 확실히 줄이지만, IP 오차 이득은 ID 10%(−61 m)와 OOD(−3.9 km)에서만 유의하고 ID 15%·고잡음에서는 불확실합니다.
 - 대기 모델이 IP 오차의 가장 큰 원인입니다. 선택 일자 기상을 쓰면 EKF 오차가 표준 대기 대비 87% 줄어 기본 설정으로 채택했습니다.
-- 신경망은 여전히 같은 물리 모델을 쓰는 EKF/UKF보다 부정확하고 OOD에 취약합니다. 이점은 지연입니다(ONNX Runtime 0.87 ms 대 EKF + MC 228 ms).
+- Savitzky–Golay 특징을 쓰는 신경망은 같은 물리 모델을 쓰는 EKF/UKF보다 부정확하고 OOD에 취약합니다. 확실한 이점은 지연입니다(ONNX Runtime 0.87 ms 대 EKF + MC 228 ms).
 - **PINN → EKF 되먹임**: PINN의 탄도계수 예측을 EKF 사전정보로 쓰면 5개 시험 분할 모두에서 EKF보다 정확합니다(ID 5% 1,429 → 956 m, OOD 438 → 363 m). 신경망은 필터를 대체할 때보다 필터 안에서 쓸 때 가장 효과적이었습니다.
 - **RTS 평활 특징**: 입력 속도·가속도를 Savitzky–Golay 대신 EKF-RTS 평활로 만들면 PINN 단독 오차가 ID 10% 733 → 437 m, 고잡음 1,704 → 607 m(EKF 629 m보다 정확)로 줄어듭니다.
 - **seed 반복**: 물리 손실의 IP 정확도 이득은 seed 2쌍 모두에서 ID 10%·OOD에만 일관됩니다.
 - **앙상블(seed 3개)**: ID에서 IP 오차와 CEP 포함률이 개선되지만(ID 10% 578 → 514 m), OOD는 개선되지 않습니다. seed만 바꾼 앙상블은 분포 밖 입력을 알아채지 못합니다.
 - 콘솔은 표준 대기 시나리오의 PINN 추정에 RTS 입력 모델(`pinn_tf_v2_rts`, 서버에서 EKF-RTS 평활 후 ONNX 추론)을 씁니다.
-- 운용 콘솔은 기상 시나리오에 `wx_hybrid_date`, 표준 대기 시나리오에 `pinn_tf_hybrid_v2`를 씁니다. 자세한 표와 해석은 프로젝트 페이지 §9에 있습니다.
+- 기상 시나리오에는 `wx_hybrid_date`를 씁니다. 자세한 표와 해석은 프로젝트 페이지 §9에 있습니다.
 
 ## 작성
 

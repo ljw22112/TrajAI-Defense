@@ -15,6 +15,8 @@ SCENARIOS = [
     dict(name="10/27 18Z 짧은 관측 5%", weather_date="2026-10-27", weather_hour=18, seed=305, obs_fraction=0.05),
     dict(name="표준 대기 기준 시나리오", weather_date=None, seed=306),
     dict(name="표준 대기 고잡음", weather_date=None, seed=307, sigma_r=50, sigma_ang_mrad=1.5),
+    # outside the training envelope (v0 > 1900 m/s, beta > 10000): the console's OOD guard hands the PINN request to the EKF
+    dict(name="학습 범위 밖 표적 (고속 · 고β)", weather_date=None, seed=911, v0=2150, beta=14000),
 ]
 
 

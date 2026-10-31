@@ -232,7 +232,7 @@ export TRAJAI_JWT_SECRET=$(openssl rand -hex 32)
 docker compose up --build                            # http://localhost:8000
 
 # 데모 데이터와 정적 데모
-python server/scripts/seed_demo.py                   # API로 시나리오 7개 생성 (실제 기상)
+python server/scripts/seed_demo.py                   # API로 시나리오 8개 생성 (실제 기상 5 · 표준 대기 3)
 cd web && npm run build:demo && cd .. && python server/scripts/export_demo.py
 ```
 
