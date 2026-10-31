@@ -83,6 +83,7 @@ main{min-width:0; display:flex; flex-direction:column; gap:80px}
 .key.ok{border-left-color:var(--obs)} .key.part{border-left-color:var(--pred)} .key.no{border-left-color:#b23b3b}
 pre.code{background:var(--sheet); border:1px solid var(--rule); border-radius:3px; padding:14px 16px; overflow-x:auto; font:12.5px/1.6 var(--font-mono); max-width:100%}
 @media (max-width:860px){.keys{grid-template-columns:1fr}}
+.rq{margin:18px 0 6px} .rq td:first-child{min-width:260px}
 .abstract{border-left:3px solid var(--ink); padding:4px 0 4px 20px; max-width:78ch}
 .abstract p{font-size:15.5px}
 .abstract p + p{margin-top:10px}
@@ -313,6 +314,21 @@ footer b{color:var(--ink); font-weight:600}
     <a class="key no" href="#sec-validity"><span class="label">분포 밖 일반화 실패</span><b>10.4 km</b><span>OOD(고속·고β) 시험에서 하이브리드 IP 오차. 물리 손실만으로는 외삽이 보장되지 않음</span></a>
   </div>
 <!-- KEY:END -->
+<!-- RQ:BEGIN -->
+  <div class="tw rq">
+    <table>
+      <caption><b>연구 질문</b>이 문서의 모든 실험은 아래 다섯 질문 중 하나에 답합니다. §12의 운용 콘솔은 이 답을 실제 운용 흐름에서 쓰는 응용입니다.</caption>
+      <thead><tr><th>질문</th><th>근거</th><th>현재 답</th></tr></thead>
+      <tbody>
+        <tr><td><b>RQ1</b> 짧은 관측(10–15%)만으로 PINN이 탄착점을 실시간으로 예측할 수 있는가</td><td><a href="#sec-results">§9.1</a>, Fig. 8</td><td>지연은 충족(0.87 ms, EKF + MC보다 약 260배 빠름). 단독 정확도는 같은 물리 모델의 EKF/UKF보다 낮음</td></tr>
+        <tr><td><b>RQ2</b> 물리 손실이 데이터만 쓴 학습보다 나은가</td><td><a href="#sec-results">§9.2</a>, <a href="#sec-stats">§9.4</a>, <a href="#sec-ensemble">§9.7</a></td><td>궤적의 물리 일관성은 확실히 개선(잔차 0.40 → 0.10 g). IP 정확도 이득은 조건부</td></tr>
+        <tr><td><b>RQ3</b> 칼만 필터와 PINN을 어떻게 결합해야 가장 좋은가</td><td><a href="#sec-est">§6.2</a>, <a href="#sec-feedback">§9.6</a></td><td>PINN의 β 예측을 EKF 사전정보로 넣을 때 최선: 5개 시험 조건 모두에서 EKF보다 정확</td></tr>
+        <tr><td><b>RQ4</b> 실제 기상(기온·바람)이 예측 오차에 얼마나 영향을 주는가</td><td><a href="#sec-weather">§9.3</a>, <a href="#sec-wximpact">§12.1</a></td><td>가장 큰 오차 원인. 일자 기상 반영으로 EKF 오차 87% 감소, 신경망도 기상 학습으로 2.8 → 0.7 km</td></tr>
+        <tr><td><b>RQ5</b> 예측 불확실성(CEP)을 믿을 수 있는가</td><td><a href="#sec-calib">§9.5</a>, <a href="#sec-ensemble">§9.7</a></td><td>계수 하나로 50% 포함률 보정 가능, 꼬리는 두꺼움. 분포 밖에서는 보정·앙상블 모두 실패</td></tr>
+      </tbody>
+    </table>
+  </div>
+<!-- RQ:END -->
   <div class="meta">
     <div><span class="label">과제</span><b>AI 서비스 프로젝트</b></div>
     <div><span class="label">팀</span><b>인공지능 프론티어</b></div>
@@ -1008,6 +1024,7 @@ python -m pytest -q tests server/tests</code></pre>
 <section id="sec-stack">
   <div class="sh"><span class="no">§12</span><h2>풀스택 운용 콘솔</h2></div>
   <div class="prose">
+    <p><b>응용.</b> 이 절은 §9의 결론을 실제 운용 흐름에 옮긴 부분입니다. 콘솔의 추정기는 §9.4·§9.6에서 더 정확했던 순서(기상 반영 EKF → UKF → PINN β 사전 EKF → PINN)로 쓰이고, PINN의 CEP는 §9.5의 보정 계수로 조정되며, 환경 분석 화면은 RQ4(기상의 영향)를 사용자가 직접 바꿔 보는 도구입니다.</p>
     <p>연구 코드(<span class="mono">trajai/</span>)를 운용 시스템으로 감싼 웹 애플리케이션입니다. 분석관이 기상 일자를 골라 시나리오를 만들면 서버가 궤적을 적분하고 레이더 측정을 생성해 데이터베이스에 저장합니다. 이후 추정기(EKF·UKF·PINN)를 실행하면 결과와 위협 평가가 기록되고, WebSocket으로 추적을 실시간 재생할 수 있습니다. GitHub Pages에는 서버 없이 볼 수 있는 읽기 전용 데모를 올렸습니다. 이 데모는 실제 서버와 PostgreSQL에서 만든 스냅샷입니다.</p>
   </div>
   <div class="callout"><b>바로 가기.</b> <a href="app/">운용 콘솔 데모 (읽기 전용)</a> · <a href="https://github.com/ljw22112/TrajAI-Defense/blob/main/docs/architecture.md">아키텍처 문서 (ERD, 시퀀스, 보안, 테스트)</a> · 로컬 실행 시 API 문서는 <span class="mono">/api/docs</span></div>
