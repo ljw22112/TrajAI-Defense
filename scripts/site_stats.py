@@ -27,7 +27,7 @@ B = 2000
 RAY90 = float(np.sqrt(np.log(10) / np.log(2)))
 LAB = {
     "ekf": "EKF + MC", "ukf": "UKF + MC", "data_tf_v2": "Transformer (data only)", "pinn_tf_v2": "PINN-Transformer",
-    "pinn_tf_hybrid_v2": "PINN + EKF 하이브리드", "wx_hybrid_clim": "하이브리드, 직전 1년 기상 학습",
+    "pinn_tf_hybrid_v2": "PINN + EKF 하이브리드", "pinn_tf_v2_rts": "PINN (RTS 입력)", "wx_hybrid_clim": "하이브리드, 직전 1년 기상 학습",
     "wx_hybrid_date": "하이브리드, 기상 학습 + 일자 입력", "ekf_clim": "EKF, 기후값", "ekf_date": "EKF, 선택 일자 기상",
     "ekf_exp": "EKF, 표준 대기",
 }
@@ -125,7 +125,8 @@ def key_findings(html, rows, cal):
     med = lambda m, s, k="miss": M[m][s][k]["median"]
     pick = lambda a, b: next((r for r in rows if r["a"] == a and r["b"] == b), None)
     onnx, ekfmc = L["onnxruntime_cpu"]["p50_ms"], L["ekf_plus_mc100"]["p50_ms"]
-    h15, u15 = med("pinn_tf_hybrid_v2", "test_id_f15"), med("ukf", "test_id_f15")
+    best_nn = min([m for m in ("pinn_tf_hybrid_v2", "pinn_tf_v2_rts") if m in M], key=lambda m: med(m, "test_id_f15"))
+    h15, u15 = med(best_nn, "test_id_f15"), med("ukf", "test_id_f15")
     we, wd = W["ekf_exp"]["miss"]["median"], W["ekf_date"]["miss"]["median"]
     n0, n1 = med("pinn_tf_hybrid_v2", "test_wx"), med("wx_hybrid_clim", "test_wx")
     dd = pick("wx_hybrid_date", "wx_hybrid_clim")
@@ -133,7 +134,7 @@ def key_findings(html, rows, cal):
     c90 = [c["cal90"] for c in cal]
     cards = [
         ("ok", "지연 목표 충족", f"{onnx:.2f} ms", f"ONNX Runtime p50, CPU 1스레드. EKF + Monte Carlo {ekfmc:.0f} ms보다 약 {ekfmc / onnx:,.0f}배 빠름", "#sec-results"),
-        ("no", "신경망 단독은 필터보다 부정확", f"{f0(h15)} m vs {f0(u15)} m", "최선 신경망(하이브리드) 대 UKF, ID 15% IP 오차 중앙값. 차이는 통계적으로 유의", "#sec-stats"),
+        ("no", "신경망 단독은 필터보다 부정확", f"{f0(h15)} m vs {f0(u15)} m", f"최선 신경망({'RTS 입력 PINN' if best_nn.endswith('_rts') else '하이브리드'}) 대 UKF, ID 15% IP 오차 중앙값. 고잡음에서만 신경망이 EKF보다 정확", "#sec-stats"),
         *_feedback_card(),
         ("ok", "실제 기상 반영이 가장 큰 개선", f"−{(1 - wd / we) * 100:.0f}%", f"EKF IP 오차 {f0(we)} → {f0(wd)} m (표준 대기 → 선택 일자 기상). 기본 설정으로 채택", "#sec-weather"),
         ("ok", "신경망도 기상으로 학습하면 개선", f"{f0(n0)} → {f0(n1)} m", "직전 1년 실제 기상 속 발사 2만 회로 학습. 일자 기상 입력의 추가 효과"
@@ -179,7 +180,7 @@ def main():
     holm(rows)
 
     cal_specs = [(m, s) for m in ["ekf", "ukf", "data_tf_v2"] + ([pinn] if pinn else []) + ["pinn_tf_hybrid_v2"]
-                 for s in ["test_id_f10", "test_id_noise", "test_ood"]]
+                 + (["pinn_tf_v2_rts"] if load("pinn_tf_v2_rts", "test_id_f10") else []) for s in ["test_id_f10", "test_id_noise", "test_ood"]]
     cal_specs += [(m, "test_wx") for m in ["ekf_date", "pinn_tf_hybrid_v2", "wx_hybrid_clim", "wx_hybrid_date"]]
     cal = [c for c in (calibrate(m, s, rng) for m, s in cal_specs) if c]
     # transfer test: scale fitted on ID 10 % applied to shifted splits (no refit)

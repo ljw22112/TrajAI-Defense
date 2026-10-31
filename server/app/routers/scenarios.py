@@ -139,8 +139,8 @@ async def create_estimate(sid: int, body: EstimateIn, db: Session = Depends(get_
         mv = db.scalar(select(ModelVersion).where(ModelVersion.is_active.is_(True)).order_by(ModelVersion.id.desc()))
         if mv is not None and mv.uses_weather and bank is None:
             # A weather-input model given an all-zero profile is out of distribution (scenario 6: 9.4 km vs 2.1 km),
-            # so standard-atmosphere scenarios fall back to the newest registered standard-atmosphere model.
-            mv = db.scalar(select(ModelVersion).where(ModelVersion.uses_weather.is_(False), ModelVersion.kind.like("pinn-hybrid%"))
+            # so standard-atmosphere scenarios fall back to the newest standard-atmosphere served model (RTS-input PINN, then ensemble).
+            mv = db.scalar(select(ModelVersion).where(ModelVersion.uses_weather.is_(False), ModelVersion.kind.like("pinn-%"))
                            .order_by(ModelVersion.id.desc())) or mv
         try:
             res = await run_in_threadpool(estimation.run_pinn, s, bank, mv)

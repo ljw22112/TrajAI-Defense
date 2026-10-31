@@ -33,6 +33,7 @@ MODELS = [  # registry seed: (name, kind, onnx file, uses weather, metrics key)
     ("ens_hybrid_v2", "pinn-hybrid · ensemble ×3",
      "pinn_tf_hybrid_v2.onnx;pinn_tf_hybrid_v2_s1.onnx;pinn_tf_hybrid_v2_s2.onnx", False, "ens_hybrid_v2"),
     ("pinn_tf_v2", "pinn · track only (β prior)", "pinn_tf_v2.onnx", False, "pinn_tf_v2"),
+    ("pinn_tf_v2_rts", "pinn-rts · RTS track features", "pinn_tf_v2_rts.onnx", False, "pinn_tf_v2_rts"),
 ]
 
 
@@ -67,7 +68,7 @@ def seed(db) -> None:
             if name == "pinn_tf_v2" and fb_path.exists():
                 m["prior_sd"] = json.loads(fb_path.read_text())["feedback"]["prior_sd"]
             row.metrics = m
-        if row is not None and not have_active and path.exists() and kind.startswith("pinn-hybrid"):
+        if row is not None and not have_active and path.exists() and kind.startswith(("pinn-hybrid", "pinn-rts")):
             row.is_active = True
             have_active = True
     db.commit()

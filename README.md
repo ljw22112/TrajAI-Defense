@@ -100,6 +100,7 @@ python -m pytest -q tests
 - **RTS 평활 특징**: 입력 속도·가속도를 Savitzky–Golay 대신 EKF-RTS 평활로 만들면 PINN 단독 오차가 ID 10% 733 → 437 m, 고잡음 1,704 → 607 m(EKF 629 m보다 정확)로 줄어듭니다.
 - **seed 반복**: 물리 손실의 IP 정확도 이득은 seed 2쌍 모두에서 ID 10%·OOD에만 일관됩니다.
 - **앙상블(seed 3개)**: ID에서 IP 오차와 CEP 포함률이 개선되지만(ID 10% 578 → 514 m), OOD는 개선되지 않습니다. seed만 바꾼 앙상블은 분포 밖 입력을 알아채지 못합니다.
+- 콘솔은 표준 대기 시나리오의 PINN 추정에 RTS 입력 모델(`pinn_tf_v2_rts`, 서버에서 EKF-RTS 평활 후 ONNX 추론)을 씁니다.
 - 운용 콘솔은 기상 시나리오에 `wx_hybrid_date`, 표준 대기 시나리오에 `pinn_tf_hybrid_v2`를 씁니다. 자세한 표와 해석은 프로젝트 페이지 §9에 있습니다.
 
 ## 작성

@@ -50,6 +50,7 @@ def main():
     ap.add_argument("--train-note", default="공칭 잡음만으로 학습")
     ap.add_argument("--pair2k", nargs=2, default=None)
     ap.add_argument("--lstm", default=None)
+    ap.add_argument("--rts", default=None, help="PINN trained on RTS-smoothed features (§9.6)")
     ap.add_argument("--pinn-label", default="PINN-Transformer")
     ap.add_argument("--prev", nargs=3, default=None, help="previous hybrid/pinn/data names for the comparison table")
     a = ap.parse_args()
@@ -57,6 +58,8 @@ def main():
     methods = [("ekf", "EKF + MC"), ("ukf", "UKF + MC"), (D, "Transformer (data only)"), (P, a.pinn_label)]
     if a.lstm:
         methods.append((a.lstm, "PINN-BiLSTM"))
+    if a.rts:
+        methods.append((a.rts, "PINN-Transformer (RTS 입력)"))
     methods.append((H, "PINN-Transformer + EKF"))
 
     rows = []
@@ -124,7 +127,13 @@ def main():
     L = LAT
     speed = L["ekf_plus_mc100"]["p50_ms"] / L["onnxruntime_cpu"]["p50_ms"]
     res_d, res_p = med(D, "test_id_f10", "phys_rms_g"), med(P, "test_id_f10", "phys_rms_g")
-    best_nn_15 = min(med(m, "test_id_f15", "miss") for m in (D, P, H))
+    cand = [m for m in (D, P, H, a.rts) if m]
+    best_nn_name = min(cand, key=lambda m: med(m, "test_id_f15", "miss"))
+    best_nn_15 = med(best_nn_name, "test_id_f15", "miss")
+    noise_txt = ((f" 예외는 고잡음 조건으로, RTS 입력 PINN({f0(med(a.rts, 'test_id_noise', 'miss'))} m)이 EKF({f0(med('ekf', 'test_id_noise', 'miss'))} m)보다 정확합니다."
+                  if a.rts and med(a.rts, "test_id_noise", "miss") < med("ekf", "test_id_noise", "miss") else ""))
+    rts_txt = (f"와 EKF-RTS 평활 특징을 입력으로 받는 PINN(ID 15% {f0(med(a.rts, 'test_id_f15', 'miss'))} m, §9.6)"
+               if a.rts else "")
     html = f"""<!-- RESULTS:BEGIN -->
   <h3 class="sub" id="sec-results"><span class="no">9.1</span>실험 결과 ({a.label})</h3>
   <div class="prose">
@@ -164,14 +173,14 @@ def main():
   <h3 class="sub"><span class="no">9.2</span>해석</h3>
   <div class="prose">
     <p><b>물리 손실은 궤적의 물리 일관성을 확실히 높입니다.</b> {phys_txt} REQ-F-03의 목표(0.05 g)에는 아직 못 미칩니다.</p>
-    <p><b>EKF 정보 결합이 가장 효과가 큽니다.</b> EKF 사후 상태를 입력으로 받는 하이브리드 모델이 신경망 중 가장 정확하며(ID 15%에서 {f0(med(H, "test_id_f15", "miss"))} m), 필터가 단기 상태를, 신경망이 장기 궤적을 맡는 Table 6의 구조를 뒷받침합니다.</p>
-    <p><b>정확도는 아직 고전 필터에 못 미칩니다.</b> 신경망의 최선 IP 오차(ID 15% {f0(best_nn_15)} m)는 EKF({f0(med("ekf", "test_id_f15", "miss"))} m)와 UKF({f0(med("ukf", "test_id_f15", "miss"))} m)보다 큽니다. 모델 불일치가 없는 합성 환경에서는 정확한 물리 모델을 가진 필터가 상한에 가깝기 때문입니다. 신경망의 이점은 현재로서는 정확도보다 지연(약 {speed:,.0f}배)과 일정한 추론 시간에 있습니다.</p>
+    <p><b>EKF 정보 결합이 가장 효과가 큽니다.</b> EKF 사후 상태를 입력으로 받는 하이브리드(ID 15% {f0(med(H, "test_id_f15", "miss"))} m){rts_txt}{"은 모두" if a.rts else "는"} PINN 단독({f0(med(P, "test_id_f15", "miss"))} m)보다 정확하며, 필터가 단기 상태를, 신경망이 장기 궤적을 맡는 Table 6의 구조를 뒷받침합니다.</p>
+    <p><b>정확도는 아직 고전 필터에 못 미칩니다.</b> 신경망의 최선 IP 오차(ID 15% {f0(best_nn_15)} m, {dict(methods).get(best_nn_name, best_nn_name)})는 EKF({f0(med("ekf", "test_id_f15", "miss"))} m)와 UKF({f0(med("ukf", "test_id_f15", "miss"))} m)보다 큽니다. 모델 불일치가 없는 합성 환경에서는 정확한 물리 모델을 가진 필터가 상한에 가깝기 때문입니다. 신경망의 이점은 현재로서는 정확도보다 지연(약 {speed:,.0f}배)과 일정한 추론 시간에 있습니다.{noise_txt}</p>
     <p><b>분포 이동에 취약합니다.</b> 학습 분포 밖의 OOD 조건에서는 모든 신경망의 IP 오차가 10 km 이상으로 커지고 CEP 포함률이 0.1 수준으로 떨어집니다. 반면 EKF/UKF는 물리 모델이 그대로 성립하므로 영향이 작습니다. 물리 잔차를 손실에 넣는 것만으로는 외삽 일반화가 보장되지 않는다는 결과입니다.</p>
     <p><b>필터 쪽의 결과.</b> 관측 5%에서 EKF는 CEP 포함률 {M["ekf"]["test_id_f05"]["coverage"]:.2f}로 과신하고 UKF는 {M["ukf"]["test_id_f05"]["coverage"]:.2f}로 보정이 유지되어, 공분산이 큰 초기 구간에서 선형화 오차가 문제가 된다는 §6.1의 예상과 일치합니다.</p>
   </div>
 <!-- RESULTS:END -->"""
     # ---------------- requirements table (Table 2): measured value + verdict
-    nn = [x for x in (D, P, H, a.lstm) if x]
+    nn = [x for x in (D, P, H, a.lstm, a.rts) if x]
     best = min(nn, key=lambda m: med(m, "test_id_f15", "miss"))
     best10 = min(nn, key=lambda m: med(m, "test_id_f10", "miss"))
     res_best = min(med(m, "test_id_f10", "phys_rms_g") for m in (P, H))
