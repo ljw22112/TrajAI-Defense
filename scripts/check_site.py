@@ -63,6 +63,17 @@ if FB:
     rts = FB["rts"]["vel_err"]
     claim(r"속도 오차가 훨씬 작고\(([\d.]+) →", rts["sg"], 0.02, "§6 SG velocity error")
     claim(r"속도 오차가 훨씬 작고\([\d.]+ → ([\d.]+) m/s", rts["rts"], 0.05, "§6 RTS velocity error")
+    sp = FB["feedback"]["splits"]
+    if f"{len(sp)}개 조건 모두 EKF보다 정확" in html and not all(r["ci_diff"][1] < 0 for r in sp.values()):
+        fails.append("BAD RQ3: feedback not better than EKF in every split")
+if OOD:
+    claim(r"감지\(AUROC ([\d.]+)\)", OOD["detect"]["test_ood"]["latent"]["auroc"], 0.001, "RQ5 OOD AUROC")
+    claim(r"OOD 오차 ([\d.]+) → [\d.]+ km", OOD["guard"]["test_ood"]["network"] / 1000, 0.01, "RQ5 OOD before")
+    claim(r"OOD 오차 [\d.]+ → ([\d.]+) km", OOD["guard"]["test_ood"]["latent"]["miss"] / 1000, 0.02, "RQ5 OOD after")
+if MM:
+    cov = [v["coverage"] for k, v in MM["test_mm_lift"].items() if not k.endswith("_mm")]
+    claim(r"과신\(포함률 ([\d.]+)–", min(cov), 0.03, "RQ5 lift coverage min")
+    claim(r"과신\(포함률 [\d.]+–([\d.]+)\)", max(cov), 0.03, "RQ5 lift coverage max")
 for pat, val, where in ((r"PINN 단독 오차가 ID 10% (\d[\d,]*) →", med("pinn_tf_v2", "test_id_f10"), "README RTS ID10 before"),
                         (r"PINN 단독 오차가 ID 10% \d[\d,]* → (\d[\d,]*) m", med("pinn_tf_v2_rts", "test_id_f10"), "README RTS ID10 after"),
                         (r"개선되지만\(ID 10% (\d[\d,]*) →", med("pinn_tf_hybrid_v2", "test_id_f10"), "README ensemble before"),

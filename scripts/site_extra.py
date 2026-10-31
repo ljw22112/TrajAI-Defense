@@ -123,18 +123,28 @@ def mismatch_block():
                     f'<td class="n">{f0(lf)} <small class="muted">(×{lf / e[1]:.2f})</small></td>'
                     f'<td class="n">{Mm["test_mm_cd"][k]["coverage"]:.2f} / {Mm["test_mm_lift"][k]["coverage"]:.2f}</td></tr>')
     rts_e = [Mm[s]["pinn_tf_v2_rts"]["miss"] / Mm[s]["ekf"]["miss"] for s in ("test_mm_cd", "test_mm_lift")]
+    rts0 = ref["pinn_tf_v2_rts"] / ref["ekf"]
+    sh = json.load(open("results/mismatch_shift.json"))   # median truth IP shift vs the same flight without mismatch
+    nom = [k for k in keys if not k.endswith("_mm")]
+    cov = [Mm["test_mm_lift"][k]["coverage"] for k in nom]
     retrain = ""
     if "pinn_rts_mm" in Mm["test_mm_cd"]:
         a, b = Mm["test_mm_cd"], Mm["test_mm_lift"]
         best = min(("pinn_rts_mm", "data_rts_mm"), key=lambda k: a[k]["miss"] + b[k]["miss"])
+        dcd, dlf = a["pinn_rts_mm"]["miss"] - a["data_rts_mm"]["miss"], b["pinn_rts_mm"]["miss"] - b["data_rts_mm"]["miss"]
         beats = [s for s, M_ in (("Cd(M) 곡선 오차", a), ("약한 양력", b)) if M_[best]["miss"] < min(M_["ekf"]["miss"], M_["ukf"]["miss"])]
         retrain = (f' 불일치가 섞인 데이터(2만 개)로 다시 학습하면 {MMLAB[best]}이 Cd 오차 {f0(a[best]["miss"])} m, 양력 {f0(b[best]["miss"])} m로, '
                    + (f'{", ".join(beats)}에서 EKF·UKF보다 정확해집니다. 필터는 모르는 동역학을 신경망은 데이터에서 배울 수 있다는, 이 연구에서 신경망이 필터를 앞서는 첫 조건입니다.' if beats else 'EKF·UKF보다는 여전히 부정확합니다.')
-                   + f' 물리 손실(공칭 모델 기준)이 있는 모델과 없는 모델의 차이는 Cd 오차 {a["pinn_rts_mm"]["miss"] - a["data_rts_mm"]["miss"]:+,.0f} m, 양력 {b["pinn_rts_mm"]["miss"] - b["data_rts_mm"]["miss"]:+,.0f} m(PINN − data only)입니다. 실제 동역학과 다른 물리를 강제하면 손해가 될 수 있다는 점은 PINN 설계의 주의점입니다.')
+                   + (" 또한" if beats else " 대신") + f' 불확실성은 훨씬 정직해져 양력에서 CEP 포함률이 {b[best]["coverage"]:.2f}로 오릅니다(공칭 학습 {b["pinn_tf_v2_rts"]["coverage"]:.2f}).'
+                   + f' 물리 손실(공칭 모델 기준)이 있는 모델과 없는 모델의 차이는 Cd 오차 {dcd:+,.0f} m, 양력 {dlf:+,.0f} m(PINN − data only)입니다.'
+                   + (' 실제 동역학과 다른 공칭 물리를 강제하면 손해가 된다는 점은 PINN 설계의 주의점입니다.' if dcd > 0 and dlf > 0 else
+                      ' 공칭 물리가 실제와 달라도 물리 손실이 해가 되지 않았습니다.' if dcd <= 0 and dlf <= 0 else
+                      ' 효과의 방향이 오차 종류에 따라 갈려, 틀린 공칭 물리의 득실은 단정할 수 없습니다.'))
+
     return f"""
   <h3 class="sub" id="sec-mismatch"><span class="no">9.9</span>모델 불일치 시험</h3>
   <div class="prose">
-    <p>지금까지의 시험은 EKF와 데이터 생성기가 같은 동역학을 써서 필터에 유리했습니다(§9.10의 "inverse crime"). 실제 표적은 공칭 모델과 다르게 날기 때문에, 실제 비행에만 두 가지 오차를 넣은 시험 분할(각 1,000회, 관측 12%)을 만들었습니다. 추정기는 모두 공칭 모델을 그대로 씁니다. (1) Cd(M) 곡선 모양 오차: 천음속 정점과 초음속 꼬리를 궤적마다 ±25% 독립적으로 바꿉니다. Cd 전체에 같은 배율을 곱하는 오차는 β로 흡수되므로 불일치가 아닙니다. (2) 약한 양력 기동: 정점 이후 L/D 0.03–0.10의 횡방향 양력. 탄착점은 공칭 비행 대비 중앙값 약 4.1 km(Cd), 0.9 km(양력) 움직입니다.</p>
+    <p>지금까지의 시험은 EKF와 데이터 생성기가 같은 동역학을 써서 필터에 유리했습니다(§9.10의 "inverse crime"). 실제 표적은 공칭 모델과 다르게 날기 때문에, 실제 비행에만 두 가지 오차를 넣은 시험 분할(각 1,000회, 관측 12%)을 만들었습니다. 추정기는 모두 공칭 모델을 그대로 씁니다. (1) Cd(M) 곡선 모양 오차: 천음속 정점과 초음속 꼬리를 궤적마다 ±25% 독립적으로 바꿉니다. Cd 전체에 같은 배율을 곱하는 오차는 β로 흡수되므로 불일치가 아닙니다. (2) 약한 양력 기동: 정점 이후 L/D 0.03–0.10의 횡방향 양력. 탄착점은 공칭 비행 대비 중앙값 약 {sh['test_mm_cd'] / 1000:.1f} km(Cd), {sh['test_mm_lift'] / 1000:.1f} km(양력) 움직입니다.</p>
   </div>
   <div class="tw">
     <table>
@@ -146,7 +156,7 @@ def mismatch_block():
     </table>
   </div>
   <div class="prose">
-    <p>불일치가 생기면 모든 추정기의 오차가 커지지만, 필터와 신경망의 격차는 줄어듭니다. RTS 입력 PINN은 불일치가 없을 때 EKF의 1.29배였으나 Cd 오차에서 {rts_e[0]:.2f}배, 양력에서 {rts_e[1]:.2f}배입니다. 여기의 신경망도 공칭 동역학으로만 학습했으므로 같은 불일치를 겪고 있다는 점에 유의해야 합니다. 더 심각한 문제는 불확실성입니다. 양력 기동에서는 모든 추정기의 CEP 포함률이 0.07–0.19로 떨어져, 예측 반경이 실제 오차를 크게 과소평가합니다. 모르는 기동 앞에서 필터와 신경망 모두 과신한다는 뜻이며, §9.8의 감지 장치도 이를 잡지 못합니다.{retrain}</p>
+    <p>불일치가 생기면 모든 추정기의 오차가 커지지만, 필터와 신경망의 격차는 줄어듭니다. RTS 입력 PINN은 불일치가 없을 때 EKF의 {rts0:.2f}배였으나 Cd 오차에서 {rts_e[0]:.2f}배, 양력에서 {rts_e[1]:.2f}배입니다. 여기의 신경망도 공칭 동역학으로만 학습했으므로 같은 불일치를 겪고 있다는 점에 유의해야 합니다. 더 심각한 문제는 불확실성입니다. 양력 기동에서는 공칭 모델만 아는 모든 추정기의 CEP 포함률이 {min(cov):.2f}–{max(cov):.2f}로 떨어져, 예측 반경이 실제 오차를 크게 과소평가합니다. 모르는 기동 앞에서 필터와 신경망 모두 과신한다는 뜻이며, §9.8의 감지 장치도 이를 잡지 못합니다.{retrain}</p>
   </div>"""
 
 
@@ -243,6 +253,12 @@ def ensemble_block():
   <div class="prose">
     <p>앙상블 예측 분산은 구성원 분산의 평균(관측 잡음에서 오는 불확실성)과 구성원 예측의 분산(모델 불확실성)의 합입니다. {_ens_text(ens)} 콘솔 모델 레지스트리에 앙상블(<code>ens_hybrid_v2</code>, ONNX 3개)을 등록했습니다.</p>
   </div>"""
+    _m = json.load(open("results/metrics.json"))
+    gap = min(_m[k]["test_id_f10"]["miss"]["median"] for k in ("pinn_tf_v2_rts", "pinn_tf_hybrid_v2", "ens_hybrid_v2", "pinn_tf_v2") if k in _m) - _m["ekf"]["test_id_f10"]["miss"]["median"]
+
+    def sd_rng(k, div=1):
+        v = [g["splits"][k]["sd"] / div for g in sv["groups"].values() if k in g["splits"]]
+        return f"{min(v):,.0f}–{max(v):,.0f}" if div == 1 else f"{min(v):.1f}–{max(v):.1f}"
     seed_tbl = "" if not srows else f"""
   <div class="tw">
     <table>
@@ -253,7 +269,7 @@ def ensemble_block():
       </tbody>
     </table>
   </div>
-  <div class="prose"><p>Table R5의 신뢰구간은 시험 표본 변동만 반영합니다. 학습 seed를 바꾼 반복으로 학습 변동을 따로 쟀습니다. ID 10%·고잡음의 seed 간 표준편차(수 m)는 §9.4에서 유의하다고 판정한 차이보다 훨씬 작아 그 결론은 학습 변동에 흔들리지 않지만, OOD는 seed에 따라 수 km 달라지므로 OOD 수치는 단일 모델 값보다 이 범위로 읽어야 합니다.{pl_txt or " 물리 손실 비교용 PINN·data-only 모델의 추가 seed는 CPU 학습 시간 제약으로 돌리지 못해, §9.4의 물리 손실 효과(특히 ID 10%의 −61 m)는 단일 seed 결과로 남아 있습니다."}</p></div>"""
+  <div class="prose"><p>Table R5의 신뢰구간은 시험 표본 변동만 반영합니다. 학습 seed를 바꾼 반복으로 학습 변동을 따로 쟀습니다. seed 간 표준편차는 ID 10% {sd_rng('test_id_f10')} m, 고잡음 {sd_rng('test_id_noise')} m로, ID 10%에서 EKF와 가장 가까운 신경망의 차이({gap:,.0f} m)보다 작지만 물리 손실 유무 같은 신경망끼리의 차이(수십 m)와는 비슷한 크기입니다. OOD는 seed에 따라 {sd_rng('test_ood', 1000)} km 흔들리므로 OOD 수치는 단일 모델 값보다 이 범위로 읽어야 합니다.{pl_txt or " 물리 손실 비교용 PINN·data-only 모델의 추가 seed는 CPU 학습 시간 제약으로 돌리지 못해, §9.4의 물리 손실 효과(특히 ID 10%의 −61 m)는 단일 seed 결과로 남아 있습니다."}</p></div>"""
     return f"""
   <h3 class="sub" id="sec-ensemble"><span class="no">9.7</span>Deep ensemble과 학습 seed 변동</h3>{head}{seed_tbl}"""
 
