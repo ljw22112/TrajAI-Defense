@@ -81,6 +81,13 @@ if MM and "pinn_rts_mm" in MM["test_mm_lift"]:
     claim(r"필터를 넘지 못함\(양력 [\d,]+ m vs EKF ([\d,]+) m", lf["ekf"]["miss"], 0.01, "RQ1 EKF lift")
     if "넘지 못함" in html and lf["pinn_rts_mm"]["miss"] < lf["ekf"]["miss"]:
         fails.append("BAD RQ1: retrained model does beat the EKF under lift")
+DT = load("decision_time.json")
+if DT:
+    c = DT["radii"]["cal"]["300"]
+    claim(r"300 m 기준 중앙값 ([\d.]+) s", c["gain_median"], 0.02, "REQ-P-03 gain median")
+    claim(r"300 m 기준 중앙값 [\d.]+ s · 평균 ([\d.]+) s", c["gain_mean"], 0.02, "REQ-P-03 gain mean")
+    if c["gain_mean"] >= 25 and "미충족" in html.split("REQ-P-03")[1][:400]:
+        fails.append("BAD REQ-P-03: target met but marked unmet")
 for pat, val, where in ((r"PINN 단독 오차가 ID 10% (\d[\d,]*) →", med("pinn_tf_v2", "test_id_f10"), "README RTS ID10 before"),
                         (r"PINN 단독 오차가 ID 10% \d[\d,]* → (\d[\d,]*) m", med("pinn_tf_v2_rts", "test_id_f10"), "README RTS ID10 after"),
                         (r"개선되지만\(ID 10% (\d[\d,]*) →", med("pinn_tf_hybrid_v2", "test_id_f10"), "README ensemble before"),

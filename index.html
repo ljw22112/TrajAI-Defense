@@ -438,7 +438,7 @@ footer b{color:var(--ink); font-weight:600}
         <tr><td class="id">REQ-F-04</td><td>보호 자산 DB 대비 위협 등급과 요격 고도 창 산출</td><td class="c">5단계</td><td>구현, 가상 자산으로 시연 (운용 콘솔, 3D 뷰어)</td><td><span class="st ok">충족</span></td><td><span class="vm">D</span></td></tr>
         <tr><td class="id">REQ-P-01</td><td>단일 표적 추론 지연 (전처리 제외, p99)</td><td class="c">≤ 50 ms</td><td>5.3 ms (ONNX Runtime, CPU)</td><td><span class="st ok">충족</span></td><td><span class="vm">T</span></td></tr>
         <tr><td class="id">REQ-P-02</td><td>IP / CEP 추정 오차, EKF baseline 대비</td><td class="c">−40 %</td><td>EKF + PINN β 사전 -16 % (ID 10%), -33 % (ID 5%). 신경망 단독은 +28 %</td><td><span class="st part">부분 충족</span></td><td><span class="vm">T</span></td></tr>
-        <tr><td class="id">REQ-P-03</td><td>교전 판단 가용 시간 증가</td><td class="c">+25 s</td><td>계산 시간 단축 0.23 s, 25 s 근거 없음</td><td><span class="st no">미충족</span></td><td><span class="vm">A</span></td></tr>
+        <tr><td class="id">REQ-P-03</td><td>교전 판단 가용 시간 증가</td><td class="c">+25 s</td><td>계산 시간 단축 0.23 s. 같은 측정으로 판단 시점을 앞당긴 시간: PINN β 사전, 보정 CEP ≤ 300 m 기준 중앙값 3.5 s · 평균 9.8 s (§9.6 Table R8c)</td><td><span class="st no">미충족</span></td><td><span class="vm">T</span></td></tr>
         <tr><td class="id">REQ-I-01</td><td>센서 트랙 스트리밍 입력 (gRPC / Socket)</td><td class="c">≥ 20 Hz</td><td>WebSocket 측정 스트림 + 측정당 증분 EKF 갱신 (처리량 약 660 Hz, CPU). 실제 센서 연동이 아닌 시뮬레이션 재생</td><td><span class="st part">부분 충족</span></td><td><span class="vm">D</span></td></tr>
 <!-- REQ:END -->
       </tbody>
@@ -926,6 +926,23 @@ footer b{color:var(--ink); font-weight:600}
   </div>
   <div class="prose">
     <p>RTS 특징은 5개 분할 중 4개에서 유의하게 더 정확합니다. 속도·가속도 입력의 잡음을 줄이는 것이 신경망 정확도로 이어진다는 뜻입니다. RTS 평활기는 EKF 위에서 동작하므로, 이것도 칼만 필터의 정보를 신경망 입력으로 쓰는 결합 방식(Table 6의 전처리 역할)입니다. 고잡음 조건에서는 이 PINN 단독이 EKF + MC(629 m)보다 정확하고, ID 15%에서는 EKF 사후 상태를 받는 하이브리드(428 m)보다도 정확합니다. 관측이 5%로 아주 짧으면 평활할 구간 자체가 짧아 이득이 없습니다. 단일 seed 비교이므로 차이가 작은 분할은 §9.7의 seed 변동 범위와 함께 읽어야 합니다.</p>
+  </div>
+  <div class="tw">
+    <table>
+      <caption><b>Table R8c</b>교전 판단 시점: 같은 500개 비행을 관측 5–30%에서 잘라, CEP<sub>50</sub> ≤ R이 처음 되는 시점에 판단. EKF → EKF + PINN β 사전</caption>
+      <thead><tr><th>CEP</th><th class="n">R [m]</th><th class="n">판단 가능 비율</th><th class="n">판단 시 남은 시간 중앙값 [s]</th><th class="n">앞당긴 시간 중앙값 / 평균 [s]</th><th class="n">빨라진 / 늦어진 비율</th></tr></thead>
+      <tbody>
+        <tr><td>보정 전</td><td class="n">300</td><td class="n">0.30 → 0.30</td><td class="n">0 → 0</td><td class="n">0.0 / -0.0</td><td class="n">0.01 / 0.01</td></tr>
+        <tr><td>보정 전</td><td class="n">500</td><td class="n">0.85 → 0.85</td><td class="n">147 → 148</td><td class="n">0.0 / 0.6</td><td class="n">0.05 / 0.02</td></tr>
+        <tr><td>보정 전</td><td class="n">1,000</td><td class="n">1.00 → 1.00</td><td class="n">175 → 176</td><td class="n">0.0 / 0.7</td><td class="n">0.17 / 0.02</td></tr>
+        <tr><td>50% 보정</td><td class="n">300</td><td class="n">0.92 → 0.95</td><td class="n">156 → 161</td><td class="n">3.5 / 9.8</td><td class="n">0.51 / 0.00</td></tr>
+        <tr><td>50% 보정</td><td class="n">500</td><td class="n">1.00 → 1.00</td><td class="n">174 → 176</td><td class="n">0.0 / 1.5</td><td class="n">0.28 / 0.00</td></tr>
+        <tr><td>50% 보정</td><td class="n">1,000</td><td class="n">1.00 → 1.00</td><td class="n">179 → 180</td><td class="n">0.0 / 0.6</td><td class="n">0.13 / 0.00</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="prose">
+    <p><b>교전 판단 시점(REQ-P-03).</b> 계산이 빨라지는 것(0.23 s)과 별개로, 같은 측정으로 더 일찍 믿을 만한 탄착점을 얻으면 판단 시간이 늘어납니다. 보정 전 EKF CEP는 관측이 늘수록 보수적이어서(포함률 0.71–0.95, 관측 10–30%) β 사전이 줄인 오차가 CEP에 드러나지 않고, 앞당겨지는 시간도 1 s 미만입니다. 짝수 번째 트랙으로 포함률을 50%에 맞춘 CEP(배율 EKF 0.55, β 사전 0.50)로 판단하면 R = 300 m에서 트랙의 51%가 더 일찍 판단되고 늦어지는 트랙은 0%이며, 앞당긴 시간은 중앙값 3.5 s, 평균 9.8 s입니다(평균에는 EKF가 끝까지 판단하지 못한 트랙이 포함). 요구한 +25 s에는 못 미칩니다. β 사전의 이득은 β가 아직 관측되지 않은 짧은 관측 구간에 몰려 있고, 관측이 길어지면 EKF가 β를 스스로 추정해 차이가 사라지기 때문입니다. 시점의 해상도는 자르는 간격(관측 2.5–5%, 약 5–9 s)으로 제한됩니다.</p>
   </div>
   <h3 class="sub" id="sec-ensemble"><span class="no">9.7</span>Deep ensemble과 학습 seed 변동</h3>
   <div class="tw">

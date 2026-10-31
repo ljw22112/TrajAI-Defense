@@ -163,6 +163,34 @@ def mismatch_block():
   </div>"""
 
 
+def decision_block():
+    """REQ-P-03: decision-time gain of the beta prior (scripts/decision_time.py)."""
+    if not os.path.exists("results/decision_time.json"):
+        return ""
+    D = json.load(open("results/decision_time.json"))
+    rows = []
+    for mode, lab in (("raw", "보정 전"), ("cal", "50% 보정")):
+        for R, g in D["radii"][mode].items():
+            rows.append(f'<tr><td>{lab}</td><td class="n">{int(R):,}</td><td class="n">{g["ekf_decided"]:.2f} → {g["fb_decided"]:.2f}</td>'
+                        f'<td class="n">{g["ekf_left_median"]:.0f} → {g["fb_left_median"]:.0f}</td>'
+                        f'<td class="n">{g["gain_median"]:.1f} / {g["gain_mean"]:.1f}</td><td class="n">{g["earlier"]:.2f} / {g["later"]:.2f}</td></tr>')
+    c, raw = D["radii"]["cal"]["300"], D["radii"]["raw"]
+    cuts = D["per_cut"]
+    return f"""
+  <div class="tw">
+    <table>
+      <caption><b>Table R8c</b>교전 판단 시점: 같은 {D["n"]}개 비행을 관측 {cuts[0]["frac"] * 100:.0f}–{cuts[-1]["frac"] * 100:.0f}%에서 잘라, CEP<sub>50</sub> ≤ R이 처음 되는 시점에 판단. EKF → EKF + PINN β 사전</caption>
+      <thead><tr><th>CEP</th><th class="n">R [m]</th><th class="n">판단 가능 비율</th><th class="n">판단 시 남은 시간 중앙값 [s]</th><th class="n">앞당긴 시간 중앙값 / 평균 [s]</th><th class="n">빨라진 / 늦어진 비율</th></tr></thead>
+      <tbody>
+        {chr(10).join("        " + r for r in rows).strip()}
+      </tbody>
+    </table>
+  </div>
+  <div class="prose">
+    <p><b>교전 판단 시점(REQ-P-03).</b> 계산이 빨라지는 것(0.23 s)과 별개로, 같은 측정으로 더 일찍 믿을 만한 탄착점을 얻으면 판단 시간이 늘어납니다. 보정 전 EKF CEP는 관측이 늘수록 보수적이어서(포함률 {cuts[2]["cov_ekf"]:.2f}–{cuts[-1]["cov_ekf"]:.2f}, 관측 10–30%) β 사전이 줄인 오차가 CEP에 드러나지 않고, 앞당겨지는 시간도 1 s 미만입니다. 짝수 번째 트랙으로 포함률을 50%에 맞춘 CEP(배율 EKF {D["scale"]["ekf"]:.2f}, β 사전 {D["scale"]["fb"]:.2f})로 판단하면 R = 300 m에서 트랙의 {c["earlier"]:.0%}가 더 일찍 판단되고 늦어지는 트랙은 {c["later"]:.0%}이며, 앞당긴 시간은 중앙값 {c["gain_median"]:.1f} s, 평균 {c["gain_mean"]:.1f} s입니다(평균에는 EKF가 끝까지 판단하지 못한 트랙이 포함). 요구한 +25 s에는 못 미칩니다. β 사전의 이득은 β가 아직 관측되지 않은 짧은 관측 구간에 몰려 있고, 관측이 길어지면 EKF가 β를 스스로 추정해 차이가 사라지기 때문입니다. 시점의 해상도는 자르는 간격(관측 2.5–5%, 약 5–9 s)으로 제한됩니다.</p>
+  </div>"""
+
+
 def feedback_block():
     if not os.path.exists("results/feedback_rts.json"):
         return ""
@@ -197,7 +225,7 @@ def feedback_block():
   <div class="prose">
     <p>β를 관측하기 어려운 짧은 관측에서 효과가 가장 큽니다({SPL[best[0]]}: {f0(best[1]["default"]["miss"])} → {f0(best[1]["feedback"]["miss"])} m). 학습된 사전은 EKF가 관측만으로 좁히지 못하는 β 불확실성을 메우는 역할을 하며, 신경망을 대체가 아니라 필터의 사전정보로 쓰는 것이 이 시스템에서 가장 효과적인 결합 방식입니다.{(f' OOD(β 10,000–16,000, 학습 범위 밖)에서도 {f0(ood["default"]["miss"])} → {f0(ood["feedback"]["miss"])} m로 개선되는데, PINN의 ln β 오차({ood["feedback"]["lb_err"]:.3f})가 EKF 기본 사전으로 수렴한 값의 오차({ood["default"]["lb_err"]:.3f})보다 작기 때문입니다. 신경망 단독으로는 OOD에서 실패하지만(§9.2), 필터 안의 사전정보로 쓰면 필터의 물리 모델이 잘못된 사전을 측정으로 바로잡을 수 있습니다.' if ood and ood["feedback"]["miss"] < ood["default"]["miss"] else (f' OOD에서는 PINN의 β 예측이 학습 범위 밖이라 사전이 틀릴 수 있습니다(OOD: {f0(ood["default"]["miss"])} → {f0(ood["feedback"]["miss"])} m).' if ood else ''))}</p>
     <p><b>RTS 평활.</b> 같은 동역학으로 새로 만든 트랙 {rts["n"]}개(측정 {rts["steps"]}개)에서 측정 시각의 실제 속도 대비 오차 중앙값은 Savitzky–Golay 미분 {v["sg"]:.1f} m/s, EKF(필터) {v["ekf"]:.1f} m/s, RTS 평활 {v["rts"]:.1f} m/s입니다. 가속도는 SG {a["sg"]:.1f} → RTS {a["rts"]:.1f} m/s²입니다. 평활은 마지막 상태를 바꾸지 않으므로 필터 기반 추정기에는 영향이 없고, 신경망 입력 특징을 정제하는 용도입니다.</p>{rts_retrain_block()}
-  </div>"""
+  </div>{decision_block()}"""
 
 
 def _ens_text(ens):
