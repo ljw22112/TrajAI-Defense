@@ -283,3 +283,13 @@ def test_alert_published_for_high_threat(client, users, admin):
         client.delete(f"/api/assets/{a['id']}", headers=admin)
     finally:
         alerts.unsubscribe(q)
+
+
+def test_ood_guard_score():
+    import numpy as np
+    from app.services import estimation
+    g = {"mu": [0.0, 0.0], "P": [[1.0, 0.0], [0.0, 4.0]], "threshold": 3.0}
+    assert estimation.ood_score([0.0, 0.0], g) == 0.0
+    assert abs(estimation.ood_score([3.0, 0.0], g) - 3.0) < 1e-9          # Mahalanobis distance
+    assert estimation.ood_score([0.0, 2.0], g) > g["threshold"]            # 2 * sqrt(4) = 4 -> flagged
+    assert estimation.guard_params("no-such-model") is None
