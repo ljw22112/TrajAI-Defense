@@ -859,35 +859,35 @@ footer b{color:var(--ink); font-weight:600}
   <div class="tw">
     <table>
       <caption><b>Table R6</b>CEP 포함률, 보정 전 → 보정 후 (목표 0.50 / 0.90). 보정 후 값은 모두 보정에 쓰지 않은 절반에서 잰 것</caption>
-      <thead><tr><th>추정기</th><th>분할</th><th class="n">50% 전</th><th class="n">50% 후</th><th class="n">90% 전</th><th class="n">90% 후</th><th class="n">s</th><th class="n">CEP 중앙값 [m]</th><th class="n">ID 10% s 이전</th></tr></thead>
+      <thead><tr><th>추정기</th><th>분할</th><th class="n">50% 전</th><th class="n">50% 후</th><th class="n">90% 전</th><th class="n">90% · 같은 s</th><th class="n">90% · 별도 보정</th><th class="n">s</th><th class="n">CEP 중앙값 [m]</th><th class="n">ID 10% s 이전</th></tr></thead>
       <tbody>
-        <tr><td>EKF + MC</td><td>ID 10%</td><td class="n">0.70</td><td class="n"><b>0.50</b> <small class="muted">±0.03</small></td><td class="n">0.90</td><td class="n"><b>0.76</b></td><td class="n">×0.61</td><td class="n">595 → 366</td><td class="n">—</td></tr>
-        <tr><td>EKF + MC</td><td>고잡음</td><td class="n">0.54</td><td class="n"><b>0.50</b> <small class="muted">±0.03</small></td><td class="n">0.80</td><td class="n"><b>0.78</b></td><td class="n">×0.93</td><td class="n">798 → 746</td><td class="n">0.32</td></tr>
-        <tr><td>EKF + MC</td><td>OOD</td><td class="n">0.77</td><td class="n"><b>0.50</b> <small class="muted">±0.03</small></td><td class="n">0.94</td><td class="n"><b>0.82</b></td><td class="n">×0.64</td><td class="n">673 → 434</td><td class="n">0.48</td></tr>
-        <tr><td>UKF + MC</td><td>ID 10%</td><td class="n">0.78</td><td class="n"><b>0.50</b> <small class="muted">±0.03</small></td><td class="n">0.96</td><td class="n"><b>0.80</b></td><td class="n">×0.56</td><td class="n">613 → 345</td><td class="n">—</td></tr>
-        <tr><td>UKF + MC</td><td>고잡음</td><td class="n">0.63</td><td class="n"><b>0.50</b> <small class="muted">±0.03</small></td><td class="n">0.89</td><td class="n"><b>0.81</b></td><td class="n">×0.81</td><td class="n">846 → 685</td><td class="n">0.33</td></tr>
-        <tr><td>UKF + MC</td><td>OOD</td><td class="n">0.89</td><td class="n"><b>0.50</b> <small class="muted">±0.03</small></td><td class="n">1.00</td><td class="n"><b>0.87</b></td><td class="n">×0.52</td><td class="n">673 → 352</td><td class="n">0.55</td></tr>
-        <tr><td>Transformer (data only)</td><td>ID 10%</td><td class="n">0.55</td><td class="n"><b>0.50</b> <small class="muted">±0.03</small></td><td class="n">0.84</td><td class="n"><b>0.80</b></td><td class="n">×0.90</td><td class="n">963 → 865</td><td class="n">—</td></tr>
-        <tr><td>Transformer (data only)</td><td>고잡음</td><td class="n">0.45</td><td class="n"><b>0.50</b> <small class="muted">±0.03</small></td><td class="n">0.72</td><td class="n"><b>0.79</b></td><td class="n">×1.16</td><td class="n">1,660 → 1,929</td><td class="n">0.40</td></tr>
-        <tr><td>Transformer (data only)</td><td>OOD</td><td class="n">0.15</td><td class="n"><b>0.50</b> <small class="muted">±0.03</small></td><td class="n">0.34</td><td class="n"><b>0.89</b></td><td class="n">×2.40</td><td class="n">6,380 → 15,329</td><td class="n">0.13</td></tr>
-        <tr><td>PINN-Transformer</td><td>ID 10%</td><td class="n">0.61</td><td class="n"><b>0.50</b> <small class="muted">±0.03</small></td><td class="n">0.89</td><td class="n"><b>0.82</b></td><td class="n">×0.83</td><td class="n">986 → 815</td><td class="n">—</td></tr>
-        <tr><td>PINN-Transformer</td><td>고잡음</td><td class="n">0.43</td><td class="n"><b>0.50</b> <small class="muted">±0.04</small></td><td class="n">0.71</td><td class="n"><b>0.77</b></td><td class="n">×1.17</td><td class="n">1,637 → 1,909</td><td class="n">0.34</td></tr>
-        <tr><td>PINN-Transformer</td><td>OOD</td><td class="n">0.17</td><td class="n"><b>0.50</b> <small class="muted">±0.03</small></td><td class="n">0.31</td><td class="n"><b>0.90</b></td><td class="n">×3.08</td><td class="n">4,726 → 14,541</td><td class="n">0.13</td></tr>
-        <tr><td>PINN + EKF 하이브리드</td><td>ID 10%</td><td class="n">0.59</td><td class="n"><b>0.50</b> <small class="muted">±0.03</small></td><td class="n">0.92</td><td class="n"><b>0.82</b></td><td class="n">×0.83</td><td class="n">703 → 581</td><td class="n">—</td></tr>
-        <tr><td>PINN + EKF 하이브리드</td><td>고잡음</td><td class="n">0.45</td><td class="n"><b>0.50</b> <small class="muted">±0.03</small></td><td class="n">0.77</td><td class="n"><b>0.81</b></td><td class="n">×1.07</td><td class="n">983 → 1,057</td><td class="n">0.34</td></tr>
-        <tr><td>PINN + EKF 하이브리드</td><td>OOD</td><td class="n">0.14</td><td class="n"><b>0.50</b> <small class="muted">±0.03</small></td><td class="n">0.42</td><td class="n"><b>1.00</b></td><td class="n">×2.01</td><td class="n">5,171 → 10,394</td><td class="n">0.11</td></tr>
-        <tr><td>PINN (RTS 입력)</td><td>ID 10%</td><td class="n">0.64</td><td class="n"><b>0.50</b> <small class="muted">±0.03</small></td><td class="n">0.94</td><td class="n"><b>0.84</b></td><td class="n">×0.77</td><td class="n">608 → 470</td><td class="n">—</td></tr>
-        <tr><td>PINN (RTS 입력)</td><td>고잡음</td><td class="n">0.40</td><td class="n"><b>0.50</b> <small class="muted">±0.03</small></td><td class="n">0.72</td><td class="n"><b>0.82</b></td><td class="n">×1.25</td><td class="n">522 → 651</td><td class="n">0.26</td></tr>
-        <tr><td>PINN (RTS 입력)</td><td>OOD</td><td class="n">0.17</td><td class="n"><b>0.50</b> <small class="muted">±0.04</small></td><td class="n">0.51</td><td class="n"><b>0.95</b></td><td class="n">×1.78</td><td class="n">6,103 → 10,883</td><td class="n">0.11</td></tr>
-        <tr><td>EKF, 선택 일자 기상</td><td>기상</td><td class="n">0.65</td><td class="n"><b>0.50</b> <small class="muted">±0.03</small></td><td class="n">0.87</td><td class="n"><b>0.79</b></td><td class="n">×0.75</td><td class="n">488 → 364</td><td class="n">—</td></tr>
-        <tr><td>PINN + EKF 하이브리드</td><td>기상</td><td class="n">0.11</td><td class="n"><b>0.50</b> <small class="muted">±0.03</small></td><td class="n">0.24</td><td class="n"><b>0.81</b></td><td class="n">×4.39</td><td class="n">682 → 2,995</td><td class="n">0.08</td></tr>
-        <tr><td>하이브리드, 직전 1년 기상 학습</td><td>기상</td><td class="n">0.63</td><td class="n"><b>0.50</b> <small class="muted">±0.03</small></td><td class="n">0.93</td><td class="n"><b>0.86</b></td><td class="n">×0.83</td><td class="n">870 → 721</td><td class="n">—</td></tr>
-        <tr><td>하이브리드, 기상 학습 + 일자 입력</td><td>기상</td><td class="n">0.60</td><td class="n"><b>0.50</b> <small class="muted">±0.03</small></td><td class="n">0.93</td><td class="n"><b>0.87</b></td><td class="n">×0.85</td><td class="n">781 → 664</td><td class="n">—</td></tr>
+        <tr><td>EKF + MC</td><td>ID 10%</td><td class="n">0.70</td><td class="n"><b>0.50</b> <small class="muted">±0.03</small></td><td class="n">0.90</td><td class="n">0.76</td><td class="n"><b>0.90</b></td><td class="n">×0.61</td><td class="n">595 → 366</td><td class="n">—</td></tr>
+        <tr><td>EKF + MC</td><td>고잡음</td><td class="n">0.54</td><td class="n"><b>0.50</b> <small class="muted">±0.03</small></td><td class="n">0.80</td><td class="n">0.78</td><td class="n"><b>0.90</b></td><td class="n">×0.93</td><td class="n">798 → 746</td><td class="n">0.32</td></tr>
+        <tr><td>EKF + MC</td><td>OOD</td><td class="n">0.77</td><td class="n"><b>0.50</b> <small class="muted">±0.03</small></td><td class="n">0.94</td><td class="n">0.82</td><td class="n"><b>0.90</b></td><td class="n">×0.64</td><td class="n">673 → 434</td><td class="n">0.48</td></tr>
+        <tr><td>UKF + MC</td><td>ID 10%</td><td class="n">0.78</td><td class="n"><b>0.50</b> <small class="muted">±0.03</small></td><td class="n">0.96</td><td class="n">0.80</td><td class="n"><b>0.90</b></td><td class="n">×0.56</td><td class="n">613 → 345</td><td class="n">—</td></tr>
+        <tr><td>UKF + MC</td><td>고잡음</td><td class="n">0.63</td><td class="n"><b>0.50</b> <small class="muted">±0.03</small></td><td class="n">0.89</td><td class="n">0.81</td><td class="n"><b>0.90</b></td><td class="n">×0.81</td><td class="n">846 → 685</td><td class="n">0.33</td></tr>
+        <tr><td>UKF + MC</td><td>OOD</td><td class="n">0.89</td><td class="n"><b>0.50</b> <small class="muted">±0.03</small></td><td class="n">1.00</td><td class="n">0.87</td><td class="n"><b>0.90</b></td><td class="n">×0.52</td><td class="n">673 → 352</td><td class="n">0.55</td></tr>
+        <tr><td>Transformer (data only)</td><td>ID 10%</td><td class="n">0.55</td><td class="n"><b>0.50</b> <small class="muted">±0.03</small></td><td class="n">0.84</td><td class="n">0.80</td><td class="n"><b>0.90</b></td><td class="n">×0.90</td><td class="n">963 → 865</td><td class="n">—</td></tr>
+        <tr><td>Transformer (data only)</td><td>고잡음</td><td class="n">0.45</td><td class="n"><b>0.50</b> <small class="muted">±0.03</small></td><td class="n">0.72</td><td class="n">0.79</td><td class="n"><b>0.90</b></td><td class="n">×1.16</td><td class="n">1,660 → 1,929</td><td class="n">0.40</td></tr>
+        <tr><td>Transformer (data only)</td><td>OOD</td><td class="n">0.15</td><td class="n"><b>0.50</b> <small class="muted">±0.03</small></td><td class="n">0.34</td><td class="n">0.89</td><td class="n"><b>0.90</b></td><td class="n">×2.40</td><td class="n">6,380 → 15,329</td><td class="n">0.13</td></tr>
+        <tr><td>PINN-Transformer</td><td>ID 10%</td><td class="n">0.61</td><td class="n"><b>0.50</b> <small class="muted">±0.03</small></td><td class="n">0.89</td><td class="n">0.82</td><td class="n"><b>0.90</b></td><td class="n">×0.83</td><td class="n">986 → 815</td><td class="n">—</td></tr>
+        <tr><td>PINN-Transformer</td><td>고잡음</td><td class="n">0.43</td><td class="n"><b>0.50</b> <small class="muted">±0.04</small></td><td class="n">0.71</td><td class="n">0.77</td><td class="n"><b>0.90</b></td><td class="n">×1.17</td><td class="n">1,637 → 1,909</td><td class="n">0.34</td></tr>
+        <tr><td>PINN-Transformer</td><td>OOD</td><td class="n">0.17</td><td class="n"><b>0.50</b> <small class="muted">±0.03</small></td><td class="n">0.31</td><td class="n">0.90</td><td class="n"><b>0.90</b></td><td class="n">×3.08</td><td class="n">4,726 → 14,541</td><td class="n">0.13</td></tr>
+        <tr><td>PINN + EKF 하이브리드</td><td>ID 10%</td><td class="n">0.59</td><td class="n"><b>0.50</b> <small class="muted">±0.03</small></td><td class="n">0.92</td><td class="n">0.82</td><td class="n"><b>0.90</b></td><td class="n">×0.83</td><td class="n">703 → 581</td><td class="n">—</td></tr>
+        <tr><td>PINN + EKF 하이브리드</td><td>고잡음</td><td class="n">0.45</td><td class="n"><b>0.50</b> <small class="muted">±0.03</small></td><td class="n">0.77</td><td class="n">0.81</td><td class="n"><b>0.90</b></td><td class="n">×1.07</td><td class="n">983 → 1,057</td><td class="n">0.34</td></tr>
+        <tr><td>PINN + EKF 하이브리드</td><td>OOD</td><td class="n">0.14</td><td class="n"><b>0.50</b> <small class="muted">±0.03</small></td><td class="n">0.42</td><td class="n">1.00</td><td class="n"><b>0.90</b></td><td class="n">×2.01</td><td class="n">5,171 → 10,394</td><td class="n">0.11</td></tr>
+        <tr><td>PINN (RTS 입력)</td><td>ID 10%</td><td class="n">0.64</td><td class="n"><b>0.50</b> <small class="muted">±0.03</small></td><td class="n">0.94</td><td class="n">0.84</td><td class="n"><b>0.90</b></td><td class="n">×0.77</td><td class="n">608 → 470</td><td class="n">—</td></tr>
+        <tr><td>PINN (RTS 입력)</td><td>고잡음</td><td class="n">0.40</td><td class="n"><b>0.50</b> <small class="muted">±0.03</small></td><td class="n">0.72</td><td class="n">0.82</td><td class="n"><b>0.90</b></td><td class="n">×1.25</td><td class="n">522 → 651</td><td class="n">0.26</td></tr>
+        <tr><td>PINN (RTS 입력)</td><td>OOD</td><td class="n">0.17</td><td class="n"><b>0.50</b> <small class="muted">±0.04</small></td><td class="n">0.51</td><td class="n">0.95</td><td class="n"><b>0.90</b></td><td class="n">×1.78</td><td class="n">6,103 → 10,883</td><td class="n">0.11</td></tr>
+        <tr><td>EKF, 선택 일자 기상</td><td>기상</td><td class="n">0.65</td><td class="n"><b>0.50</b> <small class="muted">±0.03</small></td><td class="n">0.87</td><td class="n">0.79</td><td class="n"><b>0.90</b></td><td class="n">×0.75</td><td class="n">488 → 364</td><td class="n">—</td></tr>
+        <tr><td>PINN + EKF 하이브리드</td><td>기상</td><td class="n">0.11</td><td class="n"><b>0.50</b> <small class="muted">±0.03</small></td><td class="n">0.24</td><td class="n">0.81</td><td class="n"><b>0.90</b></td><td class="n">×4.39</td><td class="n">682 → 2,995</td><td class="n">0.08</td></tr>
+        <tr><td>하이브리드, 직전 1년 기상 학습</td><td>기상</td><td class="n">0.63</td><td class="n"><b>0.50</b> <small class="muted">±0.03</small></td><td class="n">0.93</td><td class="n">0.86</td><td class="n"><b>0.90</b></td><td class="n">×0.83</td><td class="n">870 → 721</td><td class="n">—</td></tr>
+        <tr><td>하이브리드, 기상 학습 + 일자 입력</td><td>기상</td><td class="n">0.60</td><td class="n"><b>0.50</b> <small class="muted">±0.03</small></td><td class="n">0.93</td><td class="n">0.87</td><td class="n"><b>0.90</b></td><td class="n">×0.85</td><td class="n">781 → 664</td><td class="n">—</td></tr>
       </tbody>
     </table>
   </div>
   <div class="prose">
-    <p>스칼라 하나로 50% 포함률은 모든 추정기에서 목표에 맞춰집니다. 하지만 같은 s로 잰 90% 포함률은 22개 중 15개에서 0.85 미만(0.76–0.84)입니다. 오차 분포의 꼬리가 가우시안보다 두껍다는 뜻이므로, 높은 신뢰수준이 필요한 위협 판정에는 수준별 보정이 따로 필요합니다. 분포가 바뀌면 ID에서 정한 s가 통하지 않습니다(OOD 50% 포함률: EKF + MC 0.48, UKF + MC 0.55, Transformer (data only) 0.13, PINN-Transformer 0.13, PINN + EKF 하이브리드 0.11, PINN (RTS 입력) 0.11). 그래서 콘솔은 모델마다 학습 분포에 맞는 분할에서 정한 s(<code>results/calibration.json</code>)를 PINN의 CEP에 곱해 위협 확률을 계산하고, 분포 밖 입력의 보정은 보장하지 않습니다.</p>
+    <p>스칼라 하나로 50% 포함률은 모든 추정기에서 목표에 맞춰집니다. 하지만 같은 s로 잰 90% 포함률은 22개 중 15개에서 0.85 미만(0.76–0.84)입니다. 오차 분포의 꼬리가 가우시안보다 두껍다는 뜻입니다. 90% 반경을 따로 보정하면(보정에 쓰지 않은 절반에서) 포함률이 0.90–0.90로 목표에 맞습니다. 그래서 콘솔은 CEP 표시에는 50% 계수를, 위협 확률 계산에는 90% 계수(꼬리를 반영해 더 넓음)를 씁니다. 방어 판단에서는 위협을 낮게 잡는 쪽의 오류가 더 비싸기 때문입니다. 분포가 바뀌면 ID에서 정한 s가 통하지 않습니다(OOD 50% 포함률: EKF + MC 0.48, UKF + MC 0.55, Transformer (data only) 0.13, PINN-Transformer 0.13, PINN + EKF 하이브리드 0.11, PINN (RTS 입력) 0.11). 그래서 콘솔은 모델마다 학습 분포에 맞는 분할에서 정한 s(<code>results/calibration.json</code>)를 PINN의 CEP에 곱해 위협 확률을 계산하고, 분포 밖 입력의 보정은 보장하지 않습니다.</p>
   </div>
 <!-- STATS:END -->
 <!-- EXTRA:BEGIN -->
@@ -957,8 +957,61 @@ footer b{color:var(--ink); font-weight:600}
     </table>
   </div>
   <div class="prose"><p>Table R5의 신뢰구간은 시험 표본 변동만 반영합니다. 학습 seed를 바꾼 반복으로 학습 변동을 따로 쟀습니다. ID 10%·고잡음의 seed 간 표준편차(수 m)는 §9.4에서 유의하다고 판정한 차이보다 훨씬 작아 그 결론은 학습 변동에 흔들리지 않지만, OOD는 seed에 따라 수 km 달라지므로 OOD 수치는 단일 모델 값보다 이 범위로 읽어야 합니다. 물리 손실의 IP 오차 효과(PINN − data only)는 seed를 바꿔도 부호가 같은 분할이 ID 10%, OOD, 바뀌는 분할이 ID 5%, ID 15%, 고잡음입니다. 부호가 바뀌는 분할의 효과는 학습 무작위성 수준이므로 결론에서 뺍니다.</p></div>
+  <h3 class="sub" id="sec-ood"><span class="no">9.8</span>분포 밖 입력 감지와 EKF 대체</h3>
+  <div class="prose">
+    <p>§9.2·§9.7에서 신경망은 학습 범위 밖(OOD)에서 10 km 이상 틀리면서도 그 사실을 알리지 못했습니다. 그래서 예측마다 "학습 데이터와 얼마나 다른가"를 재고, 기준을 넘으면 신경망 대신 EKF 결과를 쓰는 장치를 붙였습니다. 기준은 검증 분할 점수의 95번째 백분위수(정상 트랙의 약 5%가 넘는 값)이며 시험 자료는 쓰지 않았습니다.</p>
+  </div>
+  <div class="tw">
+    <table>
+      <caption><b>Table R11</b>감지 점수별 AUROC(정상 ID 10·15% 트랙 대비)와 괄호 안의 감지율</caption>
+      <thead><tr><th>점수</th><th class="n">OOD (고속·고β)</th><th class="n">Cd(M) 곡선 오차</th><th class="n">약한 양력</th></tr></thead>
+      <tbody>
+        <tr><td>EKF 상태 Mahalanobis</td><td class="n">0.967 <small class="muted">(64%)</small></td><td class="n">0.456 <small class="muted">(1%)</small></td><td class="n">0.453 <small class="muted">(0%)</small></td></tr>
+        <tr><td>신경망 내부 표현 Mahalanobis</td><td class="n">0.999 <small class="muted">(100%)</small></td><td class="n">0.471 <small class="muted">(4%)</small></td><td class="n">0.462 <small class="muted">(4%)</small></td></tr>
+        <tr><td>앙상블 불일치 (seed 3개)</td><td class="n">0.992 <small class="muted">(96%)</small></td><td class="n">—</td><td class="n">—</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="tw">
+    <table>
+      <caption><b>Table R12</b>RTS 입력 PINN 단독, EKF, 내부 표현 감지로 전환하는 전략: IP 오차 중앙값 / p90 [m], EKF로 넘긴 비율</caption>
+      <thead><tr><th>분할</th><th class="n">신경망</th><th class="n">EKF</th><th class="n">감지 + 전환</th><th class="n">전환 비율</th></tr></thead>
+      <tbody>
+        <tr><td>ID 10%</td><td class="n">437 <small class="muted">/ 1,157</small></td><td class="n">340 <small class="muted">/ 1,133</small></td><td class="n"><b>410</b> <small class="muted">/ 1,123</small></td><td class="n">7%</td></tr>
+        <tr><td>ID 15%</td><td class="n">317 <small class="muted">/ 821</small></td><td class="n">225 <small class="muted">/ 608</small></td><td class="n"><b>304</b> <small class="muted">/ 768</small></td><td class="n">4%</td></tr>
+        <tr><td>OOD</td><td class="n">11,711 <small class="muted">/ 57,772</small></td><td class="n">438 <small class="muted">/ 1,006</small></td><td class="n"><b>439</b> <small class="muted">/ 1,014</small></td><td class="n">100%</td></tr>
+        <tr><td>Cd 곡선 오차</td><td class="n">589 <small class="muted">/ 1,533</small></td><td class="n">475 <small class="muted">/ 1,488</small></td><td class="n"><b>579</b> <small class="muted">/ 1,494</small></td><td class="n">4%</td></tr>
+        <tr><td>약한 양력</td><td class="n">1,144 <small class="muted">/ 1,998</small></td><td class="n">1,125 <small class="muted">/ 1,934</small></td><td class="n"><b>1,137</b> <small class="muted">/ 1,986</small></td><td class="n">4%</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="prose">
+    <p>신경망 내부 표현의 거리는 OOD를 거의 완벽하게 가려내고(AUROC 0.999), 전환 전략의 OOD 오차는 11,711 m에서 439 m로, p90은 57,772 m에서 1,014 m로 EKF 수준까지 내려갑니다. 정상 입력은 7%만 넘겨져 비용이 거의 없고, 넘겨진 트랙이 원래 어려운 경우라 ID 10% 오차는 오히려 437 → 410 m로 줄어듭니다. 반면 같은 비행 범위 안에서 동역학만 다른 모델 불일치는 입력 분포가 그대로라 감지하지 못합니다(AUROC 약 0.5). 이 장치는 "입력이 낯선 경우"를 막을 뿐 "물리 모델이 틀린 경우"를 막지는 못하며, 후자는 §9.9에서 다룹니다. 운용 콘솔은 같은 기준으로 RTS 입력 PINN의 예측마다 점수를 계산해, 기준을 넘으면 EKF 결과로 바꾸고 화면에 "분포 밖 → EKF"로 표시합니다.</p>
+  </div>
+  <h3 class="sub" id="sec-mismatch"><span class="no">9.9</span>모델 불일치 시험</h3>
+  <div class="prose">
+    <p>지금까지의 시험은 EKF와 데이터 생성기가 같은 동역학을 써서 필터에 유리했습니다(§9.10의 "inverse crime"). 실제 표적은 공칭 모델과 다르게 날기 때문에, 실제 비행에만 두 가지 오차를 넣은 시험 분할(각 1,000회, 관측 12%)을 만들었습니다. 추정기는 모두 공칭 모델을 그대로 씁니다. (1) Cd(M) 곡선 모양 오차: 천음속 정점과 초음속 꼬리를 궤적마다 ±25% 독립적으로 바꿉니다. Cd 전체에 같은 배율을 곱하는 오차는 β로 흡수되므로 불일치가 아닙니다. (2) 약한 양력 기동: 정점 이후 L/D 0.03–0.10의 횡방향 양력. 탄착점은 공칭 비행 대비 중앙값 약 4.1 km(Cd), 0.9 km(양력) 움직입니다.</p>
+  </div>
+  <div class="tw">
+    <table>
+      <caption><b>Table R13</b>모델 불일치에서의 IP 오차 중앙값 [m], 괄호는 EKF 대비 배율, CEP 포함률 (Cd / 양력)</caption>
+      <thead><tr><th>추정기</th><th class="n">불일치 없음 (ID 10%)</th><th class="n">Cd(M) 곡선 오차</th><th class="n">약한 양력</th><th class="n">포함률</th></tr></thead>
+      <tbody>
+        <tr><td>EKF + MC</td><td class="n">340</td><td class="n">475 <small class="muted">(×1.00)</small></td><td class="n">1,125 <small class="muted">(×1.00)</small></td><td class="n">0.50 / 0.07</td></tr>
+        <tr><td>UKF + MC</td><td class="n">303</td><td class="n">425 <small class="muted">(×0.90)</small></td><td class="n">1,062 <small class="muted">(×0.94)</small></td><td class="n">0.56 / 0.09</td></tr>
+        <tr><td>EKF · PINN β 사전</td><td class="n">286</td><td class="n">421 <small class="muted">(×0.89)</small></td><td class="n">1,059 <small class="muted">(×0.94)</small></td><td class="n">0.55 / 0.08</td></tr>
+        <tr><td>Transformer (data only)</td><td class="n">794</td><td class="n">903 <small class="muted">(×1.90)</small></td><td class="n">1,457 <small class="muted">(×1.29)</small></td><td class="n">0.47 / 0.18</td></tr>
+        <tr><td>PINN-Transformer</td><td class="n">733</td><td class="n">901 <small class="muted">(×1.90)</small></td><td class="n">1,437 <small class="muted">(×1.28)</small></td><td class="n">0.49 / 0.19</td></tr>
+        <tr><td>PINN (RTS 입력)</td><td class="n">437</td><td class="n">589 <small class="muted">(×1.24)</small></td><td class="n">1,144 <small class="muted">(×1.02)</small></td><td class="n">0.47 / 0.11</td></tr>
+        <tr><td>PINN + EKF 하이브리드</td><td class="n">578</td><td class="n">693 <small class="muted">(×1.46)</small></td><td class="n">1,235 <small class="muted">(×1.10)</small></td><td class="n">0.48 / 0.13</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="prose">
+    <p>불일치가 생기면 모든 추정기의 오차가 커지지만, 필터와 신경망의 격차는 줄어듭니다. RTS 입력 PINN은 불일치가 없을 때 EKF의 1.29배였으나 Cd 오차에서 1.24배, 양력에서 1.02배입니다. 여기의 신경망도 공칭 동역학으로만 학습했으므로 같은 불일치를 겪고 있다는 점에 유의해야 합니다. 더 심각한 문제는 불확실성입니다. 양력 기동에서는 모든 추정기의 CEP 포함률이 0.07–0.19로 떨어져, 예측 반경이 실제 오차를 크게 과소평가합니다. 모르는 기동 앞에서 필터와 신경망 모두 과신한다는 뜻이며, §9.8의 감지 장치도 이를 잡지 못합니다.</p>
+  </div>
 <!-- EXTRA:END -->
-  <h3 class="sub" id="sec-validity"><span class="no">9.8</span>타당성 위협과 한계</h3>
+  <h3 class="sub" id="sec-validity"><span class="no">9.10</span>타당성 위협과 한계</h3>
   <div class="tw">
     <table>
       <caption><b>Table R7</b>결론을 약하게 만들 수 있는 요인과 이 연구에서의 대응</caption>
@@ -966,7 +1019,7 @@ footer b{color:var(--ink); font-weight:600}
       <tbody>
         <tr><td style="white-space:nowrap">내적</td><td>학습 seed 수가 적음</td><td>Table R5의 신뢰구간은 시험 표본의 변동만 반영하고 학습 무작위성은 반영하지 않음</td><td>하이브리드는 seed 3개로 변동을 측정(§9.7, ID에서는 작고 OOD에서는 큼). PINN·data-only·기상 모델은 seed 1개라 차이가 작은 비교(물리 손실 ID 10% −61 m, 일자 기상 입력 −36 m)는 결론을 유보</td></tr>
         <tr><td style="white-space:nowrap">내적</td><td>CPU 학습 4,500 step에서 중단</td><td>검증 ADE가 마지막 구간까지 감소(하이브리드 v2: 703 → 580 m), 신경망 성능이 과소평가되었을 수 있음</td><td>GPU 장기 학습으로 상한 재측정</td></tr>
-        <tr><td style="white-space:nowrap">내적</td><td>"inverse crime": 필터와 데이터 생성기가 같은 동역학</td><td>EKF/UKF에 유리한 조건 (§9.1)</td><td>기상 실험은 분석장 오차 섭동(바람 4 m/s, 기온 1.5 K)으로 일부 완화</td></tr>
+        <tr><td style="white-space:nowrap">내적</td><td>"inverse crime": 필터와 데이터 생성기가 같은 동역학</td><td>EKF/UKF에 유리한 조건 (§9.1)</td><td>기상 실험은 분석장 오차 섭동으로, 동역학은 Cd(M) 곡선 오차·약한 양력을 넣은 불일치 시험(§9.9)으로 점검</td></tr>
         <tr><td style="white-space:nowrap">내적</td><td>보정 계수를 시험 분할 안에서 교차 적합</td><td>보고한 포함률은 out-of-fold지만, 같은 분포의 자료를 재사용</td><td>운용에는 별도 보정 세트와 주기적 재보정 필요</td></tr>
         <tr><td style="white-space:nowrap">외적</td><td>합성 데이터, 3-DOF 점질량, 기동 없음, 단일 레이더</td><td>실제 표적·센서로의 일반화는 검증되지 않음</td><td>공개 궤적 자료로 정성 검증 (R-01), IMM·6-DOF 확장</td></tr>
         <tr><td style="white-space:nowrap">외적</td><td>기압면 자료 상한 약 31 km, 그 위 바람 0</td><td>고고도 바람의 영향 누락</td><td>재분석 자료(ERA5 모델 레벨)로 확장</td></tr>

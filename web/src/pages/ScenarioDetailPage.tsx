@@ -137,7 +137,8 @@ export function ScenarioDetailPage() {
                 <tbody>
                   {[...s.estimates].reverse().map(e => (
                     <tr key={e.id} className={latestIds.has(e.id) ? "" : "muted-row"} title={latestIds.has(e.id) ? undefined : "같은 추정기의 이전 실행"}>
-                      <td className="nowrap">{METHOD_LABEL[e.method]}{modelShort(e.model_name) && <span className="chip model">{modelShort(e.model_name)}</span>}</td>
+                      <td className="nowrap">{METHOD_LABEL[e.method]}{modelShort(e.model_name) && <span className="chip model">{modelShort(e.model_name)}</span>}
+                        {e.trajectory.guard?.fallback && <span className="chip acc model"><Term k="분포 밖">분포 밖 → EKF</Term></span>}</td>
                       <td className="n">{fmt(e.miss_m)} m</td><td className="n">{fmt(e.cep)} m</td>
                       <td className={`nowrap ${e.inside_cep ? "ok" : "bad"}`}>{e.inside_cep ? "✓ 포함" : "✗ 밖"}</td>
                       <td className="n">{fmt(e.tot, 1)} s</td><td className="n">{fmt(e.beta_hat)}</td>

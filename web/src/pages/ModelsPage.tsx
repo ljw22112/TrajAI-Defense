@@ -37,7 +37,7 @@ export function ModelsPage() {
             </table>
           </div>
           {m.metrics.latency && <small className="label">추론 지연 (PyTorch, 1 thread) p50 {fmt(m.metrics.latency.p50_ms, 2)} ms · p99 {fmt(m.metrics.latency.p99_ms, 2)} ms</small>}
-          {m.metrics.cep_scale && <small className="label">CEP 보정 계수 ×{fmt(m.metrics.cep_scale, 2)} (split conformal, {m.metrics.cep_scale_fitted_on}에서 추정 · 위협 확률 계산에 적용)</small>}
+          {m.metrics.cep_scale && <small className="label">CEP 보정 계수 50% ×{fmt(m.metrics.cep_scale, 2)}{m.metrics.cep90_scale ? ` · 90% ×${fmt(m.metrics.cep90_scale, 2)}` : ""} (split conformal, {m.metrics.cep_scale_fitted_on}에서 추정 · CEP 표시는 50%, 위협 확률은 더 넓은 90% 계수 사용)</small>}
         </Card>
       ))}
     </div>

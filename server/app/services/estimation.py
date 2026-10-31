@@ -74,7 +74,7 @@ def run_ekf_pinn(scn, track_model, prior_sd: float, bank=None) -> dict:
     pol, car, n = _arrays(scn)
     feats, _, _ = features.track_features(car.astype(np.float32), n)
     t0 = time.perf_counter()
-    _, head = _run_onnx(track_model.file_path, feats, None, None)
+    head = _run_onnx(track_model.file_path, feats, None, None)[1]
     lb = float(head[0, 0] * features.LB_SD + features.LB_MU)
     x, P, nis, _ = filters.ekf(pol, car, n, 0.5, scn.sigma_r, scn.sigma_ang, atm=atm, lb_prior=lb, slb_prior=prior_sd)
     mc = filters.monte_carlo_impact(x, P, np.array([scn.t_c]), n_particles=N_PARTICLES, seed=scn.seed, atm=atm)
@@ -101,28 +101,57 @@ def run_pinn(scn, bank, model_version) -> dict:
     wxf = bank.features(np.zeros(1, int)) if use_wx else np.zeros((1, 27), np.float32)
     # a registry entry may hold several ONNX files (deep ensemble, ';'-separated): run each member and combine
     trajs, heads = [], []
+    context = None
     for path in model_version.file_path.split(";"):
-        traj, head = _run_onnx(path, feats, g, wxf)
-        trajs.append(traj[0]); heads.append(head[0])
+        outs = _run_onnx(path, feats, g, wxf)
+        trajs.append(outs[0][0]); heads.append(outs[1][0])
+        if len(outs) > 2 and context is None:
+            context = outs[2][0]                               # encoder context (guard input), first member
     latency = (time.perf_counter() - t0) * 1000
     trajs, heads = np.stack(trajs), np.stack(heads)
     pos = trajs.mean(0) * features.L_POS + origin[0]
     dT = 100.0 * float(np.exp(heads[:, 1]).mean())
     # split-conformal scale (scripts/site_stats.py): raw heteroscedastic sigmas are mis-calibrated, and the threat
     # probabilities are computed from sigma, so the scale is applied to sigma (CEP is linear in sigma).
-    scale = float((model_version.metrics or {}).get("cep_scale", 1.0))
+    mets = model_version.metrics or {}
+    scale = float(mets.get("cep_scale", 1.0))
+    scale90 = float(mets.get("cep90_scale", scale))
     sig2 = (np.exp(heads[:, 2:4]) * 1000.0) ** 2
     ip_m = trajs[:, -1, :2] * features.L_POS
-    sig = np.sqrt(sig2.mean(0) + ip_m.var(0)) * scale          # mixture variance = mean aleatoric + spread of members
+    sig_raw = np.sqrt(sig2.mean(0) + ip_m.var(0))              # mixture variance = mean aleatoric + spread of members
+    sig = sig_raw * scale                                      # CEP50 shown to the operator (50 % calibrated)
+    # threat probabilities use the 90 %-level scale: the error tail is heavier than Gaussian (§9.5), and under-stating
+    # a threat is the costlier error in defence
+    sig_threat = sig_raw * max(scale, scale90)
     heads = heads.mean(0, keepdims=True)
     head = heads
     tau = np.linspace(0, 1, pos.shape[0])
     return dict(ip=pos[-1, :2], cep=float(metrics.gaussian_cep(sig[:1], sig[1:])[0]), tot=scn.t_c + dT, tot_std=None,
                 beta_hat=float(np.exp(head[0, 0] * features.LB_SD + features.LB_MU)), nis=float(nis[0]), latency_ms=latency,
                 trajectory=dict(t=(scn.t_c + tau * dT)[::4].round(2).tolist(), x=pos[::4, 0].round(1).tolist(), z=pos[::4, 2].round(1).tolist()),
-                sigma=sig)
+                sigma=sig_threat, context=context)
 
 
 def score(result: dict, scn) -> dict:
     miss = float(np.hypot(result["ip"][0] - scn.impact_x, result["ip"][1] - scn.impact_y))
     return dict(miss_m=miss, inside_cep=bool(miss <= result["cep"]))
+
+
+# ---------------------------------------------------------------- out-of-distribution guard (scripts/ood_guard.py)
+_guard: dict = {}
+
+
+def guard_params(model_name: str):
+    """Mahalanobis parameters of the encoder context for a served model, or None if the model has no guard."""
+    import json
+    from ..config import ROOT
+    if "loaded" not in _guard:
+        p = ROOT / "results" / "ood_guard_params.json"
+        _guard["loaded"] = json.loads(p.read_text()) if p.exists() else {}
+    g = _guard["loaded"].get("latent")
+    return g if g and g.get("model") == model_name else None
+
+
+def ood_score(context, g) -> float:
+    d = np.asarray(context, float) - np.asarray(g["mu"])
+    return float(np.sqrt(d @ np.asarray(g["P"]) @ d))

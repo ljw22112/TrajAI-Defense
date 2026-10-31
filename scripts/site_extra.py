@@ -6,7 +6,7 @@ import json
 import os
 import re
 
-SPL = {"test_id_f05": "ID 5%", "test_id_f10": "ID 10%", "test_id_f15": "ID 15%", "test_id_noise": "고잡음", "test_ood": "OOD", "test_wx": "기상"}
+SPL = {"test_id_f05": "ID 5%", "test_id_f10": "ID 10%", "test_id_f15": "ID 15%", "test_id_noise": "고잡음", "test_ood": "OOD", "test_wx": "기상", "test_mm_cd": "Cd 곡선 오차", "test_mm_lift": "약한 양력"}
 
 
 def f0(v):
@@ -46,6 +46,108 @@ def rts_retrain_block(base="pinn_tf_v2", rts="pinn_tf_v2_rts"):
             f'      <tbody>\n        {body}\n      </tbody>\n    </table>\n  </div>\n  <div class="prose">\n'
             f'    <p>RTS 특징은 {len(splits)}개 분할 중 {wins}개에서 유의하게 더 정확합니다. {msg} '
             '단일 seed 비교이므로 차이가 작은 분할은 §9.7의 seed 변동 범위와 함께 읽어야 합니다.</p>')
+
+
+MMLAB = {"ekf": "EKF + MC", "ukf": "UKF + MC", "ekf_pinn": "EKF · PINN β 사전", "data_tf_v2": "Transformer (data only)",
+         "pinn_tf_v2": "PINN-Transformer", "pinn_tf_v2_rts": "PINN (RTS 입력)", "pinn_tf_hybrid_v2": "PINN + EKF 하이브리드",
+         "pinn_rts_mm": "PINN (RTS 입력) · 불일치 데이터 학습", "data_rts_mm": "data only (RTS 입력) · 불일치 데이터 학습"}
+OODLAB = {"state": "EKF 상태 Mahalanobis", "latent": "신경망 내부 표현 Mahalanobis", "spread": "앙상블 불일치 (seed 3개)"}
+
+
+def ood_block():
+    if not os.path.exists("results/ood.json"):
+        return ""
+    O = json.load(open("results/ood.json"))
+    det = O["detect"]
+    rows = []
+    for k, lab in OODLAB.items():
+        cells = "".join(f'<td class="n">{det[s][k]["auroc"]:.3f} <small class="muted">({det[s][k]["flagged"] * 100:.0f}%)</small></td>'
+                        if s in det and k in det[s] else '<td class="n">—</td>' for s in ("test_ood", "test_mm_cd", "test_mm_lift"))
+        rows.append(f"<tr><td>{lab}</td>{cells}</tr>")
+    G = O["guard"]
+    grows = []
+    for s in ("test_id_f10", "test_id_f15", "test_ood", "test_mm_cd", "test_mm_lift"):
+        if s not in G:
+            continue
+        g = G[s]; lat = g.get("latent", {})
+        grows.append(f'<tr><td>{SPL.get(s, s)}</td><td class="n">{f0(g["network"])} <small class="muted">/ {f0(g["network_p90"])}</small></td>'
+                     f'<td class="n">{f0(g["ekf"])} <small class="muted">/ {f0(g["ekf_p90"])}</small></td>'
+                     f'<td class="n"><b>{f0(lat.get("miss", float("nan")))}</b> <small class="muted">/ {f0(lat.get("miss_p90", float("nan")))}</small></td>'
+                     f'<td class="n">{lat.get("flagged", 0) * 100:.0f}%</td></tr>')
+    o = G.get("test_ood", {}); i10 = G.get("test_id_f10", {})
+    return f"""
+  <h3 class="sub" id="sec-ood"><span class="no">9.8</span>분포 밖 입력 감지와 EKF 대체</h3>
+  <div class="prose">
+    <p>§9.2·§9.7에서 신경망은 학습 범위 밖(OOD)에서 10 km 이상 틀리면서도 그 사실을 알리지 못했습니다. 그래서 예측마다 "학습 데이터와 얼마나 다른가"를 재고, 기준을 넘으면 신경망 대신 EKF 결과를 쓰는 장치를 붙였습니다. 기준은 검증 분할 점수의 {O["threshold_quantile"] * 100:.0f}번째 백분위수(정상 트랙의 약 {100 - O["threshold_quantile"] * 100:.0f}%가 넘는 값)이며 시험 자료는 쓰지 않았습니다.</p>
+  </div>
+  <div class="tw">
+    <table>
+      <caption><b>Table R11</b>감지 점수별 AUROC(정상 ID 10·15% 트랙 대비)와 괄호 안의 감지율</caption>
+      <thead><tr><th>점수</th><th class="n">OOD (고속·고β)</th><th class="n">Cd(M) 곡선 오차</th><th class="n">약한 양력</th></tr></thead>
+      <tbody>
+        {chr(10).join("        " + r for r in rows).strip()}
+      </tbody>
+    </table>
+  </div>
+  <div class="tw">
+    <table>
+      <caption><b>Table R12</b>RTS 입력 PINN 단독, EKF, 내부 표현 감지로 전환하는 전략: IP 오차 중앙값 / p90 [m], EKF로 넘긴 비율</caption>
+      <thead><tr><th>분할</th><th class="n">신경망</th><th class="n">EKF</th><th class="n">감지 + 전환</th><th class="n">전환 비율</th></tr></thead>
+      <tbody>
+        {chr(10).join("        " + r for r in grows).strip()}
+      </tbody>
+    </table>
+  </div>
+  <div class="prose">
+    <p>신경망 내부 표현의 거리는 OOD를 거의 완벽하게 가려내고(AUROC {det["test_ood"]["latent"]["auroc"]:.3f}), 전환 전략의 OOD 오차는 {f0(o.get("network", 0))} m에서 {f0(o.get("latent", {}).get("miss", 0))} m로, p90은 {f0(o.get("network_p90", 0))} m에서 {f0(o.get("latent", {}).get("miss_p90", 0))} m로 EKF 수준까지 내려갑니다. 정상 입력은 {i10.get("latent", {}).get("flagged", 0) * 100:.0f}%만 넘겨져 비용이 거의 없고, 넘겨진 트랙이 원래 어려운 경우라 ID 10% 오차는 오히려 {f0(i10.get("network", 0))} → {f0(i10.get("latent", {}).get("miss", 0))} m로 줄어듭니다. 반면 같은 비행 범위 안에서 동역학만 다른 모델 불일치는 입력 분포가 그대로라 감지하지 못합니다(AUROC 약 0.5). 이 장치는 "입력이 낯선 경우"를 막을 뿐 "물리 모델이 틀린 경우"를 막지는 못하며, 후자는 §9.9에서 다룹니다. 운용 콘솔은 같은 기준으로 RTS 입력 PINN의 예측마다 점수를 계산해, 기준을 넘으면 EKF 결과로 바꾸고 화면에 "분포 밖 → EKF"로 표시합니다.</p>
+  </div>"""
+
+
+def mismatch_block():
+    if not os.path.exists("results/mismatch.json"):
+        return ""
+    Mm = json.load(open("results/mismatch.json"))
+    import json as _j
+    met = _j.load(open("results/metrics.json"))
+    ref = {k: met[k]["test_id_f10"]["miss"]["median"] for k in ("ekf", "ukf", "data_tf_v2", "pinn_tf_v2", "pinn_tf_v2_rts", "pinn_tf_hybrid_v2") if k in met}
+    fb = _j.load(open("results/feedback_rts.json"))["feedback"]["splits"]["test_id_f10"]["feedback"]["miss"] if os.path.exists("results/feedback_rts.json") else None
+    if fb:
+        ref["ekf_pinn"] = fb
+    keys = [k for k in MMLAB if k in Mm["test_mm_cd"]]
+    rows = []
+    for k in keys:
+        e = Mm["test_mm_cd"]["ekf"]["miss"], Mm["test_mm_lift"]["ekf"]["miss"]
+        cd, lf = Mm["test_mm_cd"][k]["miss"], Mm["test_mm_lift"][k]["miss"]
+        rows.append(f'<tr><td>{MMLAB[k]}</td><td class="n">{f0(ref[k]) if k in ref else "—"}</td>'
+                    f'<td class="n">{f0(cd)} <small class="muted">(×{cd / e[0]:.2f})</small></td>'
+                    f'<td class="n">{f0(lf)} <small class="muted">(×{lf / e[1]:.2f})</small></td>'
+                    f'<td class="n">{Mm["test_mm_cd"][k]["coverage"]:.2f} / {Mm["test_mm_lift"][k]["coverage"]:.2f}</td></tr>')
+    rts_e = [Mm[s]["pinn_tf_v2_rts"]["miss"] / Mm[s]["ekf"]["miss"] for s in ("test_mm_cd", "test_mm_lift")]
+    retrain = ""
+    if "pinn_rts_mm" in Mm["test_mm_cd"]:
+        a, b = Mm["test_mm_cd"], Mm["test_mm_lift"]
+        best = min(("pinn_rts_mm", "data_rts_mm"), key=lambda k: a[k]["miss"] + b[k]["miss"])
+        beats = [s for s, M_ in (("Cd(M) 곡선 오차", a), ("약한 양력", b)) if M_[best]["miss"] < min(M_["ekf"]["miss"], M_["ukf"]["miss"])]
+        retrain = (f' 불일치가 섞인 데이터(2만 개)로 다시 학습하면 {MMLAB[best]}이 Cd 오차 {f0(a[best]["miss"])} m, 양력 {f0(b[best]["miss"])} m로, '
+                   + (f'{", ".join(beats)}에서 EKF·UKF보다 정확해집니다. 필터는 모르는 동역학을 신경망은 데이터에서 배울 수 있다는, 이 연구에서 신경망이 필터를 앞서는 첫 조건입니다.' if beats else 'EKF·UKF보다는 여전히 부정확합니다.')
+                   + f' 물리 손실(공칭 모델 기준)이 있는 모델과 없는 모델의 차이는 Cd 오차 {a["pinn_rts_mm"]["miss"] - a["data_rts_mm"]["miss"]:+,.0f} m, 양력 {b["pinn_rts_mm"]["miss"] - b["data_rts_mm"]["miss"]:+,.0f} m(PINN − data only)입니다. 실제 동역학과 다른 물리를 강제하면 손해가 될 수 있다는 점은 PINN 설계의 주의점입니다.')
+    return f"""
+  <h3 class="sub" id="sec-mismatch"><span class="no">9.9</span>모델 불일치 시험</h3>
+  <div class="prose">
+    <p>지금까지의 시험은 EKF와 데이터 생성기가 같은 동역학을 써서 필터에 유리했습니다(§9.10의 "inverse crime"). 실제 표적은 공칭 모델과 다르게 날기 때문에, 실제 비행에만 두 가지 오차를 넣은 시험 분할(각 1,000회, 관측 12%)을 만들었습니다. 추정기는 모두 공칭 모델을 그대로 씁니다. (1) Cd(M) 곡선 모양 오차: 천음속 정점과 초음속 꼬리를 궤적마다 ±25% 독립적으로 바꿉니다. Cd 전체에 같은 배율을 곱하는 오차는 β로 흡수되므로 불일치가 아닙니다. (2) 약한 양력 기동: 정점 이후 L/D 0.03–0.10의 횡방향 양력. 탄착점은 공칭 비행 대비 중앙값 약 4.1 km(Cd), 0.9 km(양력) 움직입니다.</p>
+  </div>
+  <div class="tw">
+    <table>
+      <caption><b>Table R13</b>모델 불일치에서의 IP 오차 중앙값 [m], 괄호는 EKF 대비 배율, CEP 포함률 (Cd / 양력)</caption>
+      <thead><tr><th>추정기</th><th class="n">불일치 없음 (ID 10%)</th><th class="n">Cd(M) 곡선 오차</th><th class="n">약한 양력</th><th class="n">포함률</th></tr></thead>
+      <tbody>
+        {chr(10).join("        " + r for r in rows).strip()}
+      </tbody>
+    </table>
+  </div>
+  <div class="prose">
+    <p>불일치가 생기면 모든 추정기의 오차가 커지지만, 필터와 신경망의 격차는 줄어듭니다. RTS 입력 PINN은 불일치가 없을 때 EKF의 1.29배였으나 Cd 오차에서 {rts_e[0]:.2f}배, 양력에서 {rts_e[1]:.2f}배입니다. 여기의 신경망도 공칭 동역학으로만 학습했으므로 같은 불일치를 겪고 있다는 점에 유의해야 합니다. 더 심각한 문제는 불확실성입니다. 양력 기동에서는 모든 추정기의 CEP 포함률이 0.07–0.19로 떨어져, 예측 반경이 실제 오차를 크게 과소평가합니다. 모르는 기동 앞에서 필터와 신경망 모두 과신한다는 뜻이며, §9.8의 감지 장치도 이를 잡지 못합니다.{retrain}</p>
+  </div>"""
 
 
 def feedback_block():
@@ -157,7 +259,7 @@ def ensemble_block():
 
 
 if __name__ == "__main__":
-    block = "<!-- EXTRA:BEGIN -->" + feedback_block() + ensemble_block() + "\n<!-- EXTRA:END -->"
+    block = "<!-- EXTRA:BEGIN -->" + feedback_block() + ensemble_block() + ood_block() + mismatch_block() + "\n<!-- EXTRA:END -->"
     s = open("index.html").read()
     if "<!-- EXTRA:BEGIN -->" in s:
         s = re.sub(r"<!-- EXTRA:BEGIN -->.*?<!-- EXTRA:END -->", lambda _: block, s, flags=re.S)
@@ -165,6 +267,6 @@ if __name__ == "__main__":
         anchor = '  <h3 class="sub" id="sec-validity">'
         assert anchor in s
         s = s.replace(anchor, block + "\n" + anchor, 1)
-    s = s.replace('<h3 class="sub" id="sec-validity"><span class="no">9.6</span>', '<h3 class="sub" id="sec-validity"><span class="no">9.8</span>')
+    s = re.sub(r'<h3 class="sub" id="sec-validity"><span class="no">9\.\d+</span>', '<h3 class="sub" id="sec-validity"><span class="no">9.10</span>', s)
     open("index.html", "w").write(s)
     print("extra block written", "feedback" if "sec-feedback" in block else "", "ensemble" if "sec-ensemble" in block else "")
