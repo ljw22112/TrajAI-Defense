@@ -15,7 +15,7 @@ import numpy as np
 import torch
 
 sys.path.insert(0, "scripts")
-from evaluate import load_model, predict  # noqa: E402
+from evaluate import load_model  # noqa: E402
 from trajai import features, filters, metrics, physics, radar  # noqa: E402
 
 torch.set_num_threads(1)
@@ -24,9 +24,20 @@ W = 9                      # Savitzky-Golay window of trajai.features.track_feat
 SPLITS = ["test_id_f05", "test_id_f10", "test_id_f15", "test_id_noise", "test_ood"]
 
 
-def ln_beta(model, a, split):
+def ln_beta(model, a, split, bs=100):
+    """ln beta from the PINN head only (no decoder / physics residual: keeps memory low next to training jobs)."""
+    from evaluate import inputs_for
     d = dict(np.load(f"{DATA}/prep_{split}.npz"))
-    return predict(model, d, a, split)["lb"]          # already ln beta (PINNPredictor.unpack_head de-normalises)
+    G, WX = inputs_for(a, split, d)
+    out = []
+    with torch.no_grad():
+        for i in range(0, len(d["T"]), bs):
+            sl = slice(i, i + bs)
+            x = torch.from_numpy(d["feats"][sl]); pad = torch.from_numpy(d["pad"][sl])
+            L = int((~pad).sum(1).max())
+            _, h = model.context(x[:, :L], pad[:, :L], torch.from_numpy(G[sl]), torch.from_numpy(WX[sl]))
+            out.append(model.unpack_head(h)[0].numpy())       # ln beta (unpack_head de-normalises)
+    return np.concatenate(out)
 
 
 def run_ekf(d, nz, lb=None, slb=None):
@@ -56,7 +67,7 @@ def feedback(name):
         if s in out["splits"]:                       # resumable: the container can kill long runs
             continue
         d = dict(np.load(f"{DATA}/{s}.npz"))
-        nz = dict(sigma_r=d["sigma"][:, 0], sigma_ang=d["sigma"][:, 1]) if "sigma" in d else radar.NOISE_NOMINAL
+        nz = radar.NOISE_HIGH if s == "test_id_noise" else radar.NOISE_NOMINAL    # same as scripts/prepare.py baselines
         lb = ln_beta(model, a, s)
         base, fb = run_ekf(d, nz), run_ekf(d, nz, lb, slb)
         diff = fb["miss"] - base["miss"]

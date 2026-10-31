@@ -233,7 +233,9 @@ def saturation_vapour_pressure(t_c):
 def custom_levels(params: dict | None = None, z_top=32_000.0, dz=500.0) -> dict:
     """User-specified atmosphere as a level profile (same keys as a provider profile, plus Tv and q).
 
-    Temperature: surface value, linear lapse to the tropopause, isothermal to 20 km, then +1 K/km (USSA-1976 shape).
+    Temperature: surface value, linear to the tropopause, isothermal to 20 km, then +1 K/km (USSA-1976 shape). The
+    tropopause temperature T0 - lapse * z_t is kept within the observed 190-230 K; outside it the lapse rate is adjusted
+    (a fixed 6.5 K/km under a 45 degC surface would give an unphysically warm -26 degC tropopause).
     Humidity: surface specific humidity from RH (Magnus), decaying with a 2 km scale height; it enters through the
     virtual temperature Tv = T (1 + 0.608 q), which sets density (p / R Tv) and is integrated hydrostatically.
     Wind: surface wind blended linearly into a Gaussian jet core; direction turns linearly between the two.
@@ -242,8 +244,8 @@ def custom_levels(params: dict | None = None, z_top=32_000.0, dz=500.0) -> dict:
     z = np.arange(0.0, z_top + dz, dz)
     zt, zs = p["tropopause_km"] * 1000.0, 20_000.0
     T0 = p["t_sfc_c"] + 273.15
-    Tt = T0 - p["lapse_k_per_km"] * zt / 1000.0
-    T = np.where(z <= zt, T0 - p["lapse_k_per_km"] * z / 1000.0, np.where(z <= zs, Tt, Tt + (z - zs) / 1000.0))
+    Tt = float(np.clip(T0 - p["lapse_k_per_km"] * zt / 1000.0, 190.0, 230.0))
+    T = np.where(z <= zt, T0 + (Tt - T0) * z / zt, np.where(z <= zs, Tt, Tt + (z - zs) / 1000.0))
     e_s = saturation_vapour_pressure(p["t_sfc_c"])
     p0 = p["p_sfc_hpa"] * 100.0
     q0 = 0.622 * (p["rh_pct"] / 100.0) * e_s / (p0 - 0.378 * (p["rh_pct"] / 100.0) * e_s)

@@ -169,7 +169,7 @@ input[type=range]{width:100%; accent-color:var(--pred)}
 .tl-track .imp{width:3px; background:var(--danger)}
 .tl-axis{display:grid; grid-template-columns:180px 1fr; gap:10px; color:var(--ink-3); font-family:var(--font-mono); font-size:11px}
 .tl-axis div{position:relative; height:18px}
-.tl-axis span{position:absolute; transform:translateX(-50%)}
+.tl-axis div span{position:absolute; transform:translateX(-50%)}
 .tl-peak{position:absolute; top:0; bottom:0; width:2px; background:var(--danger); opacity:.5}
 @media (max-width:860px){.tl-row,.tl-axis{grid-template-columns:96px 1fr}}
 /* ---- heatmap (sensor sweep) */

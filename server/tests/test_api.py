@@ -229,7 +229,7 @@ def test_latency_sensor_sensitivity_analyses(client, users):
     lat = client.post("/api/analyses/latency", json={**FLIGHT, "start_date": "2026-10-14", "days": 1, "hours": [0, 12]}, headers=h)
     assert lat.status_code == 201, lat.text
     curve = lat.json()["summary"]["curve"]
-    assert [c["lag_h"] for c in curve] == [0, 6, 12, 24, None] and lat.json()["kind"] == "latency"
+    assert [c["lag_h"] for c in curve] == [0, 6, 12, 24, None, None] and lat.json()["kind"] == "latency"
     sen = client.post("/api/analyses/sensor", json={**FLIGHT, "atmosphere": "custom", "custom_atm": {"jet_ms": 60}}, headers=h)
     assert sen.status_code == 201, sen.text
     cells = sen.json()["items"]

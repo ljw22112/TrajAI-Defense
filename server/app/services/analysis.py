@@ -130,15 +130,20 @@ def latency(p: dict, bank, rows, lag_index: dict) -> dict:
     for lag in (*LAGS_H, None):
         a = None if lag is None else bank[np.array([lag_index[(i, lag)] for i in range(K)])]
         res["std" if lag is None else str(lag)] = _estimate(pol, car, n, t_c, sr, sa, a, r_imp)
-    keys = [str(l) for l in LAGS_H] + ["std"]
-    curve = [dict(lag_h=(None if k == "std" else int(k)), median_miss=float(np.median(res[k][0])),
-                  p90_miss=float(np.percentile(res[k][0], 90)), coverage=float(res[k][2].mean())) for k in keys]
+    # a good standard atmosphere without any dated data: separates "use a realistic atmosphere" from "use fresh data"
+    res["ussa"] = _estimate(pol, car, n, t_c, sr, sa, wx.ussa_bank()[np.zeros(K, int)], r_imp)
+    keys = [str(l) for l in LAGS_H] + ["ussa", "std"]
+    curve = [dict(lag_h=(None if k in ("std", "ussa") else int(k)), ref=(k if k in ("std", "ussa") else None),
+                  median_miss=float(np.median(res[k][0])), p90_miss=float(np.percentile(res[k][0], 90)),
+                  coverage=float(res[k][2].mean())) for k in keys]
     items = [dict(valid_time=r.valid_time.isoformat(), max_wind=float(r.max_wind),
                   **{f"miss_{k}": float(res[k][0][i]) for k in keys}) for i, r in enumerate(rows)]
-    fresh, std = curve[0]["median_miss"], curve[-1]["median_miss"]
-    # longest lag that still keeps at least half of the benefit of fresh data
-    half = [c["lag_h"] for c in curve[:-1] if c["median_miss"] <= fresh + 0.5 * (std - fresh)]
-    summary = dict(n=K, curve=curve, fresh_miss=fresh, std_miss=std, max_lag_half_benefit_h=max(half) if half else None)
+    fresh, std, ussa = curve[0]["median_miss"], curve[-1]["median_miss"], curve[-2]["median_miss"]
+    # longest lag whose data still keeps at least half of the benefit of fresh data over USSA-1976 (no dated data)
+    lagged = [c for c in curve if c["lag_h"] is not None]
+    half = [c["lag_h"] for c in lagged if c["median_miss"] <= fresh + 0.5 * (ussa - fresh)] if ussa > fresh else []
+    summary = dict(n=K, curve=curve, fresh_miss=fresh, std_miss=std, ussa_miss=ussa,
+                   max_lag_half_benefit_h=max(half) if half else None)
     return dict(summary=summary, items=items)
 
 

@@ -63,7 +63,7 @@ def test_dashboard_after_login(page):
 
 def test_scenario_detail_and_live_replay(page):
     page.goto(f"{BASE}/#/scenarios")
-    page.get_by_role("cell", name=re.compile("제트기류")).click()
+    page.get_by_role("cell", name="10/15 00Z 제트기류").click()
     pw.expect(page.get_by_text("추정 결과")).to_be_visible()
     pw.expect(page.get_by_text("EKF · 일자 기상").first).to_be_visible()
     page.get_by_role("button", name="재생").click()

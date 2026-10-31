@@ -21,6 +21,17 @@ def f0(v):
     return f"{v:,.0f}"
 
 
+def _req_p02(rel):
+    """REQ-P-02 uses the best learned component: the network alone, or as the EKF's beta prior (§9.6) when evaluated."""
+    import os
+    if os.path.exists("results/feedback_rts.json"):
+        fb = json.load(open("results/feedback_rts.json"))["feedback"]["splits"]
+        r = {s: (fb[s]["feedback"]["miss"] / fb[s]["default"]["miss"] - 1) * 100 for s in ("test_id_f05", "test_id_f10")}
+        return ("REQ-P-02", "IP / CEP 추정 오차, EKF baseline 대비", "−40 %",
+                f"EKF + PINN β 사전 {r['test_id_f10']:+.0f} % (ID 10%), {r['test_id_f05']:+.0f} % (ID 5%). 신경망 단독은 {rel:+.0f} %", "part", "T")
+    return ("REQ-P-02", "IP / CEP 추정 오차, EKF baseline 대비", "−40 %", f"{rel:+.0f} % (최선 신경망, ID 10%)", "no", "T")
+
+
 def _mixed(D, P):
     """Spell out where the physics loss helps and where it does not (IP miss, all test splits)."""
     better = [TLAB[i] for i, t in enumerate(TESTS) if med(P, t, "miss") < med(D, t, "miss")]
@@ -176,7 +187,7 @@ def main():
         ("REQ-F-03", "예측 궤적의 물리 일관성 (운동 방정식 잔차)", "잔차 RMS ≤ 0.05 g", f"{res_best:.2f} g (ID 10%)", "no", "A"),
         ("REQ-F-04", "보호 자산 DB 대비 위협 등급과 요격 고도 창 산출", "5단계", "구현, 가상 자산으로 시연 (운용 콘솔, 3D 뷰어)", "ok", "D"),
         ("REQ-P-01", "단일 표적 추론 지연 (전처리 제외, p99)", "≤ 50 ms", f"{L['onnxruntime_cpu']['p99_ms']:.1f} ms (ONNX Runtime, CPU)", "ok", "T"),
-        ("REQ-P-02", "IP / CEP 추정 오차, EKF baseline 대비", "−40 %", f"{rel:+.0f} % (최선 신경망, ID 10%)", "no", "T"),
+        _req_p02(rel),
         ("REQ-P-03", "교전 판단 가용 시간 증가", "+25 s", f"계산 시간 단축 {saved_s:.2f} s, 25 s 근거 없음", "no", "A"),
         ("REQ-I-01", "센서 트랙 스트리밍 입력 (gRPC / Socket)", "≥ 20 Hz", "WebSocket 측정 스트림 + 측정당 증분 EKF 갱신 (처리량 약 660 Hz, CPU). 실제 센서 연동이 아닌 시뮬레이션 재생", "part", "D"),
     ]

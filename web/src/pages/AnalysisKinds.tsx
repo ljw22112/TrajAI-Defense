@@ -33,33 +33,35 @@ function Latency({ a }: { a: Analysis }) {
     { kind: "line", x: fresh.map((c: any) => c.lag_h), y: fresh.map((c: any) => c.median_miss), color: "--ekf", width: 2.4 },
     { kind: "points", x: fresh.map((c: any) => c.lag_h), y: fresh.map((c: any) => c.median_miss), color: "--ekf", size: 3.5 },
     { kind: "line", x: [0, 24], y: [s.std_miss, s.std_miss], color: "--truth", width: 1.8, dash: [6, 4] },
+    ...(s.ussa_miss ? [{ kind: "line" as const, x: [0, 24], y: [s.ussa_miss, s.ussa_miss], color: "--pred", width: 1.8, dash: [3, 3] }] : []),
   ], [a]);  // eslint-disable-line react-hooks/exhaustive-deps
   return (
     <>
       <div className="grid g4">
         <Stat label="최신 기상 (지연 0 h)" value={fmt(s.fresh_miss)} unit="m" tone="ok" />
         <Stat label="24 h 지난 기상" value={fmt(fresh[fresh.length - 1].median_miss)} unit="m" />
-        <Stat label="기상 자료 없음 (표준 대기)" value={fmt(s.std_miss)} unit="m" />
+        <Stat label="일자 자료 없음 · USSA-1976" value={fmt(s.ussa_miss ?? s.std_miss)} unit={`m (지수 대기 ${fmt(s.std_miss)} m)`} />
         <Stat label="이득 절반 유지 지연" value={s.max_lag_half_benefit_h === null ? "—" : String(s.max_lag_half_benefit_h)} unit="h" tone="acc" />
       </div>
       <Card title="해석">
         <div className="prose" style={{ maxWidth: "none" }}>
-          <p>비행 시각의 기상을 그대로 쓰면 IP 오차 중앙값은 <b>{fmt(s.fresh_miss)} m</b>, 기상 자료 없이 표준 대기로 추정하면 <b>{fmt(s.std_miss)} m</b>입니다.
-            자료가 6·12·24시간 늦으면 각각 {fresh.slice(1).map((c: any) => `${fmt(c.median_miss)} m`).join(", ")}가 됩니다.
-            {s.max_lag_half_benefit_h !== null ? <> 기상 반영 이득의 절반 이상은 자료가 <b>{s.max_lag_half_benefit_h}시간</b> 늦어도 유지됩니다.</> : " 6시간만 늦어도 이득의 절반 이상을 잃습니다."}</p>
+          <p>비행 시각의 기상을 그대로 쓰면 IP 오차 중앙값은 <b>{fmt(s.fresh_miss)} m</b>입니다. 자료가 6·12·24시간 늦으면 각각 {fresh.slice(1).map((c: any) => `${fmt(c.median_miss)} m`).join(", ")}가 됩니다.
+            일자 자료 없이 USSA-1976 표준 대기를 쓰면 {fmt(s.ussa_miss)} m, 지수 대기(표준 모델)를 쓰면 {fmt(s.std_miss)} m입니다.
+            {s.max_lag_half_benefit_h !== null ? <> USSA-1976 대비 일자 기상의 이득은 자료가 <b>{s.max_lag_half_benefit_h}시간</b> 늦어도 절반 이상 남습니다.</> : " USSA-1976 대비 일자 기상의 이득은 6시간만 늦어도 절반 이하로 줄어듭니다."}
+            {" "}오차의 대부분은 지수 대기 모델 자체에서 오므로, 먼저 현실적인 대기 모델을 쓰고 그다음 자료의 신선도를 챙기는 순서가 맞습니다.</p>
           <p className="label">지연된 자료는 그 시각의 분석장으로 근사했습니다(같은 시각의 실제 예보 오차와는 다를 수 있음). 같은 레이더 잡음으로 모든 지연을 비교합니다.</p>
         </div>
       </Card>
       <div className="grid g2">
         <Card title="자료 지연에 따른 IP 오차 (중앙값)">
           <Plot series={series} xLabel="기상 자료 지연 (h)" yLabel="IP 오차 (m)" height={280} logY ariaLabel="기상 자료 지연에 따른 IP 오차" />
-          <Legend items={[{ label: "지연된 기상 반영 EKF", color: "--ekf" }, { label: "기상 자료 없음", color: "--truth", dash: true }]} />
+          <Legend items={[{ label: "지연된 기상 반영 EKF", color: "--ekf" }, { label: "USSA-1976 (일자 자료 없음)", color: "--pred", dash: true }, { label: "지수 대기 (표준 모델)", color: "--truth", dash: true }]} />
         </Card>
         <Card title="지연별 결과">
           <div className="tw"><table>
             <thead><tr><th>지연</th><th className="n">IP 오차 중앙값</th><th className="n">p90</th><th className="n">CEP 포함률</th></tr></thead>
             <tbody>{s.curve.map((c: any) => (
-              <tr key={String(c.lag_h)}><td>{c.lag_h === null ? "기상 없음" : `${c.lag_h} h`}</td><td className="n">{fmt(c.median_miss)} m</td>
+              <tr key={String(c.lag_h ?? c.ref)}><td>{c.lag_h !== null ? `${c.lag_h} h` : c.ref === "ussa" ? "USSA-1976 (자료 없음)" : "지수 대기 (표준 모델)"}</td><td className="n">{fmt(c.median_miss)} m</td>
                 <td className="n">{fmt(c.p90_miss)} m</td><td className="n">{fmt(c.coverage, 2)}</td></tr>))}
             </tbody>
           </table></div>
@@ -149,6 +151,7 @@ function Sensitivity({ a }: { a: Analysis }) {
           {isCond
             ? <p>날씨는 비행 자체(항력)를 거의 바꾸지 않으므로 탄착점은 그대로이고, 레이더 잡음만 커집니다(최대 ×{fmt(Math.max(...items.map(i => i.noise_factor)), 1)}). 대기를 아는 EKF의 오차는 {lbl(items[0].value)} {fmt(items[0].miss_wx)} m에서 {lbl(items[items.length - 1].value)} {fmt(items[items.length - 1].miss_wx)} m로 변합니다. 강수 중에는 센서 성능 저하가 지배적인 오차 원인입니다.</p>
             : <p>{s.label}을(를) 바꾸면 같은 비행의 탄착점이 기준 대기 대비 최대 <b>{fmt(s.max_shift_m)} m</b>({lbl(big.value)}) 움직입니다. 이 변화를 모르는 표준 대기 EKF의 오차는 {fmt(Math.min(...items.map(i => i.miss_std)))}–{fmt(Math.max(...items.map(i => i.miss_std)))} m 범위로 흔들리지만, 대기를 아는 EKF는 {fmt(Math.min(...items.map(i => i.miss_wx)))}–{fmt(Math.max(...items.map(i => i.miss_wx)))} m입니다. 이 변수를 측정해 반영하는 것이 얼마나 중요한지를 보여 줍니다.</p>}
+          {(s.param === "t_sfc_c" || s.param === "lapse_k_per_km") && <p>이 모델에서는 지상 기온이나 기온감률을 바꾸면 대류권계면(190–230 K로 제한)과 성층권 기온도 함께 바뀝니다. 차가운 공기 기둥은 고도가 올라갈수록 밀도가 빨리 줄어 상층 항력이 작아지므로 사거리가 늘어납니다. 극단값에서의 이동 거리는 실제 대기보다 클 수 있습니다.</p>}
           <p className="label">나머지 변수는 기준 대기로 고정했습니다. 잡음 표본 {s.reps}개의 중앙값입니다.</p>
         </div>
       </Card>

@@ -35,7 +35,7 @@ flowchart LR
 |---|---|---|
 | 프론트엔드 | React 18, TypeScript 5 (strict), Vite 5, TanStack Query, React Router | 대시보드(교전 우선순위), 시나리오 생성(위치·일자별 기상), 상세·실시간 재생, 기상 영향 분석, 자산 CRUD, 모델 레지스트리, 사용자·감사 로그 |
 | 백엔드 | FastAPI, Pydantic v2, Uvicorn, PyJWT, bcrypt | REST + WebSocket API, 역할 기반 접근 제어, 입력 검증, OpenAPI 문서(`/api/docs`) |
-| 데이터베이스 | PostgreSQL 16 (개발·테스트는 SQLite), SQLAlchemy 2.0 ORM, Alembic | 10개 테이블, FK·CHECK·UNIQUE 제약, JSONB, 마이그레이션 2개 |
+| 데이터베이스 | PostgreSQL 16 (개발·테스트는 SQLite), SQLAlchemy 2.0 ORM, Alembic | 11개 테이블, FK·CHECK·UNIQUE 제약, JSONB, 마이그레이션 4개 |
 | 모델 서빙 | ONNX Runtime (CPU) | PINN 하이브리드 추론, 동적 트랙 길이 |
 | 운영 | Docker 멀티 스테이지, Docker Compose, GitHub Actions | 단일 컨테이너(API + SPA) 배포, CI(코어·API·웹) |
 
@@ -48,6 +48,7 @@ erDiagram
   users ||--o{ estimates : runs
   users ||--o{ audit_log : acts
   users ||--o{ weather_analyses : runs
+  users ||--o{ raids : plans
   weather_profiles ||--o{ scenarios : "atmosphere of"
   scenarios ||--|{ measurements : has
   scenarios ||--o{ estimates : has
@@ -128,6 +129,7 @@ erDiagram
   }
   weather_analyses {
     int id PK
+    string kind "weather|latency|sensor|sensitivity"
     int created_by FK
     float lat
     float lon
@@ -135,6 +137,12 @@ erDiagram
     jsonb params
     jsonb summary
     jsonb items
+  }
+  raids {
+    int id PK
+    int created_by FK
+    string name
+    jsonb members "scenario_id, offset_s"
   }
   audit_log {
     int id PK
@@ -203,11 +211,11 @@ sequenceDiagram
 
 | 수준 | 범위 | 도구 | 수 |
 |---|---|---|---|
-| 단위 (코어) | 대기 기준값, RK4 수렴 차수, 레이더 야코비안, EKF/UKF 일관성(NIS), 기상 격자·바람, 위협 등급 | pytest | 17 |
-| API 통합 | 인증 실패, RBAC, CRUD·검증·중복, 기상 캐시, 시뮬레이션, 추정·위협, 통계, WebSocket, 소유권, 감사 로그, 로그인 제한, CSV, 스키마 길이, 모델별 통계 | pytest + TestClient, **SQLite와 PostgreSQL 모두** | 17 |
+| 단위 (코어) | 대기 기준값, RK4 수렴 차수, 레이더 야코비안, EKF/UKF 일관성(NIS), 기상 격자·바람, 사용자 대기(습도·대류권계면), RTS 평활, β 사전, 위협 등급 | pytest | 21 |
+| API 통합 | 인증 실패, RBAC, CRUD·검증·중복, 기상 캐시, 시뮬레이션, 추정·위협, 통계, WebSocket, 소유권, 감사 로그, 로그인 제한, CSV, 스키마 길이, 모델별 통계, 사용자 대기, 자료 지연·센서·민감도 분석, 다표적 교전, 위협 알림(WebSocket) | pytest + TestClient, **SQLite와 PostgreSQL 모두** | 23 |
 | 마이그레이션 | upgrade → check(드리프트 없음) → downgrade → upgrade | Alembic | CI |
 | 프론트엔드 단위 | API 클라이언트(토큰, 422 필드 오류, 401 처리, 폼 인코딩, 네트워크 오류), UI 컴포넌트, CSV 다운로드 | Vitest + Testing Library | 11 |
-| E2E | 로그인 실패/성공, 대시보드, 시나리오 상세, 실시간 재생 완료, 폼 검증, viewer 읽기 전용, CSV 다운로드, 런타임 오류 없음 | Playwright (실제 서버 + PostgreSQL) | 7 |
+| E2E | 로그인 실패/성공, 대시보드, 시나리오 상세, 실시간 재생 완료, 폼 검증, viewer 읽기 전용, CSV 다운로드, 사용자 대기 시나리오, 환경 민감도·PDF, 다표적·비교, 위협 알림, 런타임 오류 없음 | Playwright (실제 서버 + PostgreSQL) | 12 |
 
 E2E 테스트는 viewer에게 "새 시나리오" 버튼이 보이던 권한 표시 버그를 실제로 잡아냈습니다(서버는 403으로 막고 있었음).
 

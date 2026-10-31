@@ -74,3 +74,10 @@ def test_custom_atmosphere_humidity_heat_and_wind():
     w = weather.custom_levels(dict(jet_ms=60.0, jet_km=12.0, jet_dir=270.0, wind_sfc_ms=0.0))
     i = int(np.argmax(np.hypot(w["u"], w["v"])))
     assert abs(w["z"][i] - 12_000) <= 500 and w["u"][i] > 59.0             # westerly jet blows toward +x (east)
+
+
+def test_custom_tropopause_stays_physical():
+    for t in (-50.0, 50.0):
+        lv = weather.custom_levels(dict(t_sfc_c=t))
+        k = int(np.searchsorted(lv["z"], 11_000))
+        assert 190.0 <= lv["T"][k] <= 230.0
