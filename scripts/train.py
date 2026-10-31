@@ -22,10 +22,10 @@ from trajai.features import L_POS  # noqa: E402
 from trajai.model import PINNPredictor, TorchAtmosphere, param_count, physics_residual  # noqa: E402
 
 
-def load(split, n=None, global_key="g"):
+def load(split, n=None, global_key="g", feat_key="feats"):
     d = np.load(f"data/prep_{split}.npz")
     sl = slice(None, n)
-    out = {k: torch.from_numpy(np.asarray(d[k][sl])) for k in ["feats", "pad", "fut", "dT", "lb", "origin"]}
+    out = {k: torch.from_numpy(np.asarray(d[feat_key if k == "feats" else k][sl])) for k in ["feats", "pad", "fut", "dT", "lb", "origin"]}
     out["g"] = torch.from_numpy(np.asarray(d[global_key][sl]))
     out["origin"] = out["origin"].float()
     nn_ = out["feats"].shape[0]
@@ -95,14 +95,14 @@ def main():
     ap.add_argument("--threads", type=int, default=1)
     ap.add_argument("--train-split", default="train")
     ap.add_argument("--val-split", default="val")
+    ap.add_argument("--feat-key", default="feats", help="track features: feats (Savitzky-Golay) or feats_rts (RTS smoother)")
     ap.add_argument("--global-key", default="g", help="EKF posterior features: g (split default) or g_date")
     ap.add_argument("--wx", action="store_true", help="feed the selected date's weather summary (27 features)")
     ap.add_argument("--phys-atm", default="std", choices=["std", "clim", "date"], help="atmosphere in the physics residual")
     ap.add_argument("--resume", action="store_true", help="continue from checkpoints/<name>_last.pt if present")
     a = ap.parse_args()
     torch.manual_seed(a.seed)
-    torch.set_num_threads(a.threads)
-    tr, va = load(a.train_split, a.n_train, a.global_key), load(a.val_split, 1000, a.global_key)
+    tr, va = load(a.train_split, a.n_train, a.global_key, a.feat_key), load(a.val_split, 1000, a.global_key, a.feat_key)
     model = PINNPredictor(a.encoder, hybrid=a.hybrid, n_wx=tr["wx"].shape[1] if a.wx else 0)
     if not a.wx:
         tr["wx"], va["wx"] = tr["wx"][:, :0], va["wx"][:, :0]

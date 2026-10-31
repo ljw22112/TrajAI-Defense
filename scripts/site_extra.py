@@ -13,6 +13,40 @@ def f0(v):
     return f"{v:,.0f}"
 
 
+def rts_retrain_block(base="pinn_tf_v2", rts="pinn_tf_v2_rts"):
+    """Same PINN, same seed and schedule; only the track features differ (SG vs RTS). Paired over test tracks."""
+    import numpy as np
+    from scipy.stats import wilcoxon
+    splits = [s for s in ("test_id_f05", "test_id_f10", "test_id_f15", "test_id_noise", "test_ood")
+              if os.path.exists(f"results/pred_{base}_{s}.npz") and os.path.exists(f"results/pred_{rts}_{s}.npz")]
+    if not splits:
+        return ""
+    rng = np.random.default_rng(3)
+    rows, wins = [], 0
+    for s in splits:
+        a, b = np.load(f"results/pred_{base}_{s}.npz"), np.load(f"results/pred_{rts}_{s}.npz")
+        x, y = b["miss"], a["miss"]
+        idx = rng.integers(0, len(x), (2000, len(x)))
+        lo, hi = np.percentile(np.median(x[idx], 1) - np.median(y[idx], 1), [2.5, 97.5])
+        p = wilcoxon(x, y).pvalue * len(splits)                      # Bonferroni over the splits shown
+        verdict = "RTS 우세" if hi < 0 and p < 0.05 else ("SG 우세" if lo > 0 and p < 0.05 else "유의차 없음")
+        wins += verdict == "RTS 우세"
+        rows.append(f'<tr><td>{SPL[s]}</td><td class="n">{f0(np.median(y))} → <b>{f0(np.median(x))}</b></td>'
+                    f'<td class="n">{np.median(x) - np.median(y):+,.0f} <small class="muted">[{lo:+,.0f}, {hi:+,.0f}]</small></td>'
+                    f'<td class="n">{np.median(a["phys_rms_g"]):.3f} → {np.median(b["phys_rms_g"]):.3f}</td>'
+                    f'<td class="n">{np.median(a["ade"]):,.0f} → {np.median(b["ade"]):,.0f}</td><td>{verdict}</td></tr>')
+    msg = ("속도·가속도 입력의 잡음을 줄이는 것이 신경망 정확도로 이어진다는 뜻입니다." if wins >= len(splits) / 2 else
+           "입력 특징이 훨씬 정확해졌는데도 예측 정확도 이득이 제한적이므로, 이 모델의 오차는 입력 잡음보다 짧은 관측에서의 외삽(β 불확실성)에서 주로 온다고 볼 수 있습니다.")
+    body = "\n".join("        " + r for r in rows).strip()
+    return ('</div>\n  <div class="tw">\n    <table>\n'
+            '      <caption><b>Table R8b</b>PINN-Transformer, 입력 특징만 Savitzky–Golay → RTS 평활로 바꿔 같은 seed·같은 설정으로 다시 학습: '
+            'IP 오차 중앙값 [m], 차이의 95% CI, 물리 잔차 RMS [g], ADE [m]</caption>\n'
+            '      <thead><tr><th>분할</th><th class="n">IP 오차</th><th class="n">Δ 중앙값</th><th class="n">물리 잔차</th><th class="n">ADE</th><th>판정 (Wilcoxon, Bonferroni)</th></tr></thead>\n'
+            f'      <tbody>\n        {body}\n      </tbody>\n    </table>\n  </div>\n  <div class="prose">\n'
+            f'    <p>RTS 특징은 {len(splits)}개 분할 중 {wins}개에서 유의하게 더 정확합니다. {msg} '
+            '단일 seed 비교이므로 차이가 작은 분할은 §9.7의 seed 변동 범위와 함께 읽어야 합니다.</p>')
+
+
 def feedback_block():
     if not os.path.exists("results/feedback_rts.json"):
         return ""
@@ -46,7 +80,7 @@ def feedback_block():
   </div>
   <div class="prose">
     <p>β를 관측하기 어려운 짧은 관측에서 효과가 가장 큽니다({SPL[best[0]]}: {f0(best[1]["default"]["miss"])} → {f0(best[1]["feedback"]["miss"])} m). 학습된 사전은 EKF가 관측만으로 좁히지 못하는 β 불확실성을 메우는 역할을 하며, 신경망을 대체가 아니라 필터의 사전정보로 쓰는 것이 이 시스템에서 가장 효과적인 결합 방식입니다.{(f' OOD(β 10,000–16,000, 학습 범위 밖)에서도 {f0(ood["default"]["miss"])} → {f0(ood["feedback"]["miss"])} m로 개선되는데, PINN의 ln β 오차({ood["feedback"]["lb_err"]:.3f})가 EKF 기본 사전으로 수렴한 값의 오차({ood["default"]["lb_err"]:.3f})보다 작기 때문입니다. 신경망 단독으로는 OOD에서 실패하지만(§9.2), 필터 안의 사전정보로 쓰면 필터의 물리 모델이 잘못된 사전을 측정으로 바로잡을 수 있습니다.' if ood and ood["feedback"]["miss"] < ood["default"]["miss"] else (f' OOD에서는 PINN의 β 예측이 학습 범위 밖이라 사전이 틀릴 수 있습니다(OOD: {f0(ood["default"]["miss"])} → {f0(ood["feedback"]["miss"])} m).' if ood else ''))}</p>
-    <p><b>RTS 평활.</b> 같은 동역학으로 새로 만든 트랙 {rts["n"]}개(측정 {rts["steps"]}개)에서 측정 시각의 실제 속도 대비 오차 중앙값은 Savitzky–Golay 미분 {v["sg"]:.1f} m/s, EKF(필터) {v["ekf"]:.1f} m/s, RTS 평활 {v["rts"]:.1f} m/s입니다. 가속도는 SG {a["sg"]:.1f} → RTS {a["rts"]:.1f} m/s²입니다. 평활은 마지막 상태를 바꾸지 않으므로 필터 기반 추정기에는 영향이 없고, 신경망 입력 특징을 정제하는 용도입니다. 이 특징으로 다시 학습하는 것은 남은 일입니다.</p>
+    <p><b>RTS 평활.</b> 같은 동역학으로 새로 만든 트랙 {rts["n"]}개(측정 {rts["steps"]}개)에서 측정 시각의 실제 속도 대비 오차 중앙값은 Savitzky–Golay 미분 {v["sg"]:.1f} m/s, EKF(필터) {v["ekf"]:.1f} m/s, RTS 평활 {v["rts"]:.1f} m/s입니다. 가속도는 SG {a["sg"]:.1f} → RTS {a["rts"]:.1f} m/s²입니다. 평활은 마지막 상태를 바꾸지 않으므로 필터 기반 추정기에는 영향이 없고, 신경망 입력 특징을 정제하는 용도입니다.</p>{rts_retrain_block()}
   </div>"""
 
 

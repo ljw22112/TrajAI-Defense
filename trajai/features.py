@@ -51,3 +51,32 @@ def targets(d, origin):
     dT = (d["T"] - d["t_c"]).astype(np.float32)
     lb = ((np.log(d["beta"]) - LB_MU) / LB_SD).astype(np.float32)
     return fut, dT, lb
+
+
+def track_features_rts(meas_pol, meas, n_meas, sigma_r, sigma_ang, dt=0.5, chunk=500):
+    """Same 12-feature layout as track_features, but position/velocity/acceleration come from an EKF-RTS smoother
+    instead of Savitzky-Golay differentiation (velocity error 7.2 -> 1.2 m/s on simulated tracks, §9.6).
+    Acceleration is the central difference of the smoothed velocity; the two initialisation steps copy step 2."""
+    from . import filters
+    n, K, _ = meas.shape
+    feats = np.zeros((n, K, N_FEAT), np.float32)
+    mask = np.ones((n, K), bool)
+    origin = meas[:, 0].astype(float)
+    sr = np.broadcast_to(np.asarray(sigma_r, float), (n,))
+    sa = np.broadcast_to(np.asarray(sigma_ang, float), (n,))
+    for c0 in range(0, n, chunk):
+        sl = slice(c0, min(c0 + chunk, n))
+        xs, _ = filters.rts_smooth(meas_pol[sl].astype(float), meas[sl].astype(float), n_meas[sl], dt, sr[sl], sa[sl])
+        for j, i in enumerate(range(sl.start, sl.stop)):
+            k = int(n_meas[i])
+            x = xs[j, :k].copy()
+            x[:2] = x[2]                                   # steps 0-1 are the two-point initialisation
+            p, v = x[:, :3], x[:, 3:6]
+            a = np.gradient(v, dt, axis=0) if k > 2 else np.zeros_like(v)
+            z = p[:, 2]
+            mach = np.linalg.norm(v, axis=1) / physics.speed_of_sound(np.maximum(z, 0.0))
+            t = np.arange(k) * dt
+            rel = (p - origin[i]) / L_POS
+            feats[i, :k] = np.column_stack([t / T_SCALE, rel, z / L_POS, v / V_SCALE, a / physics.G0, mach / 5.0])
+            mask[i, :k] = False
+    return feats, mask

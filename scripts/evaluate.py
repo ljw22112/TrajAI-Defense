@@ -59,7 +59,7 @@ def predict(model, d, a=None, split="", bs=250):
     tau_true = np.linspace(0, 1, K)
     for i in range(0, n, bs):
         sl = slice(i, i + bs)
-        x = torch.from_numpy(d["feats"][sl]); pad = torch.from_numpy(d["pad"][sl]); g = torch.from_numpy(G[sl])
+        x = torch.from_numpy(d[a.get("feat_key", "feats")][sl]); pad = torch.from_numpy(d["pad"][sl]); g = torch.from_numpy(G[sl])
         wx = torch.from_numpy(WX[sl])
         L = int((~pad).sum(1).max()); x, pad = x[:, :L], pad[:, :L]
         with torch.no_grad():
