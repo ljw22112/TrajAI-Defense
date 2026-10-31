@@ -1,34 +1,42 @@
 {
  "ekf": {
   "cep_scale": 0.6142062919578433,
+  "cep90_scale": 0.9839721324964257,
   "fitted_on": "test_id_f10"
  },
  "ukf": {
   "cep_scale": 0.5635133823890748,
+  "cep90_scale": 0.7614959242156127,
   "fitted_on": "test_id_f10"
  },
  "data_tf_v2": {
   "cep_scale": 0.8987992934687505,
+  "cep90_scale": 1.1071086636051732,
   "fitted_on": "test_id_f10"
  },
  "pinn_tf_v2": {
   "cep_scale": 0.8261303129466895,
+  "cep90_scale": 1.032730363734991,
   "fitted_on": "test_id_f10"
  },
  "pinn_tf_hybrid_v2": {
   "cep_scale": 0.8261275573726254,
+  "cep90_scale": 0.9521276252223297,
   "fitted_on": "test_id_f10"
  },
  "pinn_tf_v2_rts": {
   "cep_scale": 0.7737882175660578,
+  "cep90_scale": 0.8781713752259893,
   "fitted_on": "test_id_f10"
  },
  "wx_hybrid_clim": {
   "cep_scale": 0.8282908909815361,
+  "cep90_scale": 0.9183643889154767,
   "fitted_on": "test_wx"
  },
  "wx_hybrid_date": {
   "cep_scale": 0.8501820681257606,
+  "cep90_scale": 0.9238486660596672,
   "fitted_on": "test_wx"
  }
 }

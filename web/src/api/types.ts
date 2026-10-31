@@ -18,7 +18,7 @@ export interface Weather {
 export interface WeatherCurves { h: number[]; T: number[]; u: number[]; v: number[]; rho_ratio: number[] }
 
 export interface Measurement { k: number; t: number; range_m: number; az: number; el: number; x: number; y: number; z: number }
-export interface Trajectory { t: number[]; x: number[]; z: number[] }
+export interface Trajectory { t: number[]; x: number[]; z: number[]; guard?: { score: number; threshold: number; fallback: "ekf" | null } }
 export interface Window { t_in: number; t_out: number; t_pip: number; h_pip: number }
 export interface Threat {
   level: number; max_prob: number; probabilities: Record<string, number>;
@@ -85,6 +85,7 @@ export const TERMS: Record<string, string> = {
   "기상 반영 이득": "같은 레이더 측정을 표준 대기 EKF와 그 시각 기상 EKF로 각각 추정했을 때 IP 오차가 줄어든 비율",
   "탄착 이동": "그 시각의 기온·바람 때문에 실제 탄착점이 표준 대기(USSA-1976, 무풍) 비행 대비 움직인 거리",
   "일간 변동": "분석 기간 동안 탄착점이 평균 위치에서 벗어난 거리. 클수록 날마다 기상을 새로 받아야 함",
+  "분포 밖": "트랙이 학습 데이터와 다르다고 판정(신경망 내부 표현의 Mahalanobis 거리가 검증 데이터 95번째 백분위수 초과)되어 신경망 대신 EKF 결과를 쓴 경우",
   "교전 창": "요격 고도 대역을 통과하는 시간 구간. 관측 종료 시점 기준 몇 초 뒤에 열리는지",
   NIS: "정규화 혁신 제곱. 3 근처면 필터가 측정 잡음과 일관됨(χ²₃)",
   지연: "추정 한 번에 걸린 서버 계산 시간",

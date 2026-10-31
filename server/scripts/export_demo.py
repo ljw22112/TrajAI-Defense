@@ -47,6 +47,9 @@ def main():
     for x in an["items"]:
         save(f"analyses_{x['id']}", c.get(f"/api/analyses/{x['id']}").json())
     page = c.get("/api/scenarios", params={"limit": 100}).json()
+    leftovers = [x["name"] for x in page["items"] if x["name"].lower().startswith("e2e")]
+    if leftovers:
+        raise SystemExit(f"test data in the database ({leftovers}); delete it before exporting the public demo")
     save("scenarios", page)
     for s in page["items"]:
         save(f"scenarios_{s['id']}", c.get(f"/api/scenarios/{s['id']}").json())

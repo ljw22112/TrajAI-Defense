@@ -51,7 +51,8 @@ def seed(db) -> None:
     cal_path = ROOT / "results" / "calibration.json"
     for k, v in (json.loads(cal_path.read_text()) if cal_path.exists() else {}).items():
         if k in allm:
-            allm[k] = {**allm[k], "cep_scale": v["cep_scale"], "cep_scale_fitted_on": v["fitted_on"]}
+            allm[k] = {**allm[k], "cep_scale": v["cep_scale"], "cep_scale_fitted_on": v["fitted_on"],
+                       **({"cep90_scale": v["cep90_scale"]} if "cep90_scale" in v else {})}
     have_active = db.scalar(select(ModelVersion.id).where(ModelVersion.is_active.is_(True)))
     for name, kind, fname, uses_wx, key in MODELS:
         paths = [s.model_dir / f for f in fname.split(";")]

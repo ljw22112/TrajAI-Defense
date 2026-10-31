@@ -146,6 +146,14 @@ async def create_estimate(sid: int, body: EstimateIn, db: Session = Depends(get_
             res = await run_in_threadpool(estimation.run_pinn, s, bank, mv)
         except FileNotFoundError as e:
             raise HTTPException(503, str(e))
+        g = estimation.guard_params(mv.name)
+        if g is not None and res.get("context") is not None:
+            score = estimation.ood_score(res["context"], g)
+            if score > g["threshold"]:
+                # the track is unlike the training data: the network is not trusted, the EKF answers instead (§9.8)
+                res = await run_in_threadpool(estimation.run_filter, s, bank, Method.ekf_wx if bank is not None else Method.ekf_std)
+            res["trajectory"] = {**res["trajectory"], "guard": dict(score=round(score, 2), threshold=round(g["threshold"], 2),
+                                                                    fallback="ekf" if score > g["threshold"] else None)}
     elif body.method == Method.ekf_pinn:
         mv = db.scalar(select(ModelVersion).where(ModelVersion.kind.like("pinn · track only%")).order_by(ModelVersion.id.desc()))
         if mv is None:

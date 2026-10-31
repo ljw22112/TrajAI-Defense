@@ -73,8 +73,11 @@ def ballistic_accel(pos, vel, beta, atm=None):
         rel, rho_h, a_h = vel - atm.wind(h), atm.rho(h), atm.sos(h)
     v = np.linalg.norm(rel, axis=-1)
     safe_v = np.maximum(v, 1e-6)
-    k = rho_h * v * cd_ratio(safe_v / a_h) / (2.0 * beta)
+    cdr = atm.cd_ratio(safe_v / a_h) if hasattr(atm, "cd_ratio") else cd_ratio(safe_v / a_h)
+    k = rho_h * v * cdr / (2.0 * beta)
     acc = -k[..., None] * rel
+    if hasattr(atm, "lift"):                       # truth-only model mismatch (trajai.mismatch)
+        acc = acc + atm.lift(rel, k * safe_v, vel)
     acc[..., 2] -= gravity(h)
     return acc
 

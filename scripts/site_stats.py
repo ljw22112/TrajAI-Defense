@@ -75,16 +75,18 @@ def calibrate(m, s, rng, reps=50):
     miss, c50 = d["miss"], d["cep"]
     r = miss / np.maximum(c50, 1e-6)
     n = len(r)
-    cov50, cov90, scales = [], [], []
+    cov50, cov90, cov90s, scales = [], [], [], []
     for _ in range(reps):
         p = rng.permutation(n)
         for cal, ev in ((p[: n // 2], p[n // 2:]), (p[n // 2:], p[: n // 2])):
             s50 = np.median(r[cal])
             cov50.append((r[ev] <= s50).mean())
             cov90.append((r[ev] <= s50 * RAY90).mean())   # same single scale: tests the shape of the error tail
+            cov90s.append((r[ev] <= np.quantile(r[cal], 0.9)).mean())   # level-wise: its own 90 % radius, out of fold
             scales.append(s50)
     return dict(model=m, split=s, raw50=float((r <= 1).mean()), raw90=float((r <= RAY90).mean()),
                 cal50=float(np.mean(cov50)), cal50_sd=float(np.std(cov50)), cal90=float(np.mean(cov90)),
+                cal90_sep=float(np.mean(cov90s)), cal90_sep_sd=float(np.std(cov90s)),
                 scale=float(np.median(r)), scale90=float(np.quantile(r, 0.9) / RAY90),
                 cep_raw=float(np.median(c50)), cep_cal=float(np.median(c50) * np.median(r)))
 
@@ -193,7 +195,7 @@ def main():
     deploy = {}
     for c in cal:
         if c["split"] == ("test_wx" if c["model"].startswith("wx_") else "test_id_f10"):
-            deploy[c["model"]] = dict(cep_scale=c["scale"], fitted_on=c["split"])
+            deploy[c["model"]] = dict(cep_scale=c["scale"], cep90_scale=c["scale90"], fitted_on=c["split"])
     json.dump(deploy, open(f"{R}/calibration.json", "w"), indent=1)
 
     trs = []
@@ -210,7 +212,7 @@ def main():
         tr = f'{c["transfer50"]:.2f}' if "transfer50" in c else "—"
         crs.append(f'<tr><td>{LAB.get(c["model"], c["model"])}</td><td>{SPL[c["split"]]}</td>'
                    f'<td class="n">{c["raw50"]:.2f}</td><td class="n"><b>{c["cal50"]:.2f}</b> <small class="muted">±{c["cal50_sd"]:.2f}</small></td>'
-                   f'<td class="n">{c["raw90"]:.2f}</td><td class="n"><b>{c["cal90"]:.2f}</b></td>'
+                   f'<td class="n">{c["raw90"]:.2f}</td><td class="n">{c["cal90"]:.2f}</td><td class="n"><b>{c["cal90_sep"]:.2f}</b></td>'
                    f'<td class="n">×{c["scale"]:.2f}</td><td class="n">{f0(c["cep_raw"])} → {f0(c["cep_cal"])}</td><td class="n">{tr}</td></tr>')
 
     json.dump(dict(significance=rows, calibration=cal), open(f"{R}/significance.json", "w"), indent=1)
@@ -225,7 +227,8 @@ def main():
                   }.get(verdict_of(wd), "부호순위 검정으로는 유의하지만 중앙값 차이의 신뢰구간이 0을 포함하고 승률도 0.5에 가깝습니다. "
                                         "작고 일관된 이동은 있으나 크기는 불확실하며, 개선의 대부분은 직전 1년 기상으로 학습한 데서 나옵니다."))
     thin = [c["cal90"] for c in cal if c["cal90"] < 0.85]
-    tail_txt = (f"하지만 같은 s로 잰 90% 포함률은 {len(cal)}개 중 {len(thin)}개에서 0.85 미만({min(thin):.2f}–{max(thin):.2f})입니다. 오차 분포의 꼬리가 가우시안보다 두껍다는 뜻이므로, 높은 신뢰수준이 필요한 위협 판정에는 수준별 보정이 따로 필요합니다."
+    tail_txt = (f"하지만 같은 s로 잰 90% 포함률은 {len(cal)}개 중 {len(thin)}개에서 0.85 미만({min(thin):.2f}–{max(thin):.2f})입니다. 오차 분포의 꼬리가 가우시안보다 두껍다는 뜻입니다. 90% 반경을 따로 보정하면(보정에 쓰지 않은 절반에서) 포함률이 {min(c['cal90_sep'] for c in cal):.2f}–{max(c['cal90_sep'] for c in cal):.2f}로 목표에 맞습니다. "
+                "그래서 콘솔은 CEP 표시에는 50% 계수를, 위협 확률 계산에는 90% 계수(꼬리를 반영해 더 넓음)를 씁니다. 방어 판단에서는 위협을 낮게 잡는 쪽의 오류가 더 비싸기 때문입니다."
                 if thin else "같은 s로 잰 90% 포함률도 모두 0.85 이상으로, 오차 꼬리가 가우시안 가정과 크게 어긋나지 않습니다.")
     ood = [c for c in cal if c["split"] == "test_ood" and "transfer50" in c]
     ood_txt = ", ".join(f'{LAB.get(c["model"], c["model"])} {c["transfer50"]:.2f}' for c in ood)
@@ -254,7 +257,7 @@ def main():
   <div class="tw">
     <table>
       <caption><b>Table R6</b>CEP 포함률, 보정 전 → 보정 후 (목표 0.50 / 0.90). 보정 후 값은 모두 보정에 쓰지 않은 절반에서 잰 것</caption>
-      <thead><tr><th>추정기</th><th>분할</th><th class="n">50% 전</th><th class="n">50% 후</th><th class="n">90% 전</th><th class="n">90% 후</th><th class="n">s</th><th class="n">CEP 중앙값 [m]</th><th class="n">ID 10% s 이전</th></tr></thead>
+      <thead><tr><th>추정기</th><th>분할</th><th class="n">50% 전</th><th class="n">50% 후</th><th class="n">90% 전</th><th class="n">90% · 같은 s</th><th class="n">90% · 별도 보정</th><th class="n">s</th><th class="n">CEP 중앙값 [m]</th><th class="n">ID 10% s 이전</th></tr></thead>
       <tbody>
         {chr(10).join("        " + t for t in crs).strip()}
       </tbody>

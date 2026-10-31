@@ -4,9 +4,10 @@
 - 환경 직접 설정(기온·기압·습도·기온감률·대류권계면·지상풍·제트기류·날씨), 미리보기와 프리셋
 - 분석: 기상 자료 지연, 센서 조건, 환경 민감도 / 다표적 교전 타임라인 / 위협 알림(WebSocket) / 시나리오 비교 / 실시간 PINN 예측 / PDF
 - EKF · PINN β 사전 추정기(§9.6), RTS 평활기, 앙상블 ens_hybrid_v2(§9.7), 하이브리드 seed 1·2
-- 마이그레이션 0003–0004, 테스트 코어 21 · API 23 · 프론트 11 · E2E 12
-- PINN·data-only seed 1, RTS 특징 PINN(pinn_tf_v2_rts) 학습·평가 → §9.6 Table R8b, §9.7, 연구 질문 표 갱신
-- 미실행: RTS 특징 모델의 콘솔 서빙
+- 마이그레이션 0003–0004, 테스트 코어 21 · API 24 · 프론트 11 · E2E 12 (E2E는 만든 데이터를 끝나고 삭제)
+- PINN·data-only seed 1, RTS 특징 PINN(pinn_tf_v2_rts) 학습·평가 → §9.6 Table R8b, §9.7, 연구 질문 표 갱신, 콘솔 서빙
+- 분포 밖 감지·EKF 전환(§9.8, 콘솔 적용), 모델 불일치 시험과 불일치 데이터 재학습(§9.9: pinn_rts_mm, data_rts_mm), CEP90 별도 보정
+- 오류 점검: scripts/check_site.py(CI)로 본문 수치를 결과 JSON과 대조, 하드코딩 수치를 계산값으로 교체(1.29→1.28배, 4.1→4.2 km, seed 표준편차), 공개 데모의 E2E 잔여 데이터 제거
 
 ## 2026-10-30 (4차 세션, 완료)
 - v2(잡음 증강, 4,500 step) 평가: 하이브리드 ID 15% 428 m, 고잡음 1,026 m (v1 12,239 m)
@@ -16,7 +17,7 @@
 - 수정: model_versions.kind VARCHAR(40) 초과로 PostgreSQL 기동 실패 → 라벨 단축, 길이 검사 테스트 추가
 - pinn_tf_v2 학습·평가(ID 10% 733 m, OOD 14.2 km, 잔차 0.10 g) → §9 표·그림·유의성 갱신
 - 검토 반영: 과장 수정, 핵심 결과 카드, §9.4–9.6, 재현 절차, 콘솔 UX, 기상 영향 분석, 교전 우선순위
-- 미실행(선택): pinn_lstm_v2, 2k 저데이터 v2 ablation, 다중 seed
+- 미실행(선택): pinn_lstm_v2, 2k 저데이터 v2 ablation
 
 ## 2026-10-30 (3차 세션)
 - v1 결과(data_tf, pinn_tf, pinn_tf_hybrid; 공칭 잡음, 1,500 step) 평가 → 사이트 §9.1/9.2, Table 2 측정값, README 반영, main 배포

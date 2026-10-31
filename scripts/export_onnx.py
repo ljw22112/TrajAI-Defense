@@ -17,8 +17,8 @@ from trajai.model import PINNPredictor  # noqa: E402
 
 
 class Deployable(torch.nn.Module):
-    """Single-track inference graph: features (1, K, 12), global (1, 10) [, wx (1, 27)] -> trajectory (1, 129, 3), head (1, 4).
-    K (track length) is a dynamic dimension."""
+    """Single-track inference graph: features (1, K, 12), global (1, 10) [, wx (1, 27)] -> trajectory (1, 129, 3), head (1, 4),
+    context (1, C). K (track length) is a dynamic dimension. The context feeds the out-of-distribution guard (§9.8)."""
 
     def __init__(self, m):
         super().__init__()
@@ -28,7 +28,7 @@ class Deployable(torch.nn.Module):
     def forward(self, feats, g, wx=None):
         pad = torch.zeros(feats.shape[0], feats.shape[1], dtype=torch.bool)
         c, h = self.m.context(feats, pad, g, wx)
-        return self.m.decode(c, self.tau), h
+        return self.m.decode(c, self.tau), h, c
 
 
 def bench(fn, n=300, warm=20):
@@ -56,7 +56,7 @@ def main(name):
     args = (feats, g) + ((torch.zeros(1, 27),) if use_wx else ())
     names = ["feats", "global"] + (["wx"] if use_wx else [])
     shapes = {"feats": {1: K}, "g": None, **({"wx": None} if use_wx else {})}
-    torch.onnx.export(dep, args, path, input_names=names, output_names=["trajectory", "head"], dynamo=True, dynamic_shapes=shapes)
+    torch.onnx.export(dep, args, path, input_names=names, output_names=["trajectory", "head", "context"], dynamo=True, dynamic_shapes=shapes)
     import onnxruntime as ort
     so = ort.SessionOptions(); so.intra_op_num_threads = 1; so.inter_op_num_threads = 1
     sess = ort.InferenceSession(path, so, providers=["CPUExecutionProvider"])
