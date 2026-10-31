@@ -67,7 +67,7 @@ export function CustomAtmForm({ value, onChange, idPrefix = "atm", preview = tru
             <label key={c} className="chk"><input type="radio" name={`${idPrefix}-cond`} checked={value.condition === c} onChange={() => set("condition", c)} /> {CONDITION_LABEL[c]}</label>
           ))}
         </div>
-        <small className="label">강수·안개는 탄도체 항력에 거의 영향이 없고(공기 밀도의 0.1% 미만), 레이더 신호를 약하게 만들어 측정 잡음을 키웁니다. 비 ×1.3, 폭우 ×2.0, 눈 ×1.4, 안개 ×1.05로 근사합니다.</small>
+        <small className="label">강수·안개는 탄도체 항력에 거의 영향이 없고(폭우의 물방울 질량도 공기 밀도의 1% 미만), 레이더 신호를 약하게 만들어 측정 잡음을 키웁니다. 비 ×1.3, 폭우 ×2.0, 눈 ×1.4, 안개 ×1.05로 근사합니다.</small>
       </fieldset>
       {preview && !DEMO && (
         pv.isLoading ? <Spinner label="대기 프로파일 계산 중" /> : pv.error ? <ErrorBox error={pv.error} /> : pv.data && (

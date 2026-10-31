@@ -44,7 +44,7 @@ def claim(pattern, value, tol, where, src=html):
 
 # ---- hand-written claims in the research-question table, abstract, §6, §12 and README
 claim(r"지연은 충족\(([\d.]+) ms", L["onnxruntime_cpu"]["p50_ms"], 0.02, "RQ1 latency")
-claim(r"약 (\d+)배 빠름", L["ekf_plus_mc100"]["p50_ms"] / L["onnxruntime_cpu"]["p50_ms"], 0.05, "RQ1 speed-up")
+claim(r"약 (\d+)배 빠름", L["ekf_plus_mc100"]["p50_ms"] / L["onnxruntime_cpu"]["p50_ms"], 0.005, "RQ1 speed-up")
 if "pinn_tf_v2_rts" in M:
     claim(r"EKF보다 정확\((\d[\d,]*) m vs", med("pinn_tf_v2_rts", "test_id_noise"), 0.01, "RQ1 RTS high-noise")
     claim(r"EKF보다 정확\(\d[\d,]* m vs (\d[\d,]*) m\)", med("ekf", "test_id_noise"), 0.01, "RQ1 EKF high-noise")
