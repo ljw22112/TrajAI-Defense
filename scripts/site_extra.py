@@ -103,6 +103,56 @@ def ood_block():
   </div>"""
 
 
+def maneuver_block():
+    """Longer tracking, IMM, innovation test and a manoeuvre-hypothesis CEP (scripts/maneuver.py)."""
+    if not os.path.exists("results/maneuver.json"):
+        return ""
+    R = json.load(open("results/maneuver.json"))
+    S, rb, la = R["splits"], R["robust"], R.get("lift_accel")
+    lab = {"long_nom": "공칭 비행", "long_lift": "약한 양력", "long_cd": "Cd(M) 곡선 오차"}
+    rows = []
+    for k, e in S.items():
+        au = e.get("auroc", {}).get("nis_w")
+        rows.append(f'<tr><td>{lab[k]}</td><td class="n">{f0(e["ekf"]["miss"])} <small class="muted">({e["ekf"]["coverage"]:.2f})</small></td>'
+                    f'<td class="n">{f0(e["imm"]["miss"])} <small class="muted">({e["imm"]["coverage"]:.2f})</small></td>'
+                    f'<td class="n">{e["flagged"] * 100:.0f}%</td><td class="n">{"—" if au is None else f"{au:.2f}"}</td></tr>')
+    rrows = []
+    for ld in ("0.00", "0.05", "0.10"):
+        a, b, c = rb["test_id_f10"][ld], rb["test_mm_lift"][ld], rb["test_mm_cd"][ld]
+        rrows.append(f'<tr><td>{"없음 (기본 EKF + MC)" if ld == "0.00" else f"L/D ≤ {ld}"}</td>'
+                     + "".join(f'<td class="n">{f0(z["cep"])} / {z["coverage"]:.2f}</td>' for z in (a, b, c)) + "</tr>")
+    nom, lift = S["long_nom"], S["long_lift"]
+    acc = (f" 양력 가속도는 공기가 짙은 하강 후반에 커져, 레이더 창 안의 최대값은 중앙값 {la['window_median']:.2f} m/s²로 비행 전체 최대값({la['flight_median']:.1f} m/s²)의 "
+           f"{la['window_median'] / la['flight_median'] * 100:.0f}%에 불과합니다. 관측 동안에는 측정 잡음(15 m)과 구분하기 어려운 크기라, 기동 오차는 대부분 관측이 끝난 뒤에 생깁니다.") if la else ""
+    b0, b1 = rb["test_mm_lift"]["0.00"], rb["test_mm_lift"]["0.10"]
+    _mm = json.load(open("results/mismatch.json"))["test_mm_lift"]
+    mlc = f'{_mm["pinn_rts_mm"]["coverage"]:.2f}' if "pinn_rts_mm" in _mm else "—"
+    n0, n1 = rb["test_id_f10"]["0.00"], rb["test_id_f10"]["0.10"]
+    return f"""
+  <div class="tw">
+    <table>
+      <caption><b>Table R14</b>정점 이후까지 추적(관측 {R["frac"] * 100:.0f}%, 최대 100 s, 정점 통과 트랙 {nom["past_apogee"]:.0%}): IP 오차 중앙값 [m]과 CEP 포함률, 혁신(NIS) 검정 감지율과 AUROC</caption>
+      <thead><tr><th>실제 비행</th><th class="n">EKF</th><th class="n">IMM (탄도 + 기동 모드)</th><th class="n">감지율 (오경보 기준 5%)</th><th class="n">AUROC</th></tr></thead>
+      <tbody>
+        {chr(10).join("        " + r for r in rows).strip()}
+      </tbody>
+    </table>
+  </div>
+  <div class="tw">
+    <table>
+      <caption><b>Table R15</b>기동 가설 CEP: Monte Carlo 입자마다 L/D ~ U(0, 상한)의 양력을 무작위 부호로 넣어 전파. CEP 중앙값 [m] / 포함률, 관측 12%</caption>
+      <thead><tr><th>가정한 기동</th><th class="n">공칭 (ID 10%)</th><th class="n">약한 양력</th><th class="n">Cd(M) 곡선 오차</th></tr></thead>
+      <tbody>
+        {chr(10).join("        " + r for r in rrows).strip()}
+      </tbody>
+    </table>
+  </div>
+  <div class="prose">
+    <p><b>기동을 감지하거나 대비할 수 있는가.</b> 위 시험은 관측 12%에서 끊어 모든 트랙이 아직 상승 중이었으므로, 정점 이후에 시작하는 양력은 측정에 들어 있지 않았습니다. 그래서 추적을 정점 이후까지 이어 두 가지 표준 대응을 시험했습니다. 하나는 최근 {R["window"]}개 측정의 정규화 혁신 제곱(NIS)으로 모델 오차를 감지하는 검정이고(기준은 별도 공칭 트랙의 95번째 백분위수), 다른 하나는 탄도 모드와 큰 가속도 잡음의 기동 모드를 섞는 IMM 필터입니다. 결과는 부정적입니다. 양력 트랙의 감지율은 {lift["flagged"] * 100:.0f}%로 공칭의 오경보율({nom["flagged"] * 100:.0f}%)과 같고(AUROC {lift["auroc"]["nis_w"]:.2f}), IMM도 오차를 줄이지 못하면서 공칭 비행에서는 {f0(nom["ekf"]["miss"])} → {f0(nom["imm"]["miss"])} m로 손해를 봅니다.{acc}</p>
+    <p>관측으로 알 수 없는 기동에는 불확실성을 미리 넓히는 수밖에 없습니다. 예측 입자마다 양력을 무작위로 넣으면(L/D ≤ 0.10) 양력 트랙의 포함률이 {b0["coverage"]:.2f}에서 {b1["coverage"]:.2f}까지 오르지만, CEP가 {f0(b0["cep"])} → {f0(b1["cep"])} m로 넓어지고 공칭 트랙에서도 {f0(n0["cep"])} → {f0(n1["cep"])} m(포함률 {n1["coverage"]:.2f})로 지나치게 보수적이 됩니다. 이 상한은 시험 자료를 만든 범위와 같아 낙관적인 가정입니다. 불일치 데이터로 학습한 신경망(포함률 {mlc})이 같은 문제를 데이터로 푸는 다른 길이며, 어느 쪽이든 위협 목록(예상 기동 범위)을 먼저 정해야 한다는 것이 운용상 결론입니다.</p>
+  </div>"""
+
+
 def mismatch_block():
     if not os.path.exists("results/mismatch.json"):
         return ""
@@ -160,6 +210,34 @@ def mismatch_block():
   </div>
   <div class="prose">
     <p>불일치가 생기면 모든 추정기의 오차가 커지지만, 필터와 신경망의 격차는 줄어듭니다. RTS 입력 PINN은 불일치가 없을 때 EKF의 {rts0:.2f}배였으나 Cd 오차에서 {rts_e[0]:.2f}배, 양력에서 {rts_e[1]:.2f}배입니다. 여기의 신경망도 공칭 동역학으로만 학습했으므로 같은 불일치를 겪고 있다는 점에 유의해야 합니다. 더 심각한 문제는 불확실성입니다. 양력 기동에서는 공칭 모델만 아는 모든 추정기의 CEP 포함률이 {min(cov):.2f}–{max(cov):.2f}로 떨어져, 예측 반경이 실제 오차를 크게 과소평가합니다. 모르는 기동 앞에서 필터와 신경망 모두 과신한다는 뜻이며, §9.8의 감지 장치도 이를 잡지 못합니다.{retrain}</p>
+  </div>{maneuver_block()}"""
+
+
+def decision_block():
+    """REQ-P-03: decision-time gain of the beta prior (scripts/decision_time.py)."""
+    if not os.path.exists("results/decision_time.json"):
+        return ""
+    D = json.load(open("results/decision_time.json"))
+    rows = []
+    for mode, lab in (("raw", "보정 전"), ("cal", "50% 보정")):
+        for R, g in D["radii"][mode].items():
+            rows.append(f'<tr><td>{lab}</td><td class="n">{int(R):,}</td><td class="n">{g["ekf_decided"]:.2f} → {g["fb_decided"]:.2f}</td>'
+                        f'<td class="n">{g["ekf_left_median"]:.0f} → {g["fb_left_median"]:.0f}</td>'
+                        f'<td class="n">{g["gain_median"]:.1f} / {g["gain_mean"]:.1f}</td><td class="n">{g["earlier"]:.2f} / {g["later"]:.2f}</td></tr>')
+    c, raw = D["radii"]["cal"]["300"], D["radii"]["raw"]
+    cuts = D["per_cut"]
+    return f"""
+  <div class="tw">
+    <table>
+      <caption><b>Table R8c</b>교전 판단 시점: 같은 {D["n"]}개 비행을 관측 {cuts[0]["frac"] * 100:.0f}–{cuts[-1]["frac"] * 100:.0f}%에서 잘라, CEP<sub>50</sub> ≤ R이 처음 되는 시점에 판단. EKF → EKF + PINN β 사전</caption>
+      <thead><tr><th>CEP</th><th class="n">R [m]</th><th class="n">판단 가능 비율</th><th class="n">판단 시 남은 시간 중앙값 [s]</th><th class="n">앞당긴 시간 중앙값 / 평균 [s]</th><th class="n">빨라진 / 늦어진 비율</th></tr></thead>
+      <tbody>
+        {chr(10).join("        " + r for r in rows).strip()}
+      </tbody>
+    </table>
+  </div>
+  <div class="prose">
+    <p><b>교전 판단 시점(REQ-P-03).</b> 계산이 빨라지는 것(0.23 s)과 별개로, 같은 측정으로 더 일찍 믿을 만한 탄착점을 얻으면 판단 시간이 늘어납니다. 보정 전 EKF CEP는 관측이 늘수록 보수적이어서(포함률 {cuts[2]["cov_ekf"]:.2f}–{cuts[-1]["cov_ekf"]:.2f}, 관측 10–30%) β 사전이 줄인 오차가 CEP에 드러나지 않고, 앞당겨지는 시간도 1 s 미만입니다. 짝수 번째 트랙으로 포함률을 50%에 맞춘 CEP(배율 EKF {D["scale"]["ekf"]:.2f}, β 사전 {D["scale"]["fb"]:.2f})로 판단하면 R = 300 m에서 트랙의 {c["earlier"]:.0%}가 더 일찍 판단되고 늦어지는 트랙은 {c["later"]:.0%}이며, 앞당긴 시간은 중앙값 {c["gain_median"]:.1f} s, 평균 {c["gain_mean"]:.1f} s입니다(평균에는 EKF가 끝까지 판단하지 못한 트랙이 포함). 요구한 +25 s에는 못 미칩니다. β 사전의 이득은 β가 아직 관측되지 않은 짧은 관측 구간에 몰려 있고, 관측이 길어지면 EKF가 β를 스스로 추정해 차이가 사라지기 때문입니다. 시점의 해상도는 자르는 간격(관측 2.5–5%, 약 5–9 s)으로 제한됩니다.</p>
   </div>"""
 
 
@@ -197,7 +275,7 @@ def feedback_block():
   <div class="prose">
     <p>β를 관측하기 어려운 짧은 관측에서 효과가 가장 큽니다({SPL[best[0]]}: {f0(best[1]["default"]["miss"])} → {f0(best[1]["feedback"]["miss"])} m). 학습된 사전은 EKF가 관측만으로 좁히지 못하는 β 불확실성을 메우는 역할을 하며, 신경망을 대체가 아니라 필터의 사전정보로 쓰는 것이 이 시스템에서 가장 효과적인 결합 방식입니다.{(f' OOD(β 10,000–16,000, 학습 범위 밖)에서도 {f0(ood["default"]["miss"])} → {f0(ood["feedback"]["miss"])} m로 개선되는데, PINN의 ln β 오차({ood["feedback"]["lb_err"]:.3f})가 EKF 기본 사전으로 수렴한 값의 오차({ood["default"]["lb_err"]:.3f})보다 작기 때문입니다. 신경망 단독으로는 OOD에서 실패하지만(§9.2), 필터 안의 사전정보로 쓰면 필터의 물리 모델이 잘못된 사전을 측정으로 바로잡을 수 있습니다.' if ood and ood["feedback"]["miss"] < ood["default"]["miss"] else (f' OOD에서는 PINN의 β 예측이 학습 범위 밖이라 사전이 틀릴 수 있습니다(OOD: {f0(ood["default"]["miss"])} → {f0(ood["feedback"]["miss"])} m).' if ood else ''))}</p>
     <p><b>RTS 평활.</b> 같은 동역학으로 새로 만든 트랙 {rts["n"]}개(측정 {rts["steps"]}개)에서 측정 시각의 실제 속도 대비 오차 중앙값은 Savitzky–Golay 미분 {v["sg"]:.1f} m/s, EKF(필터) {v["ekf"]:.1f} m/s, RTS 평활 {v["rts"]:.1f} m/s입니다. 가속도는 SG {a["sg"]:.1f} → RTS {a["rts"]:.1f} m/s²입니다. 평활은 마지막 상태를 바꾸지 않으므로 필터 기반 추정기에는 영향이 없고, 신경망 입력 특징을 정제하는 용도입니다.</p>{rts_retrain_block()}
-  </div>"""
+  </div>{decision_block()}"""
 
 
 def _ens_text(ens):
@@ -216,6 +294,30 @@ def _ens_text(ens):
               f"{o['epistemic_share']:.2f}로 ID와 비슷해, 같은 데이터로 seed만 바꾼 3개 모델은 분포 밖 입력을 알아채지 못합니다. "
               "분포 이동 탐지에는 입력 특징의 분포 거리나 데이터 다양화 같은 별도 장치가 필요합니다.")
     return t
+
+
+def physw_block():
+    """REQ-F-03: fine-tuning the served RTS-input PINN with a larger physics weight (scripts/train.py --init-from)."""
+    M = json.load(open("results/metrics.json"))
+    names = [("pinn_tf_v2_rts", "기준 (λ = 1, 4,500 step)"), ("pinn_rts_ft_l1", "+300 step, λ = 1 (대조)"), ("pinn_rts_ft_l10", "+300 step, λ = 10")]
+    if not all(k in M for k in (n for n, _ in names)):
+        return ""
+    sp = ("test_id_f10", "test_id_f15", "test_id_noise")
+    rows = [f'<tr><td>{lab}</td>' + "".join(f'<td class="n">{M[k][s]["phys_rms_g"]["median"]:.3f} / {f0(M[k][s]["miss"]["median"])}</td>' for s in sp) + "</tr>"
+            for k, lab in names]
+    r10, r1 = M["pinn_rts_ft_l10"], M["pinn_rts_ft_l1"]
+    best = min(r10[s]["phys_rms_g"]["median"] for s in sp)
+    return f"""
+  <div class="tw">
+    <table>
+      <caption><b>Table R10b</b>물리 손실 가중치 λ: RTS 입력 PINN을 이어서 학습. 물리 잔차 RMS [g] / IP 오차 중앙값 [m]</caption>
+      <thead><tr><th>모델</th><th class="n">ID 10%</th><th class="n">ID 15%</th><th class="n">고잡음</th></tr></thead>
+      <tbody>
+        {chr(10).join("        " + r for r in rows).strip()}
+      </tbody>
+    </table>
+  </div>
+  <div class="prose"><p><b>물리 잔차 목표(REQ-F-03, 0.05 g).</b> 같은 학습량의 대조(λ = 1)와 비교하면, λ를 10으로 키운 이어 학습은 ID 10% 잔차를 {r1["test_id_f10"]["phys_rms_g"]["median"]:.3f} → {r10["test_id_f10"]["phys_rms_g"]["median"]:.3f} g로 줄이지만 IP 오차가 {f0(r1["test_id_f10"]["miss"]["median"])} → {f0(r10["test_id_f10"]["miss"]["median"])} m로 커집니다. 가장 낮은 잔차도 {best:.3f} g로 목표에 {"닿지 못합니다" if best > 0.05 else "닿습니다"}. 잔차는 신경망 궤적이 운동 방정식을 얼마나 지키는지를 재지만 탄착점 정확도와는 다른 목표라, 잔차를 더 줄이려면 정확도를 내줘야 하는 맞바꿈이 있습니다. 서빙 모델은 정확도를 우선해 λ = 1을 유지합니다.</p></div>"""
 
 
 def ensemble_block():
@@ -274,7 +376,7 @@ def ensemble_block():
   </div>
   <div class="prose"><p>Table R5의 신뢰구간은 시험 표본 변동만 반영합니다. 학습 seed를 바꾼 반복으로 학습 변동을 따로 쟀습니다. seed 간 표준편차는 ID 10% {sd_rng('test_id_f10')} m, 고잡음 {sd_rng('test_id_noise')} m로, ID 10%에서 EKF와 가장 가까운 신경망의 차이({gap:,.0f} m)보다 작지만 물리 손실 유무 같은 신경망끼리의 차이(수십 m)와는 비슷한 크기입니다. OOD는 seed에 따라 {sd_rng('test_ood', 1000)} km 흔들리므로 OOD 수치는 단일 모델 값보다 이 범위로 읽어야 합니다.{pl_txt or " 물리 손실 비교용 PINN·data-only 모델의 추가 seed는 CPU 학습 시간 제약으로 돌리지 못해, §9.4의 물리 손실 효과(특히 ID 10%의 −61 m)는 단일 seed 결과로 남아 있습니다."}</p></div>"""
     return f"""
-  <h3 class="sub" id="sec-ensemble"><span class="no">9.7</span>Deep ensemble과 학습 seed 변동</h3>{head}{seed_tbl}"""
+  <h3 class="sub" id="sec-ensemble"><span class="no">9.7</span>Deep ensemble과 학습 seed 변동</h3>{head}{seed_tbl}{physw_block()}"""
 
 
 if __name__ == "__main__":

@@ -101,6 +101,8 @@ def main():
     ap.add_argument("--phys-atm", default="std", choices=["std", "clim", "date"], help="atmosphere in the physics residual")
     ap.add_argument("--save-every", type=int, default=0,
                     help="also save the resume state every N steps inside an epoch (on resume the interrupted epoch restarts its shuffle)")
+    ap.add_argument("--init-from", default=None, help="start from the weights of checkpoints/<name>.pt (fine-tuning)")
+    ap.add_argument("--no-curriculum", action="store_true", help="full lambda_p from the first step (for fine-tuning)")
     ap.add_argument("--resume", action="store_true", help="continue from checkpoints/<name>_last.pt if present")
     a = ap.parse_args()
     torch.manual_seed(a.seed)
@@ -126,12 +128,15 @@ def main():
         step, best, log = ck["step"], ck["best"], ck["log"]
         t0 = time.time() - ck["elapsed"]
         print(f"resumed {a.name} at step {step}", flush=True)
+    if a.init_from and step == 0:
+        model.load_state_dict(torch.load(f"checkpoints/{a.init_from}.pt", weights_only=False)["state"])
+        print(f"initialised from {a.init_from}", flush=True)
     print(f"{a.name}: {param_count(model):,} params, {n} train samples, {total_steps} steps", flush=True)
     while step < total_steps:
         model.train()
         agg = {}
         for b in batches(tr, a.bs, True, gen):
-            lam = a.lambda_p * min(1.0, step / (0.4 * total_steps))      # curriculum 0 -> lambda_p
+            lam = a.lambda_p if a.no_curriculum else a.lambda_p * min(1.0, step / (0.4 * total_steps))   # curriculum 0 -> lambda_p
             loss, parts = step_losses(model, b, lam, atm=atm, per_sample=per_sample)
             opt.zero_grad()
             loss.backward()

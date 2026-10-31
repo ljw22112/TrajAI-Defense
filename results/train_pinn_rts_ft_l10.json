@@ -1,0 +1,49 @@
+{
+ "args": {
+  "name": "pinn_rts_ft_l10",
+  "encoder": "transformer",
+  "lambda_p": 10.0,
+  "hybrid": false,
+  "n_train": null,
+  "epochs": 20,
+  "steps": 300,
+  "bs": 128,
+  "lr": 0.0003,
+  "seed": 0,
+  "threads": 1,
+  "train_split": "train_aug",
+  "val_split": "val_aug",
+  "feat_key": "feats_rts",
+  "global_key": "g",
+  "wx": false,
+  "phys_atm": "std",
+  "save_every": 25,
+  "init_from": "pinn_tf_v2_rts",
+  "no_curriculum": true,
+  "resume": true
+ },
+ "params": 564103,
+ "log": [
+  {
+   "step": 157,
+   "time": 755.8565564155579,
+   "val_ade_m": 1400.667236328125,
+   "data": 0.0002350867734482337,
+   "T": 0.00022118116353021542,
+   "b": 0.011780656739227046,
+   "nll": 0.36895760696286417,
+   "phys": 0.019913533192341494
+  },
+  {
+   "step": 300,
+   "time": 1465.2851021289825,
+   "val_ade_m": 661.155517578125,
+   "data": 0.00017994281170914946,
+   "T": 0.00012328991912799193,
+   "b": 0.00634409198507809,
+   "nll": 0.577043564257562,
+   "phys": 0.007824225342316422
+  }
+ ],
+ "train_time_s": 1465.324833393097
+}

@@ -211,7 +211,7 @@ sequenceDiagram
 
 | 수준 | 범위 | 도구 | 수 |
 |---|---|---|---|
-| 단위 (코어) | 대기 기준값, RK4 수렴 차수, 레이더 야코비안, EKF/UKF 일관성(NIS), 기상 격자·바람, 사용자 대기(습도·대류권계면), RTS 평활, β 사전, 위협 등급 | pytest | 21 |
+| 단위 (코어) | 대기 기준값, RK4 수렴 차수, 레이더 야코비안, EKF/UKF 일관성(NIS), IMM 모드 확률, 기상 격자·바람, 사용자 대기(습도·대류권계면), RTS 평활, β 사전, 위협 등급 | pytest | 21 |
 | API 통합 | 인증 실패, RBAC, CRUD·검증·중복, 기상 캐시, 시뮬레이션, 추정·위협, 통계, WebSocket, 소유권, 감사 로그, 로그인 제한, CSV, 스키마 길이, 모델별 통계, 사용자 대기, 자료 지연·센서·민감도 분석, 다표적 교전, 위협 알림(WebSocket), 분포 밖 감지 | pytest + TestClient, **SQLite와 PostgreSQL 모두** | 24 |
 | 마이그레이션 | upgrade → check(드리프트 없음) → downgrade → upgrade | Alembic | CI |
 | 프론트엔드 단위 | API 클라이언트(토큰, 422 필드 오류, 401 처리, 폼 인코딩, 네트워크 오류), UI 컴포넌트, CSV 다운로드 | Vitest + Testing Library | 11 |
