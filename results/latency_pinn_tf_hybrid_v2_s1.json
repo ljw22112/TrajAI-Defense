@@ -1,0 +1,22 @@
+{
+ "model": "pinn_tf_hybrid_v2_s1",
+ "onnx_file": "export/pinn_tf_hybrid_v2_s1.onnx",
+ "onnx_size_kb": 321.56640625,
+ "onnx_vs_torch_max_diff_m": 0.038743019104003906,
+ "torch_cpu": {
+  "p50_ms": 1.7497720000392292,
+  "p99_ms": 2.0178409694017314
+ },
+ "onnxruntime_cpu": {
+  "p50_ms": 0.9305409998887626,
+  "p99_ms": 1.142638349738263
+ },
+ "ekf_filter_only": {
+  "p50_ms": 48.14029900035166,
+  "p99_ms": 63.416097190229266
+ },
+ "ekf_plus_mc100": {
+  "p50_ms": 229.4629090001763,
+  "p99_ms": 255.99650515932808
+ }
+}

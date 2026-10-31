@@ -890,6 +890,34 @@ footer b{color:var(--ink); font-weight:600}
     <p>β를 관측하기 어려운 짧은 관측에서 효과가 가장 큽니다(ID 5%: 1,429 → 956 m). 학습된 사전은 EKF가 관측만으로 좁히지 못하는 β 불확실성을 메우는 역할을 하며, 신경망을 대체가 아니라 필터의 사전정보로 쓰는 것이 이 시스템에서 가장 효과적인 결합 방식입니다. OOD(β 10,000–16,000, 학습 범위 밖)에서도 438 → 363 m로 개선되는데, PINN의 ln β 오차(0.025)가 EKF 기본 사전으로 수렴한 값의 오차(0.130)보다 작기 때문입니다. 신경망 단독으로는 OOD에서 실패하지만(§9.2), 필터 안의 사전정보로 쓰면 필터의 물리 모델이 잘못된 사전을 측정으로 바로잡을 수 있습니다.</p>
     <p><b>RTS 평활.</b> 같은 동역학으로 새로 만든 트랙 300개(측정 40개)에서 측정 시각의 실제 속도 대비 오차 중앙값은 Savitzky–Golay 미분 7.2 m/s, EKF(필터) 3.8 m/s, RTS 평활 1.2 m/s입니다. 가속도는 SG 12.0 → RTS 0.3 m/s²입니다. 평활은 마지막 상태를 바꾸지 않으므로 필터 기반 추정기에는 영향이 없고, 신경망 입력 특징을 정제하는 용도입니다. 이 특징으로 다시 학습하는 것은 남은 일입니다.</p>
   </div>
+  <h3 class="sub" id="sec-ensemble"><span class="no">9.7</span>Deep ensemble과 학습 seed 변동</h3>
+  <div class="tw">
+    <table>
+      <caption><b>Table R9</b>하이브리드 단일 모델(seed 0) → 앙상블(seed 0–2): IP 오차 중앙값 [m], CEP<sub>50</sub>·CEP<sub>90</sub> 포함률(보정 전, 목표 0.50 / 0.90), 예측 분산 중 모델 간 분산 비율</caption>
+      <thead><tr><th>분할</th><th class="n">IP 오차</th><th class="n">50% 포함률</th><th class="n">90% 포함률</th><th class="n">모델 간 분산 비율</th></tr></thead>
+      <tbody>
+        <tr><td>ID 5%</td><td class="n">1,615 → <b>1,515</b></td><td class="n">0.32 → 0.41</td><td class="n">0.70 → <b>0.76</b></td><td class="n">0.19</td></tr>
+        <tr><td>ID 10%</td><td class="n">578 → <b>514</b></td><td class="n">0.59 → 0.68</td><td class="n">0.95 → <b>0.96</b></td><td class="n">0.09</td></tr>
+        <tr><td>ID 15%</td><td class="n">428 → <b>379</b></td><td class="n">0.62 → 0.71</td><td class="n">0.93 → <b>0.97</b></td><td class="n">0.12</td></tr>
+        <tr><td>고잡음</td><td class="n">1,026 → <b>974</b></td><td class="n">0.45 → 0.54</td><td class="n">0.83 → <b>0.90</b></td><td class="n">0.10</td></tr>
+        <tr><td>OOD</td><td class="n">10,404 → <b>12,800</b></td><td class="n">0.14 → 0.15</td><td class="n">0.44 → <b>0.46</b></td><td class="n">0.10</td></tr>
+        <tr><td>기상</td><td class="n">2,779 → <b>2,766</b></td><td class="n">0.11 → 0.13</td><td class="n">0.27 → <b>0.28</b></td><td class="n">0.11</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="prose">
+    <p>앙상블 예측 분산은 구성원 분산의 평균(관측 잡음에서 오는 불확실성)과 구성원 예측의 분산(모델 불확실성)의 합입니다. 학습 분포 안(ID)에서는 4/4개 분할에서 IP 오차가 줄고(ID 10% 578 → 514 m), 50% 포함률이 0.5 쪽으로 올라갑니다. 반면 OOD에서는 오차가 10,404 → 12,800 m로 오히려 늘고 90% 포함률도 0.46에 그칩니다. 모델 간 분산이 전체 예측 분산에서 차지하는 비율이 OOD에서도 0.10로 ID와 비슷해, 같은 데이터로 seed만 바꾼 3개 모델은 분포 밖 입력을 알아채지 못합니다. 분포 이동 탐지에는 입력 특징의 분포 거리나 데이터 다양화 같은 별도 장치가 필요합니다. 콘솔 모델 레지스트리에 앙상블(<code>ens_hybrid_v2</code>, ONNX 3개)을 등록했습니다.</p>
+  </div>
+  <div class="tw">
+    <table>
+      <caption><b>Table R10</b>학습 seed에 따른 IP 오차 중앙값 [m], 평균 ± 표준편차</caption>
+      <thead><tr><th>모델</th><th class="n">ID 10%</th><th class="n">ID 15%</th><th class="n">고잡음</th><th class="n">OOD</th></tr></thead>
+      <tbody>
+        <tr><td>PINN + EKF 하이브리드 <small class="muted">(seed 3개)</small></td><td class="n">587 <small class="muted">± 7</small></td><td class="n">449 <small class="muted">± 22</small></td><td class="n">1,021 <small class="muted">± 4</small></td><td class="n">12,718 <small class="muted">± 2,305</small></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="prose"><p>Table R5의 신뢰구간은 시험 표본 변동만 반영합니다. 학습 seed를 바꾼 반복으로 학습 변동을 따로 쟀습니다. ID 10%·고잡음의 seed 간 표준편차(수 m)는 §9.4에서 유의하다고 판정한 차이보다 훨씬 작아 그 결론은 학습 변동에 흔들리지 않지만, OOD는 seed에 따라 수 km 달라지므로 OOD 수치는 단일 모델 값보다 이 범위로 읽어야 합니다. 물리 손실 비교용 PINN·data-only 모델의 추가 seed는 CPU 학습 시간 제약으로 돌리지 못해, §9.4의 물리 손실 효과(특히 ID 10%의 −61 m)는 단일 seed 결과로 남아 있습니다.</p></div>
 <!-- EXTRA:END -->
   <h3 class="sub" id="sec-validity"><span class="no">9.8</span>타당성 위협과 한계</h3>
   <div class="tw">
@@ -897,7 +925,7 @@ footer b{color:var(--ink); font-weight:600}
       <caption><b>Table R7</b>결론을 약하게 만들 수 있는 요인과 이 연구에서의 대응</caption>
       <thead><tr><th>구분</th><th>위협</th><th>영향</th><th>대응 / 남은 일</th></tr></thead>
       <tbody>
-        <tr><td style="white-space:nowrap">내적</td><td>학습 seed 1개</td><td>Table R5의 신뢰구간은 시험 표본의 변동만 반영하고 학습 무작위성은 반영하지 않음</td><td>차이가 작은 비교(일자 기상 입력, −36 m)는 결론을 유보. 다중 seed 학습 필요</td></tr>
+        <tr><td style="white-space:nowrap">내적</td><td>학습 seed 수가 적음</td><td>Table R5의 신뢰구간은 시험 표본의 변동만 반영하고 학습 무작위성은 반영하지 않음</td><td>하이브리드는 seed 3개로 변동을 측정(§9.7, ID에서는 작고 OOD에서는 큼). PINN·data-only·기상 모델은 seed 1개라 차이가 작은 비교(물리 손실 ID 10% −61 m, 일자 기상 입력 −36 m)는 결론을 유보</td></tr>
         <tr><td style="white-space:nowrap">내적</td><td>CPU 학습 4,500 step에서 중단</td><td>검증 ADE가 마지막 구간까지 감소(하이브리드 v2: 703 → 580 m), 신경망 성능이 과소평가되었을 수 있음</td><td>GPU 장기 학습으로 상한 재측정</td></tr>
         <tr><td style="white-space:nowrap">내적</td><td>"inverse crime": 필터와 데이터 생성기가 같은 동역학</td><td>EKF/UKF에 유리한 조건 (§9.1)</td><td>기상 실험은 분석장 오차 섭동(바람 4 m/s, 기온 1.5 K)으로 일부 완화</td></tr>
         <tr><td style="white-space:nowrap">내적</td><td>보정 계수를 시험 분할 안에서 교차 적합</td><td>보고한 포함률은 out-of-fold지만, 같은 분포의 자료를 재사용</td><td>운용에는 별도 보정 세트와 주기적 재보정 필요</td></tr>
