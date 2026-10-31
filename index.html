@@ -320,9 +320,9 @@ footer b{color:var(--ink); font-weight:600}
       <caption><b>연구 질문</b>이 문서의 모든 실험은 아래 다섯 질문 중 하나에 답합니다. §12의 운용 콘솔은 이 답을 실제 운용 흐름에서 쓰는 응용입니다.</caption>
       <thead><tr><th>질문</th><th>근거</th><th>현재 답</th></tr></thead>
       <tbody>
-        <tr><td><b>RQ1</b> 짧은 관측(10–15%)만으로 PINN이 탄착점을 실시간으로 예측할 수 있는가</td><td><a href="#sec-results">§9.1</a>, Fig. 8</td><td>지연은 충족(0.87 ms, EKF + MC보다 약 260배 빠름). 단독 정확도는 같은 물리 모델의 EKF/UKF보다 낮음</td></tr>
-        <tr><td><b>RQ2</b> 물리 손실이 데이터만 쓴 학습보다 나은가</td><td><a href="#sec-results">§9.2</a>, <a href="#sec-stats">§9.4</a>, <a href="#sec-ensemble">§9.7</a></td><td>궤적의 물리 일관성은 확실히 개선(잔차 0.40 → 0.10 g). IP 정확도 이득은 조건부</td></tr>
-        <tr><td><b>RQ3</b> 칼만 필터와 PINN을 어떻게 결합해야 가장 좋은가</td><td><a href="#sec-est">§6.2</a>, <a href="#sec-feedback">§9.6</a></td><td>PINN의 β 예측을 EKF 사전정보로 넣을 때 최선: 5개 시험 조건 모두에서 EKF보다 정확</td></tr>
+        <tr><td><b>RQ1</b> 짧은 관측(10–15%)만으로 PINN이 탄착점을 실시간으로 예측할 수 있는가</td><td><a href="#sec-results">§9.1</a>, Fig. 8</td><td>지연은 충족(0.87 ms, EKF + MC보다 약 260배 빠름). 정확도는 입력에 따라 다름: Savitzky–Golay 특징으로는 EKF/UKF보다 낮지만, RTS 평활 특징을 쓰면 고잡음에서 EKF보다 정확(607 m vs 629 m)</td></tr>
+        <tr><td><b>RQ2</b> 물리 손실이 데이터만 쓴 학습보다 나은가</td><td><a href="#sec-results">§9.2</a>, <a href="#sec-stats">§9.4</a>, <a href="#sec-ensemble">§9.7</a></td><td>궤적의 물리 일관성은 확실히 개선(잔차 0.40 → 0.10 g). IP 정확도 이득은 seed 2쌍 모두에서 ID 10%·OOD에만 일관되고, 나머지 조건은 학습 무작위성 수준</td></tr>
+        <tr><td><b>RQ3</b> 칼만 필터와 PINN을 어떻게 결합해야 가장 좋은가</td><td><a href="#sec-est">§6.2</a>, <a href="#sec-feedback">§9.6</a>, Table R8b</td><td>필터를 신경망의 앞뒤에 두는 결합이 효과적: EKF-RTS 평활 특징을 입력으로(PINN 오차 40–64% 감소), PINN의 β 예측을 EKF 사전정보로(5개 조건 모두 EKF보다 정확)</td></tr>
         <tr><td><b>RQ4</b> 실제 기상(기온·바람)이 예측 오차에 얼마나 영향을 주는가</td><td><a href="#sec-weather">§9.3</a>, <a href="#sec-wximpact">§12.1</a></td><td>가장 큰 오차 원인. 일자 기상 반영으로 EKF 오차 87% 감소, 신경망도 기상 학습으로 2.8 → 0.7 km</td></tr>
         <tr><td><b>RQ5</b> 예측 불확실성(CEP)을 믿을 수 있는가</td><td><a href="#sec-calib">§9.5</a>, <a href="#sec-ensemble">§9.7</a></td><td>계수 하나로 50% 포함률 보정 가능, 꼬리는 두꺼움. 분포 밖에서는 보정·앙상블 모두 실패</td></tr>
       </tbody>
@@ -557,7 +557,7 @@ footer b{color:var(--ink); font-weight:600}
     <div class="eq"><span class="e"><b class="vec">x</b><span class="op">=</span>[ <b class="vec">r</b><sup>T</sup>, <b class="vec">v</b><sup>T</sup>, ln <i>β</i> ]<sup>T</sup> ∈ ℝ<sup>7</sup>,&nbsp;&nbsp; <i>p</i>(ln <i>β</i> | <b class="vec">z</b><sub>1:<i>k</i></sub>) ∝ <i>p</i>(<b class="vec">z</b><sub>1:<i>k</i></sub> | <i>β</i>) <i>p</i>(ln <i>β</i>)</span><span class="tag">(6.3)</span></div>
   </div>
   <div class="prose">
-    <p>레이더는 거리, 방위각, 고각을 측정하므로 직교 좌표에서의 잡음은 등방성이 아닙니다. 식 (6.2)처럼 횡방향 오차는 거리에 비례해 커지며, 같은 각도 정밀도라도 원거리 표적일수록 측방 위치가 불확실합니다. 전처리 단계는 극좌표 측정을 ENU로 변환하고 Savitzky–Golay 필터(2차 다항식)로 속도·가속도를 미분해 신경망 입력 특징을 만듭니다. Rauch–Tung–Striebel(RTS) 평활기 [4]로 바꾸면 측정 잡음 모델을 일관되게 쓸 수 있으나 아직 구현하지 않았습니다.</p>
+    <p>레이더는 거리, 방위각, 고각을 측정하므로 직교 좌표에서의 잡음은 등방성이 아닙니다. 식 (6.2)처럼 횡방향 오차는 거리에 비례해 커지며, 같은 각도 정밀도라도 원거리 표적일수록 측방 위치가 불확실합니다. 전처리 단계는 극좌표 측정을 ENU로 변환하고 Savitzky–Golay 필터(2차 다항식)로 속도·가속도를 미분해 신경망 입력 특징을 만듭니다. 대안으로 EKF 위의 Rauch–Tung–Striebel(RTS) 평활기 [4]는 측정 잡음 모델을 일관되게 쓰므로 속도 오차가 훨씬 작고(7.2 → 1.2 m/s), 이 특징으로 학습한 PINN이 크게 정확해집니다(§9.6).</p>
     <p>탄도계수는 상태에 ln <span class="m">β</span>로 확장해 추정합니다. 로그 매개화는 <span class="m">β</span> &gt; 0을 보장하고 수 배 범위에 걸친 사전분포를 다루기 쉽게 합니다. 항력 가속도 <span class="m">ρv²/2β</span>가 측정 잡음이 만드는 가속도 불확실성보다 작으면 <span class="m">β</span>는 관측 불가능합니다.</p>
   </div>
 
@@ -596,7 +596,7 @@ footer b{color:var(--ink); font-weight:600}
       <caption><b>Table 6</b>시스템 안에서 칼만 필터가 맡는 세 가지 역할</caption>
       <thead><tr><th>역할</th><th>방식</th><th>효과</th></tr></thead>
       <tbody>
-        <tr><td>전처리</td><td>Savitzky–Golay 미분으로 속도·가속도 특징 생성 (RTS 평활은 계획)</td><td>미분으로 증폭되는 잡음을 억제해 인코더 입력 분포를 안정화</td></tr>
+        <tr><td>전처리</td><td>Savitzky–Golay 미분 또는 EKF-RTS 평활로 속도·가속도 특징 생성 (§9.6, RTS가 오차 40–64% 감소)</td><td>미분으로 증폭되는 잡음을 억제해 인코더 입력 분포를 안정화</td></tr>
         <tr><td>Baseline</td><td>EKF / UKF + Monte Carlo 분산 전파 (Fig. 1)</td><td>같은 물리 모델 위에서 PINN의 속도·정확도 이득을 정량화</td></tr>
         <tr class="prop"><td><b>하이브리드</b></td><td>EKF 사후 <span class="m">(x̂, P)</span>를 PINN 인코더의 추가 입력으로 넣고, PINN 예측을 EKF 예측 단계의 사전분포로 되먹이는 것은 계획 단계</td><td>필터가 단기 상태를, PINN이 장기 궤적을 담당. 구현된 부분은 EKF → PINN 방향이며 §9에서 효과를 검증</td></tr>
       </tbody>
@@ -904,7 +904,22 @@ footer b{color:var(--ink); font-weight:600}
   </div>
   <div class="prose">
     <p>β를 관측하기 어려운 짧은 관측에서 효과가 가장 큽니다(ID 5%: 1,429 → 956 m). 학습된 사전은 EKF가 관측만으로 좁히지 못하는 β 불확실성을 메우는 역할을 하며, 신경망을 대체가 아니라 필터의 사전정보로 쓰는 것이 이 시스템에서 가장 효과적인 결합 방식입니다. OOD(β 10,000–16,000, 학습 범위 밖)에서도 438 → 363 m로 개선되는데, PINN의 ln β 오차(0.025)가 EKF 기본 사전으로 수렴한 값의 오차(0.130)보다 작기 때문입니다. 신경망 단독으로는 OOD에서 실패하지만(§9.2), 필터 안의 사전정보로 쓰면 필터의 물리 모델이 잘못된 사전을 측정으로 바로잡을 수 있습니다.</p>
-    <p><b>RTS 평활.</b> 같은 동역학으로 새로 만든 트랙 300개(측정 40개)에서 측정 시각의 실제 속도 대비 오차 중앙값은 Savitzky–Golay 미분 7.2 m/s, EKF(필터) 3.8 m/s, RTS 평활 1.2 m/s입니다. 가속도는 SG 12.0 → RTS 0.3 m/s²입니다. 평활은 마지막 상태를 바꾸지 않으므로 필터 기반 추정기에는 영향이 없고, 신경망 입력 특징을 정제하는 용도입니다.</p>
+    <p><b>RTS 평활.</b> 같은 동역학으로 새로 만든 트랙 300개(측정 40개)에서 측정 시각의 실제 속도 대비 오차 중앙값은 Savitzky–Golay 미분 7.2 m/s, EKF(필터) 3.8 m/s, RTS 평활 1.2 m/s입니다. 가속도는 SG 12.0 → RTS 0.3 m/s²입니다. 평활은 마지막 상태를 바꾸지 않으므로 필터 기반 추정기에는 영향이 없고, 신경망 입력 특징을 정제하는 용도입니다.</p></div>
+  <div class="tw">
+    <table>
+      <caption><b>Table R8b</b>PINN-Transformer, 입력 특징만 Savitzky–Golay → RTS 평활로 바꿔 같은 seed·같은 설정으로 다시 학습: IP 오차 중앙값 [m], 차이의 95% CI, 물리 잔차 RMS [g], ADE [m]</caption>
+      <thead><tr><th>분할</th><th class="n">IP 오차</th><th class="n">Δ 중앙값</th><th class="n">물리 잔차</th><th class="n">ADE</th><th>판정 (Wilcoxon, Bonferroni)</th></tr></thead>
+      <tbody>
+        <tr><td>ID 5%</td><td class="n">1,957 → <b>2,112</b></td><td class="n">+155 <small class="muted">[-16, +341]</small></td><td class="n">0.165 → 0.141</td><td class="n">1,854 → 1,807</td><td>유의차 없음</td></tr>
+        <tr><td>ID 10%</td><td class="n">733 → <b>437</b></td><td class="n">-296 <small class="muted">[-355, -237]</small></td><td class="n">0.099 → 0.084</td><td class="n">764 → 535</td><td>RTS 우세</td></tr>
+        <tr><td>ID 15%</td><td class="n">645 → <b>317</b></td><td class="n">-328 <small class="muted">[-368, -282]</small></td><td class="n">0.085 → 0.069</td><td class="n">628 → 385</td><td>RTS 우세</td></tr>
+        <tr><td>고잡음</td><td class="n">1,704 → <b>607</b></td><td class="n">-1,096 <small class="muted">[-1,253, -950]</small></td><td class="n">0.095 → 0.076</td><td class="n">1,348 → 592</td><td>RTS 우세</td></tr>
+        <tr><td>OOD</td><td class="n">14,224 → <b>11,711</b></td><td class="n">-2,513 <small class="muted">[-3,760, -1,828]</small></td><td class="n">0.530 → 0.446</td><td class="n">14,405 → 7,641</td><td>RTS 우세</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="prose">
+    <p>RTS 특징은 5개 분할 중 4개에서 유의하게 더 정확합니다. 속도·가속도 입력의 잡음을 줄이는 것이 신경망 정확도로 이어진다는 뜻입니다. RTS 평활기는 EKF 위에서 동작하므로, 이것도 칼만 필터의 정보를 신경망 입력으로 쓰는 결합 방식(Table 6의 전처리 역할)입니다. 고잡음 조건에서는 이 PINN 단독이 EKF + MC(629 m)보다 정확하고, ID 15%에서는 EKF 사후 상태를 받는 하이브리드(428 m)보다도 정확합니다. 관측이 5%로 아주 짧으면 평활할 구간 자체가 짧아 이득이 없습니다. 단일 seed 비교이므로 차이가 작은 분할은 §9.7의 seed 변동 범위와 함께 읽어야 합니다.</p>
   </div>
   <h3 class="sub" id="sec-ensemble"><span class="no">9.7</span>Deep ensemble과 학습 seed 변동</h3>
   <div class="tw">
@@ -930,10 +945,12 @@ footer b{color:var(--ink); font-weight:600}
       <thead><tr><th>모델</th><th class="n">ID 10%</th><th class="n">ID 15%</th><th class="n">고잡음</th><th class="n">OOD</th></tr></thead>
       <tbody>
         <tr><td>PINN + EKF 하이브리드 <small class="muted">(seed 3개)</small></td><td class="n">587 <small class="muted">± 7</small></td><td class="n">449 <small class="muted">± 22</small></td><td class="n">1,021 <small class="muted">± 4</small></td><td class="n">12,718 <small class="muted">± 2,305</small></td></tr>
+        <tr><td>PINN-Transformer <small class="muted">(seed 2개)</small></td><td class="n">753 <small class="muted">± 29</small></td><td class="n">615 <small class="muted">± 42</small></td><td class="n">1,664 <small class="muted">± 56</small></td><td class="n">14,993 <small class="muted">± 1,089</small></td></tr>
+        <tr><td>Transformer (data only) <small class="muted">(seed 2개)</small></td><td class="n">826 <small class="muted">± 44</small></td><td class="n">657 <small class="muted">± 60</small></td><td class="n">1,619 <small class="muted">± 32</small></td><td class="n">17,209 <small class="muted">± 1,234</small></td></tr>
       </tbody>
     </table>
   </div>
-  <div class="prose"><p>Table R5의 신뢰구간은 시험 표본 변동만 반영합니다. 학습 seed를 바꾼 반복으로 학습 변동을 따로 쟀습니다. ID 10%·고잡음의 seed 간 표준편차(수 m)는 §9.4에서 유의하다고 판정한 차이보다 훨씬 작아 그 결론은 학습 변동에 흔들리지 않지만, OOD는 seed에 따라 수 km 달라지므로 OOD 수치는 단일 모델 값보다 이 범위로 읽어야 합니다. 물리 손실 비교용 PINN·data-only 모델의 추가 seed는 CPU 학습 시간 제약으로 돌리지 못해, §9.4의 물리 손실 효과(특히 ID 10%의 −61 m)는 단일 seed 결과로 남아 있습니다.</p></div>
+  <div class="prose"><p>Table R5의 신뢰구간은 시험 표본 변동만 반영합니다. 학습 seed를 바꾼 반복으로 학습 변동을 따로 쟀습니다. ID 10%·고잡음의 seed 간 표준편차(수 m)는 §9.4에서 유의하다고 판정한 차이보다 훨씬 작아 그 결론은 학습 변동에 흔들리지 않지만, OOD는 seed에 따라 수 km 달라지므로 OOD 수치는 단일 모델 값보다 이 범위로 읽어야 합니다. 물리 손실의 IP 오차 효과(PINN − data only)는 seed를 바꿔도 부호가 같은 분할이 ID 10%, OOD, 바뀌는 분할이 ID 5%, ID 15%, 고잡음입니다. 부호가 바뀌는 분할의 효과는 학습 무작위성 수준이므로 결론에서 뺍니다.</p></div>
 <!-- EXTRA:END -->
   <h3 class="sub" id="sec-validity"><span class="no">9.8</span>타당성 위협과 한계</h3>
   <div class="tw">
@@ -972,7 +989,7 @@ footer b{color:var(--ink); font-weight:600}
         <tr><td class="id">tests/</td><td>대기 기준값, RK4 수렴 차수, 레이더 야코비안, EKF/UKF 일관성, 기상 격자, 사용자 대기, RTS 평활, β 사전, 위협 평가 (GitHub Actions CI)</td><td><span class="st ok">21 통과</span></td></tr>
         <tr><td class="id">server/ · web/</td><td>FastAPI + PostgreSQL 백엔드와 React 운용 콘솔 (§12)</td><td><span class="st ok">구현</span></td></tr>
         <tr><td class="id"><a href="prototype/viewer.html">prototype/viewer.html</a></td><td>시험 케이스의 실제 궤적, EKF·PINN 예측, CEP, 위협 평가를 보여주는 Three.js 3D 뷰어</td><td><span class="st ok">구현</span></td></tr>
-        <tr><td class="id">—</td><td>6-DOF 자세 동역학, 추진 구간 학습, IMM, deep ensemble, RTS 평활, PINN → EKF 되먹임, TensorRT(GPU), 실제 센서 연동</td><td><span class="st no">미구현</span></td></tr>
+        <tr><td class="id">—</td><td>6-DOF 자세 동역학, 추진 구간 학습, IMM, RTS 특징 모델의 콘솔 서빙, TensorRT(GPU), 실제 센서 연동</td><td><span class="st no">미구현</span></td></tr>
       </tbody>
     </table>
   </div>

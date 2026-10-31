@@ -35,7 +35,8 @@ def rts_retrain_block(base="pinn_tf_v2", rts="pinn_tf_v2_rts"):
                     f'<td class="n">{np.median(x) - np.median(y):+,.0f} <small class="muted">[{lo:+,.0f}, {hi:+,.0f}]</small></td>'
                     f'<td class="n">{np.median(a["phys_rms_g"]):.3f} → {np.median(b["phys_rms_g"]):.3f}</td>'
                     f'<td class="n">{np.median(a["ade"]):,.0f} → {np.median(b["ade"]):,.0f}</td><td>{verdict}</td></tr>')
-    msg = ("속도·가속도 입력의 잡음을 줄이는 것이 신경망 정확도로 이어진다는 뜻입니다." if wins >= len(splits) / 2 else
+    msg = ("속도·가속도 입력의 잡음을 줄이는 것이 신경망 정확도로 이어진다는 뜻입니다. RTS 평활기는 EKF 위에서 동작하므로, 이것도 칼만 필터의 정보를 신경망 입력으로 쓰는 결합 방식(Table 6의 전처리 역할)입니다. "
+           "고잡음 조건에서는 이 PINN 단독이 EKF + MC(629 m)보다 정확하고, ID 15%에서는 EKF 사후 상태를 받는 하이브리드(428 m)보다도 정확합니다. 관측이 5%로 아주 짧으면 평활할 구간 자체가 짧아 이득이 없습니다." if wins >= len(splits) / 2 else
            "입력 특징이 훨씬 정확해졌는데도 예측 정확도 이득이 제한적이므로, 이 모델의 오차는 입력 잡음보다 짧은 관측에서의 외삽(β 불확실성)에서 주로 온다고 볼 수 있습니다.")
     body = "\n".join("        " + r for r in rows).strip()
     return ('</div>\n  <div class="tw">\n    <table>\n'
