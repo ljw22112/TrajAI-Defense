@@ -135,11 +135,14 @@ def mismatch_block():
         beats = [s for s, M_ in (("Cd(M) 곡선 오차", a), ("약한 양력", b)) if M_[best]["miss"] < min(M_["ekf"]["miss"], M_["ukf"]["miss"])]
         retrain = (f' 불일치가 섞인 데이터(2만 개)로 다시 학습하면 {MMLAB[best]}이 Cd 오차 {f0(a[best]["miss"])} m, 양력 {f0(b[best]["miss"])} m로, '
                    + (f'{", ".join(beats)}에서 EKF·UKF보다 정확해집니다. 필터는 모르는 동역학을 신경망은 데이터에서 배울 수 있다는, 이 연구에서 신경망이 필터를 앞서는 첫 조건입니다.' if beats else 'EKF·UKF보다는 여전히 부정확합니다.')
-                   + (" 또한" if beats else " 대신") + f' 불확실성은 훨씬 정직해져 양력에서 CEP 포함률이 {b[best]["coverage"]:.2f}로 오릅니다(공칭 학습 {b["pinn_tf_v2_rts"]["coverage"]:.2f}).'
+                   + (" 또한" if beats else " 대신") + f' 불확실성은 훨씬 정직해져 양력에서 CEP 포함률이 {b[best]["coverage"]:.2f}까지 오릅니다(공칭 학습 {b["pinn_tf_v2_rts"]["coverage"]:.2f}).'
                    + f' 물리 손실(공칭 모델 기준)이 있는 모델과 없는 모델의 차이는 Cd 오차 {dcd:+,.0f} m, 양력 {dlf:+,.0f} m(PINN − data only)입니다.'
                    + (' 실제 동역학과 다른 공칭 물리를 강제하면 손해가 된다는 점은 PINN 설계의 주의점입니다.' if dcd > 0 and dlf > 0 else
-                      ' 공칭 물리가 실제와 달라도 물리 손실이 해가 되지 않았습니다.' if dcd <= 0 and dlf <= 0 else
-                      ' 효과의 방향이 오차 종류에 따라 갈려, 틀린 공칭 물리의 득실은 단정할 수 없습니다.'))
+                      ' 공칭 물리가 실제와 조금 달라도 물리 손실은 해가 되지 않고 오히려 도움이 되었습니다(궤적 모양의 큰 틀은 여전히 맞기 때문으로 보입니다).' if dcd <= 0 and dlf <= 0 else
+                      ' 효과의 방향이 오차 종류에 따라 갈려, 틀린 공칭 물리의 득실은 단정할 수 없습니다.')
+                   + (f' 대가로 불일치가 없는 공칭 시험(ID 10%)에서는 {f0(met["pinn_tf_v2_rts"]["test_id_f10"]["miss"]["median"])} → {f0(met["pinn_rts_mm"]["test_id_f10"]["miss"]["median"])} m로 '
+                      + ("나빠집니다." if met["pinn_rts_mm"]["test_id_f10"]["miss"]["median"] > met["pinn_tf_v2_rts"]["test_id_f10"]["miss"]["median"] else "오히려 좋아집니다.")
+                      if "pinn_rts_mm" in met else ""))
 
     return f"""
   <h3 class="sub" id="sec-mismatch"><span class="no">9.9</span>모델 불일치 시험</h3>

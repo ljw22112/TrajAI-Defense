@@ -74,6 +74,13 @@ if MM:
     cov = [v["coverage"] for k, v in MM["test_mm_lift"].items() if not k.endswith("_mm")]
     claim(r"과신\(포함률 ([\d.]+)–", min(cov), 0.03, "RQ5 lift coverage min")
     claim(r"과신\(포함률 [\d.]+–([\d.]+)\)", max(cov), 0.03, "RQ5 lift coverage max")
+if MM and "pinn_rts_mm" in MM["test_mm_lift"]:
+    lf = MM["test_mm_lift"]
+    claim(r"양력 기동에서 EKF의 ([\d.]+)배", lf["pinn_tf_v2_rts"]["miss"] / lf["ekf"]["miss"], 0.01, "RQ1 lift ratio")
+    claim(r"필터를 넘지 못함\(양력 ([\d,]+) m", lf["pinn_rts_mm"]["miss"], 0.01, "RQ1 retrained lift")
+    claim(r"필터를 넘지 못함\(양력 [\d,]+ m vs EKF ([\d,]+) m", lf["ekf"]["miss"], 0.01, "RQ1 EKF lift")
+    if "넘지 못함" in html and lf["pinn_rts_mm"]["miss"] < lf["ekf"]["miss"]:
+        fails.append("BAD RQ1: retrained model does beat the EKF under lift")
 for pat, val, where in ((r"PINN 단독 오차가 ID 10% (\d[\d,]*) →", med("pinn_tf_v2", "test_id_f10"), "README RTS ID10 before"),
                         (r"PINN 단독 오차가 ID 10% \d[\d,]* → (\d[\d,]*) m", med("pinn_tf_v2_rts", "test_id_f10"), "README RTS ID10 after"),
                         (r"개선되지만\(ID 10% (\d[\d,]*) →", med("pinn_tf_hybrid_v2", "test_id_f10"), "README ensemble before"),

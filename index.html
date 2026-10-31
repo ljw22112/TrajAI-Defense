@@ -320,7 +320,7 @@ footer b{color:var(--ink); font-weight:600}
       <caption><b>연구 질문</b>이 문서의 모든 실험은 아래 다섯 질문 중 하나에 답합니다. §12의 운용 콘솔은 이 답을 실제 운용 흐름에서 쓰는 응용입니다.</caption>
       <thead><tr><th>질문</th><th>근거</th><th>현재 답</th></tr></thead>
       <tbody>
-        <tr><td><b>RQ1</b> 짧은 관측(10–15%)만으로 PINN이 탄착점을 실시간으로 예측할 수 있는가</td><td><a href="#sec-results">§9.1</a>, Fig. 8</td><td>지연은 충족(0.87 ms, EKF + MC보다 약 262배 빠름). 정확도는 입력에 따라 다름: Savitzky–Golay 특징으로는 EKF/UKF보다 낮지만, RTS 평활 특징을 쓰면 고잡음에서 EKF보다 정확(607 m vs 629 m)</td></tr>
+        <tr><td><b>RQ1</b> 짧은 관측(10–15%)만으로 PINN이 탄착점을 실시간으로 예측할 수 있는가</td><td><a href="#sec-results">§9.1</a>, Fig. 8, <a href="#sec-mismatch">§9.9</a></td><td>지연은 충족(0.87 ms, EKF + MC보다 약 262배 빠름). 정확도는 입력에 따라 다름: Savitzky–Golay 특징으로는 EKF/UKF보다 낮지만, RTS 평활 특징을 쓰면 고잡음에서 EKF보다 정확(607 m vs 629 m). 실제 비행이 공칭 모델과 다르면 격차는 줄지만(양력 기동에서 EKF의 1.02배) 불일치 데이터로 다시 학습해도 필터를 넘지 못함(양력 1,142 m vs EKF 1,125 m)</td></tr>
         <tr><td><b>RQ2</b> 물리 손실이 데이터만 쓴 학습보다 나은가</td><td><a href="#sec-results">§9.2</a>, <a href="#sec-stats">§9.4</a>, <a href="#sec-ensemble">§9.7</a></td><td>궤적의 물리 일관성은 확실히 개선(잔차 0.40 → 0.10 g). IP 정확도 이득은 seed 2쌍 모두에서 ID 10%·OOD에만 일관되고, 나머지 조건은 학습 무작위성 수준</td></tr>
         <tr><td><b>RQ3</b> 칼만 필터와 PINN을 어떻게 결합해야 가장 좋은가</td><td><a href="#sec-est">§6.2</a>, <a href="#sec-feedback">§9.6</a>, Table R8b</td><td>필터를 신경망의 앞뒤에 두는 결합이 효과적: EKF-RTS 평활 특징을 입력으로(PINN 오차가 ID 10%·15%·고잡음에서 40–64% 감소, 관측 5%에서는 이득 없음), PINN의 β 예측을 EKF 사전정보로(5개 조건 모두 EKF보다 정확)</td></tr>
         <tr><td><b>RQ4</b> 실제 기상(기온·바람)이 예측 오차에 얼마나 영향을 주는가</td><td><a href="#sec-weather">§9.3</a>, <a href="#sec-wximpact">§12.1</a></td><td>가장 큰 오차 원인. 일자 기상 반영으로 EKF 오차 87% 감소, 신경망도 기상 학습으로 2.8 → 0.7 km</td></tr>
@@ -1004,12 +1004,13 @@ footer b{color:var(--ink); font-weight:600}
         <tr><td>PINN-Transformer</td><td class="n">733</td><td class="n">901 <small class="muted">(×1.90)</small></td><td class="n">1,437 <small class="muted">(×1.28)</small></td><td class="n">0.49 / 0.19</td></tr>
         <tr><td>PINN (RTS 입력)</td><td class="n">437</td><td class="n">589 <small class="muted">(×1.24)</small></td><td class="n">1,144 <small class="muted">(×1.02)</small></td><td class="n">0.47 / 0.11</td></tr>
         <tr><td>PINN + EKF 하이브리드</td><td class="n">578</td><td class="n">693 <small class="muted">(×1.46)</small></td><td class="n">1,235 <small class="muted">(×1.10)</small></td><td class="n">0.48 / 0.13</td></tr>
+        <tr><td>PINN (RTS 입력) · 불일치 데이터 학습</td><td class="n">—</td><td class="n">586 <small class="muted">(×1.24)</small></td><td class="n">1,142 <small class="muted">(×1.01)</small></td><td class="n">0.84 / 0.60</td></tr>
         <tr><td>data only (RTS 입력) · 불일치 데이터 학습</td><td class="n">—</td><td class="n">729 <small class="muted">(×1.53)</small></td><td class="n">1,205 <small class="muted">(×1.07)</small></td><td class="n">0.81 / 0.58</td></tr>
       </tbody>
     </table>
   </div>
   <div class="prose">
-    <p>불일치가 생기면 모든 추정기의 오차가 커지지만, 필터와 신경망의 격차는 줄어듭니다. RTS 입력 PINN은 불일치가 없을 때 EKF의 1.28배였으나 Cd 오차에서 1.24배, 양력에서 1.02배입니다. 여기의 신경망도 공칭 동역학으로만 학습했으므로 같은 불일치를 겪고 있다는 점에 유의해야 합니다. 더 심각한 문제는 불확실성입니다. 양력 기동에서는 공칭 모델만 아는 모든 추정기의 CEP 포함률이 0.07–0.19로 떨어져, 예측 반경이 실제 오차를 크게 과소평가합니다. 모르는 기동 앞에서 필터와 신경망 모두 과신한다는 뜻이며, §9.8의 감지 장치도 이를 잡지 못합니다.</p>
+    <p>불일치가 생기면 모든 추정기의 오차가 커지지만, 필터와 신경망의 격차는 줄어듭니다. RTS 입력 PINN은 불일치가 없을 때 EKF의 1.28배였으나 Cd 오차에서 1.24배, 양력에서 1.02배입니다. 여기의 신경망도 공칭 동역학으로만 학습했으므로 같은 불일치를 겪고 있다는 점에 유의해야 합니다. 더 심각한 문제는 불확실성입니다. 양력 기동에서는 공칭 모델만 아는 모든 추정기의 CEP 포함률이 0.07–0.19로 떨어져, 예측 반경이 실제 오차를 크게 과소평가합니다. 모르는 기동 앞에서 필터와 신경망 모두 과신한다는 뜻이며, §9.8의 감지 장치도 이를 잡지 못합니다. 불일치가 섞인 데이터(2만 개)로 다시 학습하면 PINN (RTS 입력) · 불일치 데이터 학습이 Cd 오차 586 m, 양력 1,142 m로, EKF·UKF보다는 여전히 부정확합니다. 대신 불확실성은 훨씬 정직해져 양력에서 CEP 포함률이 0.60까지 오릅니다(공칭 학습 0.11). 물리 손실(공칭 모델 기준)이 있는 모델과 없는 모델의 차이는 Cd 오차 -142 m, 양력 -63 m(PINN − data only)입니다. 공칭 물리가 실제와 조금 달라도 물리 손실은 해가 되지 않고 오히려 도움이 되었습니다(궤적 모양의 큰 틀은 여전히 맞기 때문으로 보입니다). 대가로 불일치가 없는 공칭 시험(ID 10%)에서는 437 → 480 m로 나빠집니다.</p>
   </div>
 <!-- EXTRA:END -->
   <h3 class="sub" id="sec-validity"><span class="no">9.10</span>타당성 위협과 한계</h3>
