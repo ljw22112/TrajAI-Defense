@@ -119,6 +119,26 @@ def make_trainset():
         print("prepared", s, flush=True)
 
 
+def evaluate_nets(names):
+    """Add networks to results/mismatch.json without re-running the filters."""
+    from evaluate import load_model, predict
+    res = json.load(open("results/mismatch.json"))
+    for s in SPLITS:
+        d = dict(np.load(f"data/{s}.npz"))
+        pd_ = dict(np.load(f"data/prep_{s}.npz"))
+        ekf = np.load(f"results/baseline_ekf_{s}.npz")["miss"]
+        for name in names:
+            model, a = load_model(name)
+            p = predict(model, pd_, a, s)
+            miss = metrics.ip_miss(p["ip"], d["impact"])
+            cep = metrics.gaussian_cep(p["sig"][:, 0], p["sig"][:, 1])
+            np.savez_compressed(f"results/pred_{name}_{s}.npz", miss=miss, cep=cep, ip=p["ip"], sig=p["sig"],
+                                ade=metrics.ade(p["grid"], pd_["future"]), phys_rms_g=p["res"])
+            res[s][name] = {**summ(miss, cep), "win_vs_ekf": float((miss < ekf).mean())}
+            print(s, name, round(res[s][name]["miss"]), "EKF", round(res[s]["ekf"]["miss"]), "UKF", round(res[s]["ukf"]["miss"]), flush=True)
+    json.dump(res, open("results/mismatch.json", "w"), indent=1)
+
+
 if __name__ == "__main__":
     step = sys.argv[1] if len(sys.argv) > 1 else "all"
     if step in ("data", "all"):
@@ -129,3 +149,5 @@ if __name__ == "__main__":
         evaluate_all()
     if step == "trainset":
         make_trainset()
+    if step == "evalnets":
+        evaluate_nets(sys.argv[2:])
