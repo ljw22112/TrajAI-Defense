@@ -201,3 +201,68 @@ class GridAtmosphere:
 
     def wind(self, h):
         return np.stack([self._lookup(self.bank.u, h), self._lookup(self.bank.v, h), np.zeros_like(h)], -1)
+
+
+# ---------------------------------------------------------------- user-defined atmosphere
+CUSTOM_DEFAULT = dict(
+    t_sfc_c=15.0,          # surface air temperature [degC]
+    p_sfc_hpa=1013.25,     # surface pressure [hPa]
+    rh_pct=50.0,           # surface relative humidity [%]
+    lapse_k_per_km=6.5,    # tropospheric lapse rate [K/km]
+    tropopause_km=11.0,    # tropopause height [km]
+    wind_sfc_ms=5.0,       # surface wind speed [m/s]
+    wind_sfc_dir=270.0,    # direction the surface wind blows FROM [deg, met. convention]
+    jet_ms=40.0,           # jet-stream peak speed [m/s]
+    jet_km=11.0,           # jet-stream core height [km]
+    jet_width_km=3.0,      # 1-sigma half-thickness of the jet [km]
+    jet_dir=270.0,         # direction the jet blows FROM [deg]
+    condition="clear",     # clear | cloudy | fog | rain | heavy_rain | snow
+)
+
+# Precipitation and fog barely change the drag on a ballistic body (hydrometeor loading is < 0.1 % of air density),
+# but they degrade a radar track: attenuation and clutter lower SNR, which raises range/angle noise. These factors
+# are a coarse X-band-like assumption used to scale the sensor noise, not a radar propagation model.
+CONDITION_NOISE = {"clear": 1.0, "cloudy": 1.0, "fog": 1.05, "snow": 1.4, "rain": 1.3, "heavy_rain": 2.0}
+
+
+def saturation_vapour_pressure(t_c):
+    """Magnus formula over water [Pa]."""
+    return 610.94 * np.exp(17.625 * t_c / (t_c + 243.04))
+
+
+def custom_levels(params: dict | None = None, z_top=32_000.0, dz=500.0) -> dict:
+    """User-specified atmosphere as a level profile (same keys as a provider profile, plus Tv and q).
+
+    Temperature: surface value, linear to the tropopause, isothermal to 20 km, then +1 K/km (USSA-1976 shape). The
+    tropopause temperature T0 - lapse * z_t is kept within the observed 190-230 K; outside it the lapse rate is adjusted
+    (a fixed 6.5 K/km under a 45 degC surface would give an unphysically warm -26 degC tropopause).
+    Humidity: surface specific humidity from RH (Magnus), decaying with a 2 km scale height; it enters through the
+    virtual temperature Tv = T (1 + 0.608 q), which sets density (p / R Tv) and is integrated hydrostatically.
+    Wind: surface wind blended linearly into a Gaussian jet core; direction turns linearly between the two.
+    """
+    p = {**CUSTOM_DEFAULT, **(params or {})}
+    z = np.arange(0.0, z_top + dz, dz)
+    zt, zs = p["tropopause_km"] * 1000.0, 20_000.0
+    T0 = p["t_sfc_c"] + 273.15
+    Tt = float(np.clip(T0 - p["lapse_k_per_km"] * zt / 1000.0, 190.0, 230.0))
+    T = np.where(z <= zt, T0 + (Tt - T0) * z / zt, np.where(z <= zs, Tt, Tt + (z - zs) / 1000.0))
+    e_s = saturation_vapour_pressure(p["t_sfc_c"])
+    p0 = p["p_sfc_hpa"] * 100.0
+    q0 = 0.622 * (p["rh_pct"] / 100.0) * e_s / (p0 - 0.378 * (p["rh_pct"] / 100.0) * e_s)
+    q = q0 * np.exp(-z / 2000.0)
+    Tv = T * (1.0 + 0.608 * q)
+    pres = np.empty_like(z); pres[0] = p0
+    for i in range(1, len(z)):
+        hm = 0.5 * (z[i] + z[i - 1])
+        pres[i] = pres[i - 1] * np.exp(-physics.gravity(hm) * dz / (physics.R_AIR * 0.5 * (Tv[i] + Tv[i - 1])))
+    zj, wj = p["jet_km"] * 1000.0, max(p["jet_width_km"], 0.5) * 1000.0
+    jet = p["jet_ms"] * np.exp(-0.5 * ((z - zj) / wj) ** 2)
+    blend = np.clip(z / max(zj, 1.0), 0, 1)
+    speed = np.maximum(p["wind_sfc_ms"] * (1 - blend), 0) + jet
+    # direction: interpolate on the circle from the surface to the jet core, constant above
+    d0, d1 = np.radians(p["wind_sfc_dir"]), np.radians(p["jet_dir"])
+    dd = (d1 - d0 + np.pi) % (2 * np.pi) - np.pi
+    dirn = d0 + dd * blend
+    u, v = -speed * np.sin(dirn), -speed * np.cos(dirn)
+    return dict(z=z.tolist(), p=pres.tolist(), T=T.tolist(), Tv=Tv.tolist(), q=q.tolist(), u=u.tolist(), v=v.tolist(),
+                custom={k: p[k] for k in CUSTOM_DEFAULT})

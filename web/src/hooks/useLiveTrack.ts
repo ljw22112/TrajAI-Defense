@@ -4,11 +4,13 @@ import type { LiveMsg } from "../api/types";
 
 type LiveState = Extract<LiveMsg, { type: "state" }>;
 type LiveMeas = Extract<LiveMsg, { type: "meas" }>;
+type LivePred = Extract<LiveMsg, { type: "pred" }>;
 
 export interface LiveTrack {
   status: "idle" | "running" | "done" | "error";
   meas: LiveMeas[];
   states: LiveState[];
+  preds: LivePred[];
   error: string | null;
   start: (speed: number, weather: boolean) => void;
   stop: () => void;
@@ -21,6 +23,7 @@ export function useLiveTrack(scenarioId: number): LiveTrack {
   const [status, setStatus] = useState<LiveTrack["status"]>("idle");
   const [meas, setMeas] = useState<LiveMeas[]>([]);
   const [states, setStates] = useState<LiveState[]>([]);
+  const [preds, setPreds] = useState<LivePred[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   const stop = useCallback(() => {
@@ -31,13 +34,14 @@ export function useLiveTrack(scenarioId: number): LiveTrack {
   const handle = useCallback((m: LiveMsg) => {
     if (m.type === "meas") setMeas(p => [...p, m]);
     else if (m.type === "state") setStates(p => [...p, m]);
+    else if (m.type === "pred") setPreds(p => [...p, m]);
     else if (m.type === "done") setStatus("done");
     else if (m.type === "error") { setStatus("error"); setError(m.detail); }
   }, []);
 
   const start = useCallback((speed: number, weather: boolean) => {
     stop();
-    setMeas([]); setStates([]); setError(null);
+    setMeas([]); setStates([]); setPreds([]); setError(null);
     setStatus("running");
     if (DEMO) {
       // static demo: play back a stream recorded from the real server at the same pacing (0.5 s per measurement / speed)
@@ -61,5 +65,5 @@ export function useLiveTrack(scenarioId: number): LiveTrack {
   }, [scenarioId, stop, handle]);
 
   useEffect(() => stop, [stop]);
-  return { status, meas, states, error, start, stop };
+  return { status, meas, states, preds, error, start, stop };
 }

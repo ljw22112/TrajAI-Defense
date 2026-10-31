@@ -5,7 +5,9 @@ import { api } from "../api/client";
 import type { AnalysisItem } from "../api/types";
 import { useAuth } from "../auth/AuthContext";
 import { Legend, Plot, type Series } from "../components/Plot";
+import { PrintButton } from "../components/PrintButton";
 import { Card, ErrorBox, PageHead, Spinner, Stat, Term, fmt } from "../components/ui";
+import { OtherAnalysis } from "./AnalysisKinds";
 
 const utc = (iso: string) => new Date(iso).toISOString();
 const label = (iso: string) => { const s = utc(iso); return `${s.slice(5, 7)}/${s.slice(8, 10)} ${s.slice(11, 13)}Z`; };
@@ -41,6 +43,8 @@ export function AnalysisDetailPage() {
 
   if (q.isLoading) return <Spinner />;
   if (q.error || !a) return <ErrorBox error={q.error ?? new Error("분석을 찾을 수 없습니다.")} />;
+  const canDel = can("admin") || (can("analyst") && a.created_by === user?.id);
+  if (a.kind !== "weather") return <OtherAnalysis a={a} canDelete={canDel} onDelete={() => del.mutate()} deleting={del.isPending} error={del.error} />;
   const s = a.summary, p = a.params;
   const rho = s.spearman_wind_vs_std_error;
   const canDelete = can("admin") || (can("analyst") && a.created_by === user?.id);
@@ -48,7 +52,7 @@ export function AnalysisDetailPage() {
   return (
     <div className="page">
       <PageHead kicker={`Analysis #${a.id}`} title={a.name}
-        actions={canDelete && <button className="btn danger" disabled={del.isPending} onClick={() => del.mutate()}>삭제</button>}>
+        actions={<div className="toolbar"><PrintButton />{canDelete && <button className="btn danger no-print" disabled={del.isPending} onClick={() => del.mutate()}>삭제</button>}</div>}>
         {a.lat.toFixed(2)}°N {a.lon.toFixed(2)}°E · {label(a.items[0].valid_time)} – {label(a.items[a.items.length - 1].valid_time)} · 프로파일 {a.n_profiles}개 ·
         연소 종료 {fmt(p.h0 / 1000)} km, {fmt(p.v0)} m/s, 경로각 {fmt(p.gamma_deg)}°, β {fmt(p.beta)} kg/m² · 관측 {fmt(p.obs_fraction * 100)}%
       </PageHead>

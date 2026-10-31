@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from ..db import get_db
 from ..models import User, WeatherProfile
-from ..schemas import WeatherOut, WeatherQuery
+from ..schemas import CustomAtmIn, CustomAtmPreview, WeatherOut, WeatherQuery
 from ..security import current_user
 from ..services import weather as wsvc
 
@@ -19,6 +19,12 @@ def get_profile(day: date = Query(..., alias="date"), hour: int = Query(0, ge=0,
                 db: Session = Depends(get_db), _: User = Depends(current_user)):
     q = WeatherQuery(date=day, hour=hour, lat=lat, lon=lon)
     return wsvc.get_or_fetch(db, q.date, q.hour, q.lat, q.lon)
+
+
+@router.post("/custom/preview", response_model=CustomAtmPreview,
+             summary="Build a user-defined atmosphere (temperature, pressure, humidity, wind, precipitation) without saving it")
+def custom_preview(body: CustomAtmIn, _: User = Depends(current_user)):
+    return wsvc.custom_preview(body.model_dump())
 
 
 @router.get("/cached", response_model=list[WeatherOut])

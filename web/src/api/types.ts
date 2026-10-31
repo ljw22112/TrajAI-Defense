@@ -1,6 +1,6 @@
 // Mirrors server/app/schemas.py (the OpenAPI contract).
 export type Role = "admin" | "analyst" | "viewer";
-export type Method = "ekf_std" | "ekf_wx" | "ukf_wx" | "pinn";
+export type Method = "ekf_std" | "ekf_wx" | "ukf_wx" | "pinn" | "ekf_pinn";
 
 export interface Page<T> { items: T[]; total: number; limit: number; offset: number }
 export interface Token { access_token: string; token_type: string; expires_in: number }
@@ -42,7 +42,7 @@ export interface Scenario extends ScenarioSummary {
 export interface ScenarioIn {
   name: string; h0: number; v0: number; gamma_deg: number; psi_deg: number; beta: number; obs_fraction: number;
   sigma_r: number; sigma_ang_mrad: number; weather_date: string | null; weather_hour: number; seed?: number | null;
-  weather_lat?: number | null; weather_lon?: number | null;
+  weather_lat?: number | null; weather_lon?: number | null; custom_atm?: CustomAtm | null;
 }
 export interface ModelVersion { id: number; name: string; kind: string; uses_weather: boolean; metrics: Record<string, any>; is_active: boolean; created_at: string }
 export interface MethodStat { method: Method; model?: string | null; n: number; median_miss_m: number | null; coverage: number | null; median_latency_ms: number | null }
@@ -53,18 +53,22 @@ export type LiveMsg =
   | { type: "meas"; k: number; t: number; x: number; y: number; z: number }
   | { type: "state"; t: number; k: number; r: number[]; v: number[]; beta: number; sigma_pos: number; sigma_lnb: number; nis: number | null }
   | { type: "done"; n: number; atmosphere: string }
-  | { type: "error"; detail: string };
+  | { type: "error"; detail: string }
+  | LivePred;
 
 export const METHOD_LABEL: Record<Method, string> = {
   ekf_std: "EKF · 표준 대기",
   ekf_wx: "EKF · 일자 기상",
   ukf_wx: "UKF · 일자 기상",
   pinn: "PINN 하이브리드",
+  ekf_pinn: "EKF · PINN β 사전",
 };
 
 /** Short, human-readable names for registered PINN versions. */
 export const MODEL_SHORT: Record<string, string> = {
   wx_hybrid_date: "기상 입력",
+  ens_hybrid_v2: "앙상블 ×3",
+  pinn_tf_v2: "트랙 전용",
   pinn_tf_hybrid_v2: "표준 대기 v2",
   pinn_tf_hybrid: "v1 (구버전)",
 };
@@ -98,8 +102,9 @@ export interface AnalysisSummary {
   median_miss_std: number; median_miss_wx: number; reduction: number | null; wx_better_frac: number;
   coverage_std: number; coverage_wx: number; spearman_wind_vs_std_error: number | null; largest_gain_time: string; largest_gain_m: number;
 }
-export interface AnalysisRow { id: number; name: string; created_by: number | null; created_at: string; lat: number; lon: number; n_profiles: number; summary: AnalysisSummary }
-export interface Analysis extends AnalysisRow { params: AnalysisIn & Record<string, unknown>; items: AnalysisItem[] }
+export type AnalysisKind = "weather" | "latency" | "sensor" | "sensitivity";
+export interface AnalysisRow { id: number; kind: AnalysisKind; name: string; created_by: number | null; created_at: string; lat: number; lon: number; n_profiles: number; summary: AnalysisSummary & Record<string, any> }
+export interface Analysis extends AnalysisRow { params: AnalysisIn & Record<string, any>; items: (AnalysisItem & Record<string, any>)[] }
 export interface AnalysisIn {
   name: string; h0: number; v0: number; gamma_deg: number; psi_deg: number; beta: number; obs_fraction: number;
   sigma_r: number; sigma_ang_mrad: number; seed: number; start_date: string; days: number; hours: number[]; lat: number | null; lon: number | null;
@@ -118,3 +123,35 @@ export const LOCATIONS: { label: string; lat: number; lon: number }[] = [
   { label: "남부", lat: 35.25, lon: 128.5 },
   { label: "제주", lat: 33.5, lon: 126.5 },
 ];
+
+// ---------------------------------------------------------------- user-defined atmosphere
+export type Condition = "clear" | "cloudy" | "fog" | "rain" | "heavy_rain" | "snow";
+export interface CustomAtm {
+  t_sfc_c: number; p_sfc_hpa: number; rh_pct: number; lapse_k_per_km: number; tropopause_km: number;
+  wind_sfc_ms: number; wind_sfc_dir: number; jet_ms: number; jet_km: number; jet_width_km: number; jet_dir: number; condition: Condition;
+}
+export const CUSTOM_DEFAULT: CustomAtm = {
+  t_sfc_c: 15, p_sfc_hpa: 1013.25, rh_pct: 50, lapse_k_per_km: 6.5, tropopause_km: 11, wind_sfc_ms: 5, wind_sfc_dir: 270,
+  jet_ms: 40, jet_km: 11, jet_width_km: 3, jet_dir: 270, condition: "clear",
+};
+export const CONDITION_LABEL: Record<Condition, string> = {
+  clear: "맑음", cloudy: "흐림", fog: "안개", rain: "비", heavy_rain: "폭우", snow: "눈",
+};
+export interface CustomPreview {
+  levels: WeatherLevels & { Tv: number[]; q: number[] }; curves: Record<string, number[]>; noise_factor: number;
+  max_wind: number; max_wind_alt: number; surface_density: number; density_vs_standard_pct: number;
+}
+
+// ---------------------------------------------------------------- raids, alerts, live predictions
+export interface RaidWindow { band: string; open: number; close: number }
+export interface RaidTrack {
+  scenario_id: number; scenario: string; offset_s: number; track_end: number; impact: number; windows: RaidWindow[];
+  level: number | null; max_prob: number | null; top_asset: string | null; method: Method | null;
+}
+export interface Raid { id: number; name: string; created_at: string; tracks: RaidTrack[]; peak_simultaneous: number; peak_at: number | null; first_impact: number | null }
+export interface RaidRow { id: number; name: string; created_at: string; n: number }
+export interface Alert {
+  type: "alert"; estimate_id: number; scenario_id: number; scenario: string; level: number; max_prob: number;
+  top_asset: string | null; method: Method; time_to_impact: number; at: string;
+}
+export interface LivePred { type: "pred"; t: number; n: number; ip_x: number; ip_y: number; cep: number; miss: number; latency_ms: number; model: string }

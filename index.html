@@ -75,7 +75,7 @@ main{min-width:0; display:flex; flex-direction:column; gap:80px}
 .cover h1{font-size:clamp(38px,6vw,64px); font-weight:700; letter-spacing:-.025em}
 .cover h1 i{font-style:normal; color:var(--pred)}
 .cover .sub{font-size:clamp(17px,2vw,21px); font-weight:500; color:var(--ink-2); max-width:44ch}
-.keys{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin:22px 0 4px}
+.keys{display:grid; grid-template-columns:repeat(auto-fill,minmax(250px,1fr)); gap:10px; margin:22px 0 4px}
 .key{display:flex; flex-direction:column; gap:4px; padding:12px 14px; background:var(--sheet); border:1px solid var(--rule); border-left:3px solid var(--ink-3); border-radius:3px; text-decoration:none; color:var(--ink)}
 .key:hover{border-color:var(--ink)}
 .key b{font-family:var(--font-mono); font-size:20px; font-weight:600; font-variant-numeric:tabular-nums}
@@ -300,12 +300,13 @@ footer b{color:var(--ink); font-weight:600}
   <p class="sub">물리 제약 신경망 기반 실시간 탄도 궤도 예측 및 위협 평가 시스템</p>
   <div class="abstract">
     <p>요격 체계의 교전 판단은 표적의 탄착점(IP)과 탄착 시각(ToT)을 얼마나 빨리, 얼마나 믿을 수 있게 아느냐에 달려 있습니다. 확장 칼만 필터(EKF)나 수치 적분 기반 예측은 대기 밀도 변화, 마하수에 따른 항력 변화, 기동이 있으면 연산 비용과 추정 오차가 함께 커집니다. 순수 데이터 기반 신경망은 빠르지만 관측이 적은 초기 구간에서 운동 방정식을 위반하는 궤적을 출력할 수 있습니다.</p>
-    <p>TrajAI-Defense는 비행 초기 10~15% 구간의 레이더 트랙을 시계열 인코더(Transformer / Bi-LSTM)로 요약하고, 운동 방정식 잔차를 손실에 포함한 물리 제약 신경망(PINN)으로 잔여 궤적, IP, ToT, CEP를 추론합니다. 목표는 단일 표적 추론 50 ms 이하, 기존 대비 CEP 추정 오차 40% 감소입니다. 이 문서는 운용 개념, 동역학 모델, 추정 문제 정식화, 학습 설계, 데이터셋, 검증 방법과 <a href="#sec-results">실험 결과</a>를 정리합니다. 현재 결과로는 지연 목표는 충족하지만, 정확도는 같은 물리 모델을 쓰는 EKF/UKF에 아직 못 미칩니다. 선택 일자의 실제 기온·바람을 대기 모델에 반영하면 IP 오차가 크게 줄어(<a href="#sec-weather">§9.3</a>) 이를 기본 설정으로 채택했습니다.</p>
+    <p>TrajAI-Defense는 비행 초기 10~15% 구간의 레이더 트랙을 시계열 인코더(Transformer / Bi-LSTM)로 요약하고, 운동 방정식 잔차를 손실에 포함한 물리 제약 신경망(PINN)으로 잔여 궤적, IP, ToT, CEP를 추론합니다. 목표는 단일 표적 추론 50 ms 이하, 기존 대비 CEP 추정 오차 40% 감소입니다. 이 문서는 운용 개념, 동역학 모델, 추정 문제 정식화, 학습 설계, 데이터셋, 검증 방법과 <a href="#sec-results">실험 결과</a>를 정리합니다. 현재 결과로는 지연 목표는 충족하지만, 신경망 단독의 정확도는 같은 물리 모델을 쓰는 EKF/UKF에 못 미칩니다. 대신 PINN의 탄도계수 예측을 EKF의 사전정보로 넣으면 모든 시험 조건에서 EKF보다 정확해집니다(<a href="#sec-feedback">§9.6</a>). 선택 일자의 실제 기온·바람을 대기 모델에 반영하면 IP 오차가 크게 줄어(<a href="#sec-weather">§9.3</a>) 이를 기본 설정으로 채택했습니다.</p>
   </div>
 <!-- KEY:BEGIN -->
   <div class="keys" aria-label="핵심 결과">
     <a class="key ok" href="#sec-results"><span class="label">지연 목표 충족</span><b>0.87 ms</b><span>ONNX Runtime p50, CPU 1스레드. EKF + Monte Carlo 228 ms보다 약 262배 빠름</span></a>
-    <a class="key no" href="#sec-stats"><span class="label">정확도는 필터가 우세</span><b>428 m vs 212 m</b><span>최선 신경망(하이브리드) 대 UKF, ID 15% IP 오차 중앙값. 차이는 통계적으로 유의</span></a>
+    <a class="key no" href="#sec-stats"><span class="label">신경망 단독은 필터보다 부정확</span><b>428 m vs 212 m</b><span>최선 신경망(하이브리드) 대 UKF, ID 15% IP 오차 중앙값. 차이는 통계적으로 유의</span></a>
+    <a class="key ok" href="#sec-feedback"><span class="label">필터의 사전정보로 쓰면 최선</span><b>−33%</b><span>PINN의 β 예측을 EKF 사전으로 넣으면 ID 5% IP 오차 1,429 → 956 m, 시험 분할 5개 중 5개에서 유의하게 개선</span></a>
     <a class="key ok" href="#sec-weather"><span class="label">실제 기상 반영이 가장 큰 개선</span><b>−87%</b><span>EKF IP 오차 2,633 → 339 m (표준 대기 → 선택 일자 기상). 기본 설정으로 채택</span></a>
     <a class="key ok" href="#sec-stats"><span class="label">신경망도 기상으로 학습하면 개선</span><b>2,779 → 720 m</b><span>직전 1년 실제 기상 속 발사 2만 회로 학습. 일자 기상 입력의 추가 효과(Δ -36 m)는 불확실</span></a>
     <a class="key part" href="#sec-calib"><span class="label">불확실성은 보정 필요</span><b>CEP50 → 0.50</b><span>계수 하나로 50% 포함률은 맞지만, 같은 계수의 90% 포함률은 19개 중 13개가 0.85 미만(0.76–0.82). 오차 꼬리가 두꺼움</span></a>
@@ -420,7 +421,7 @@ footer b{color:var(--ink); font-weight:600}
         <tr><td class="id">REQ-F-03</td><td>예측 궤적의 물리 일관성 (운동 방정식 잔차)</td><td class="c">잔차 RMS ≤ 0.05 g</td><td>0.09 g (ID 10%)</td><td><span class="st no">미충족</span></td><td><span class="vm">A</span></td></tr>
         <tr><td class="id">REQ-F-04</td><td>보호 자산 DB 대비 위협 등급과 요격 고도 창 산출</td><td class="c">5단계</td><td>구현, 가상 자산으로 시연 (운용 콘솔, 3D 뷰어)</td><td><span class="st ok">충족</span></td><td><span class="vm">D</span></td></tr>
         <tr><td class="id">REQ-P-01</td><td>단일 표적 추론 지연 (전처리 제외, p99)</td><td class="c">≤ 50 ms</td><td>5.3 ms (ONNX Runtime, CPU)</td><td><span class="st ok">충족</span></td><td><span class="vm">T</span></td></tr>
-        <tr><td class="id">REQ-P-02</td><td>IP / CEP 추정 오차, EKF baseline 대비</td><td class="c">−40 %</td><td>+70 % (최선 신경망, ID 10%)</td><td><span class="st no">미충족</span></td><td><span class="vm">T</span></td></tr>
+        <tr><td class="id">REQ-P-02</td><td>IP / CEP 추정 오차, EKF baseline 대비</td><td class="c">−40 %</td><td>EKF + PINN β 사전 -16 % (ID 10%), -33 % (ID 5%). 신경망 단독은 +70 %</td><td><span class="st part">부분 충족</span></td><td><span class="vm">T</span></td></tr>
         <tr><td class="id">REQ-P-03</td><td>교전 판단 가용 시간 증가</td><td class="c">+25 s</td><td>계산 시간 단축 0.23 s, 25 s 근거 없음</td><td><span class="st no">미충족</span></td><td><span class="vm">A</span></td></tr>
         <tr><td class="id">REQ-I-01</td><td>센서 트랙 스트리밍 입력 (gRPC / Socket)</td><td class="c">≥ 20 Hz</td><td>WebSocket 측정 스트림 + 측정당 증분 EKF 갱신 (처리량 약 660 Hz, CPU). 실제 센서 연동이 아닌 시뮬레이션 재생</td><td><span class="st part">부분 충족</span></td><td><span class="vm">D</span></td></tr>
 <!-- REQ:END -->
@@ -867,7 +868,30 @@ footer b{color:var(--ink); font-weight:600}
     <p>스칼라 하나로 50% 포함률은 모든 추정기에서 목표에 맞춰집니다. 하지만 같은 s로 잰 90% 포함률은 19개 중 13개에서 0.85 미만(0.76–0.82)입니다. 오차 분포의 꼬리가 가우시안보다 두껍다는 뜻이므로, 높은 신뢰수준이 필요한 위협 판정에는 수준별 보정이 따로 필요합니다. 분포가 바뀌면 ID에서 정한 s가 통하지 않습니다(OOD 50% 포함률: EKF + MC 0.48, UKF + MC 0.55, Transformer (data only) 0.13, PINN-Transformer 0.13, PINN + EKF 하이브리드 0.11). 그래서 콘솔은 모델마다 학습 분포에 맞는 분할에서 정한 s(<code>results/calibration.json</code>)를 PINN의 CEP에 곱해 위협 확률을 계산하고, 분포 밖 입력의 보정은 보장하지 않습니다.</p>
   </div>
 <!-- STATS:END -->
-  <h3 class="sub" id="sec-validity"><span class="no">9.6</span>타당성 위협과 한계</h3>
+<!-- EXTRA:BEGIN -->
+  <h3 class="sub" id="sec-feedback"><span class="no">9.6</span>PINN → EKF 되먹임과 RTS 평활</h3>
+  <div class="prose">
+    <p>Table 6에서 계획으로 남겼던 결합의 나머지 방향을 구현했습니다. 트랙만 보는 PINN(<code>pinn_tf_v2</code>, EKF 입력 없음)이 예측한 ln β를 EKF의 사전분포로 넣습니다. 기본 사전은 ln 2450 ± 1.0(학습 범위 전체)이고, 되먹임 사전의 폭 0.068은 검증 분할에서 PINN 예측 오차의 강건 표준편차로 정했습니다. 나머지 EKF + Monte Carlo는 그대로입니다.</p>
+  </div>
+  <div class="tw">
+    <table>
+      <caption><b>Table R8</b>EKF 기본 사전 → PINN β 사전: IP 오차 중앙값 [m], 차이의 95% bootstrap CI, 승률, CEP 포함률, |Δ ln β| 중앙값</caption>
+      <thead><tr><th>분할</th><th class="n">IP 오차</th><th class="n">Δ 중앙값</th><th class="n">승률</th><th class="n">CEP 포함률</th><th class="n">|Δ ln β|</th><th>판정</th></tr></thead>
+      <tbody>
+        <tr><td>ID 5%</td><td class="n">1,429 → <b>956</b></td><td class="n">-473 <small class="muted">[-610, -315]</small></td><td class="n">0.65</td><td class="n">0.37 → 0.47</td><td class="n">0.051 → 0.032</td><td>개선</td></tr>
+        <tr><td>ID 10%</td><td class="n">340 → <b>286</b></td><td class="n">-54 <small class="muted">[-73, -29]</small></td><td class="n">0.60</td><td class="n">0.70 → 0.80</td><td class="n">0.016 → 0.012</td><td>개선</td></tr>
+        <tr><td>ID 15%</td><td class="n">225 → <b>212</b></td><td class="n">-13 <small class="muted">[-24, -2]</small></td><td class="n">0.58</td><td class="n">0.84 → 0.89</td><td class="n">0.013 → 0.010</td><td>개선</td></tr>
+        <tr><td>고잡음</td><td class="n">629 → <b>539</b></td><td class="n">-89 <small class="muted">[-142, -43]</small></td><td class="n">0.58</td><td class="n">0.54 → 0.61</td><td class="n">0.038 → 0.027</td><td>개선</td></tr>
+        <tr><td>OOD</td><td class="n">438 → <b>363</b></td><td class="n">-76 <small class="muted">[-105, -53]</small></td><td class="n">0.63</td><td class="n">0.77 → 0.89</td><td class="n">0.130 → 0.025</td><td>개선</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="prose">
+    <p>β를 관측하기 어려운 짧은 관측에서 효과가 가장 큽니다(ID 5%: 1,429 → 956 m). 학습된 사전은 EKF가 관측만으로 좁히지 못하는 β 불확실성을 메우는 역할을 하며, 신경망을 대체가 아니라 필터의 사전정보로 쓰는 것이 이 시스템에서 가장 효과적인 결합 방식입니다. OOD(β 10,000–16,000, 학습 범위 밖)에서도 438 → 363 m로 개선되는데, PINN의 ln β 오차(0.025)가 EKF 기본 사전으로 수렴한 값의 오차(0.130)보다 작기 때문입니다. 신경망 단독으로는 OOD에서 실패하지만(§9.2), 필터 안의 사전정보로 쓰면 필터의 물리 모델이 잘못된 사전을 측정으로 바로잡을 수 있습니다.</p>
+    <p><b>RTS 평활.</b> 같은 동역학으로 새로 만든 트랙 300개(측정 40개)에서 측정 시각의 실제 속도 대비 오차 중앙값은 Savitzky–Golay 미분 7.2 m/s, EKF(필터) 3.8 m/s, RTS 평활 1.2 m/s입니다. 가속도는 SG 12.0 → RTS 0.3 m/s²입니다. 평활은 마지막 상태를 바꾸지 않으므로 필터 기반 추정기에는 영향이 없고, 신경망 입력 특징을 정제하는 용도입니다. 이 특징으로 다시 학습하는 것은 남은 일입니다.</p>
+  </div>
+<!-- EXTRA:END -->
+  <h3 class="sub" id="sec-validity"><span class="no">9.8</span>타당성 위협과 한계</h3>
   <div class="tw">
     <table>
       <caption><b>Table R7</b>결론을 약하게 만들 수 있는 요인과 이 연구에서의 대응</caption>
@@ -901,7 +925,7 @@ footer b{color:var(--ink); font-weight:600}
         <tr><td class="id">trajai/features.py · weather.py</td><td>입력 특징·EKF 전역 특징, Open-Meteo 기압면 수집과 250 m 대기 격자</td><td><span class="st ok">구현</span></td></tr>
         <tr><td class="id">trajai/threat.py</td><td>가상 보호 자산 대비 탄착 확률, 위협 등급 1–5, 교전 고도 창과 PIP</td><td><span class="st ok">구현</span></td></tr>
         <tr><td class="id">scripts/</td><td>데이터 생성, 전처리, 학습, 평가, ONNX 변환·지연 측정, 그림, 사이트 결과 생성</td><td><span class="st ok">구현</span></td></tr>
-        <tr><td class="id">tests/</td><td>대기 기준값, RK4 수렴 차수, 레이더 야코비안, EKF/UKF 일관성, 기상 격자, 위협 평가 (GitHub Actions CI)</td><td><span class="st ok">17 통과</span></td></tr>
+        <tr><td class="id">tests/</td><td>대기 기준값, RK4 수렴 차수, 레이더 야코비안, EKF/UKF 일관성, 기상 격자, 사용자 대기, RTS 평활, β 사전, 위협 평가 (GitHub Actions CI)</td><td><span class="st ok">21 통과</span></td></tr>
         <tr><td class="id">server/ · web/</td><td>FastAPI + PostgreSQL 백엔드와 React 운용 콘솔 (§12)</td><td><span class="st ok">구현</span></td></tr>
         <tr><td class="id"><a href="prototype/viewer.html">prototype/viewer.html</a></td><td>시험 케이스의 실제 궤적, EKF·PINN 예측, CEP, 위협 평가를 보여주는 Three.js 3D 뷰어</td><td><span class="st ok">구현</span></td></tr>
         <tr><td class="id">—</td><td>6-DOF 자세 동역학, 추진 구간 학습, IMM, deep ensemble, RTS 평활, PINN → EKF 되먹임, TensorRT(GPU), 실제 센서 연동</td><td><span class="st no">미구현</span></td></tr>
@@ -965,8 +989,8 @@ python -m pytest -q tests server/tests</code></pre>
       <thead><tr><th>계층</th><th>기술</th><th>구현 내용</th></tr></thead>
       <tbody>
         <tr><td>프론트엔드</td><td class="c">React 18 · TypeScript (strict) · Vite · TanStack Query</td><td>대시보드(교전 우선순위, 추정기·모델별 성능), 시나리오 생성(위치·일자별 기상 미리보기), 상세·탄착 영역·실시간 재생, 기상 영향 분석, 자산 CRUD, 모델 레지스트리, 사용자·감사 로그. 용어 툴팁, 첫 방문 안내, 역할에 따라 메뉴와 버튼을 숨김</td></tr>
-        <tr><td>백엔드</td><td class="c">FastAPI · Pydantic v2 · PyJWT · bcrypt</td><td>REST 29개(health 제외) + WebSocket 1개 엔드포인트, OAuth2 JWT 인증, 로그인 실패 제한(5회/5분, HTTP 429), 추정 결과 CSV 내보내기, 3단계 역할(viewer·analyst·admin), 소유권 검사, 감사 로그, OpenAPI 자동 문서</td></tr>
-        <tr><td>데이터베이스</td><td class="c">PostgreSQL 16 · SQLAlchemy 2.0 · Alembic</td><td>10개 테이블(사용자, 자산, 기상 캐시, 시나리오, 측정, 추정, 위협 평가, 모델 버전, 기상 영향 분석, 감사 로그), FK·CHECK·UNIQUE 제약, JSONB, 왕복 검증한 마이그레이션</td></tr>
+        <tr><td>백엔드</td><td class="c">FastAPI · Pydantic v2 · PyJWT · bcrypt</td><td>REST 37개(health 제외) + WebSocket 2개(실시간 재생, 위협 알림) 엔드포인트, OAuth2 JWT 인증, 로그인 실패 제한(5회/5분, HTTP 429), 추정 결과 CSV 내보내기, 3단계 역할(viewer·analyst·admin), 소유권 검사, 감사 로그, OpenAPI 자동 문서</td></tr>
+        <tr><td>데이터베이스</td><td class="c">PostgreSQL 16 · SQLAlchemy 2.0 · Alembic</td><td>11개 테이블(사용자, 자산, 기상 캐시, 시나리오, 측정, 추정, 위협 평가, 모델 버전, 환경·센서 분석, 동시 공격, 감사 로그), FK·CHECK·UNIQUE 제약, JSONB, 왕복 검증한 마이그레이션</td></tr>
         <tr><td>모델 서빙</td><td class="c">ONNX Runtime</td><td>모델 레지스트리의 PINN 하이브리드(기상 입력 / 표준 대기 v2)를 동적 트랙 길이로 서빙(PyTorch 대비 오차 4 cm 이내). 기상 없는 시나리오는 표준 대기 모델로 자동 대체, CEP는 split-conformal 계수로 보정</td></tr>
         <tr><td>외부 연동</td><td class="c">Open-Meteo</td><td>기압면 자료를 (시각, 위치) 키로 캐시, 일시적 오류 재시도, 429 제한 시 503으로 안내</td></tr>
         <tr><td>운영</td><td class="c">Docker · Compose · GitHub Actions</td><td>멀티 스테이지 이미지(SPA + API), PostgreSQL 서비스를 띄운 CI에서 마이그레이션·API·웹 테스트</td></tr>
@@ -979,15 +1003,33 @@ python -m pytest -q tests server/tests</code></pre>
     <p><b>교전 우선순위</b>는 시나리오마다 가장 정확한 최신 추정(§9.4 순서: 기상 반영 EKF → UKF → PINN → 표준 EKF)을 골라 위협 등급, 탄착 확률, 남은 시간, 교전 창이 열리기까지의 시간 순으로 정렬합니다.</p>
     <p><b>범위 밖으로 둔 기능.</b> 목표 지점과 발사 후보지를 주고 기상 조건에 따라 발사 시각과 위치를 고르는 기능은 검토했으나 넣지 않았습니다. 들어오는 표적을 예측해 방어 판단을 돕는다는 이 시스템의 목적과 반대 방향(공격 측 계획)이기 때문입니다. 같은 기상 자료를 방어 쪽에서 쓰는 방식이 위의 기상 영향 분석입니다.</p>
   </div>
+  <h3 class="sub" id="sec-console2"><span class="no">12.2</span>환경 직접 설정과 운용 기능</h3>
+  <div class="tw">
+    <table>
+      <caption><b>Table 14b</b>추가한 기능과 근거. 모두 방어 측 예측·판단을 돕는 범위입니다</caption>
+      <thead><tr><th>기능</th><th>내용</th><th>모델·가정</th></tr></thead>
+      <tbody>
+        <tr><td>환경 직접 설정</td><td>지상 기온·기압·상대습도, 기온감률, 대류권계면, 지상풍·제트기류(속도·고도·두께·풍향), 날씨(맑음·흐림·안개·비·폭우·눈). 프리셋과 실시간 미리보기(밀도 변화, 최대풍, 레이더 잡음 배수)</td><td>USSA-1976 모양의 기온 분포, Magnus 식으로 구한 비습을 가상온도 T<sub>v</sub> = T(1 + 0.608q)로 밀도에 반영, 정역학 적분. 강수는 항력에 거의 영향이 없어(공기 밀도의 0.1% 미만) 레이더 잡음 배수(비 ×1.3, 폭우 ×2.0, 눈 ×1.4, 안개 ×1.05)로만 반영</td></tr>
+        <tr><td>환경 민감도</td><td>직접 설정한 대기에서 변수 하나만 바꿔 탄착점 이동과 표준 대기·대기 반영 EKF의 오차를 비교</td><td>값마다 잡음 표본 16개의 중앙값</td></tr>
+        <tr><td>기상 자료 지연</td><td>비행 시각 대신 6·12·24시간 전 기상을 받은 EKF의 오차, 기상 반영 이득의 절반을 유지하는 최대 지연</td><td>지연 자료는 그 시각의 분석장으로 근사</td></tr>
+        <tr><td>센서 조건</td><td>레이더 잡음(×0.5–4)과 관측 비율(5–20%) 격자에서 대기를 아는 EKF의 IP 오차·CEP 포함률, 오차를 절반으로 줄이는 가장 싼 조건</td><td>칸마다 잡음 표본 16개, 표준·일자·직접 설정 대기 중 선택</td></tr>
+        <tr><td>다표적 교전 타임라인</td><td>시나리오 여러 개를 발사 지연과 함께 한 시계에 놓고 관측 구간·교전 창·예측 탄착을 표시, 동시에 열리는 교전 창의 최대 수(필요한 요격 채널)</td><td>표적마다 가장 정확한 최신 추정 사용, 교전 창 열림·닫힘의 sweep-line 계산</td></tr>
+        <tr><td>위협 알림</td><td>LEVEL 4 이상 추정이 생기면 접속한 모든 콘솔에 WebSocket으로 즉시 알림(배너·알림 목록)</td><td>단일 워커 기준 프로세스 내 큐. 다중 워커는 PostgreSQL LISTEN/NOTIFY로 확장</td></tr>
+        <tr><td>실시간 PINN 예측</td><td>재생 중 측정 4개마다 그때까지의 트랙으로 PINN을 다시 실행해 예측 탄착점·CEP를 갱신(회당 수 ms)</td><td>오차는 사후 검증용(실제 탄착점 기준)</td></tr>
+        <tr><td>EKF · PINN β 사전</td><td>트랙만 보는 PINN의 ln β 예측을 EKF의 사전분포로 넣는 추정기(PINN → EKF 되먹임, §9.7)</td><td>사전 폭은 검증 분할에서 추정, 시나리오에 기상이 있으면 함께 사용</td></tr>
+        <tr><td>시나리오 비교 · PDF</td><td>두 시나리오의 조건·궤적·추정 결과를 나란히 비교. 시나리오·분석·교전 화면을 인쇄용 스타일로 PDF 저장</td><td>브라우저 인쇄(서버 없이 데모에서도 동작)</td></tr>
+      </tbody>
+    </table>
+  </div>
 <div class="tw">
     <table>
       <caption><b>Table 15</b>테스트</caption>
       <thead><tr><th>수준</th><th>범위</th><th>수</th></tr></thead>
       <tbody>
-        <tr><td>코어 단위</td><td>대기, RK4 수렴 차수, 레이더 야코비안, EKF/UKF 일관성, 기상 격자, 위협 평가</td><td class="n">17</td></tr>
-        <tr><td>API 통합</td><td>인증·RBAC·CRUD·검증·기상 캐시·시뮬레이션·추정·통계·WebSocket·감사 · 로그인 제한·CSV (SQLite와 PostgreSQL 각각)</td><td class="n">17</td></tr>
+        <tr><td>코어 단위</td><td>대기, RK4 수렴 차수, 레이더 야코비안, EKF/UKF 일관성, 기상 격자, 사용자 대기, RTS 평활, β 사전, 위협 평가</td><td class="n">21</td></tr>
+        <tr><td>API 통합</td><td>인증·RBAC·CRUD·검증·기상 캐시·시뮬레이션·추정·통계·WebSocket·감사 · 로그인 제한·CSV (SQLite와 PostgreSQL 각각)</td><td class="n">23</td></tr>
         <tr><td>프론트엔드</td><td>API 클라이언트 오류 처리, CSV 다운로드, UI 컴포넌트</td><td class="n">11</td></tr>
-        <tr><td>E2E (Playwright)</td><td>로그인, 대시보드, 실시간 재생, 폼 검증, viewer 읽기 전용, CSV 다운로드, 런타임 오류 없음</td><td class="n">7</td></tr>
+        <tr><td>E2E (Playwright)</td><td>로그인, 대시보드, 실시간 재생, 폼 검증, viewer 읽기 전용, CSV, 사용자 대기, 환경 민감도, 다표적·비교, 위협 알림</td><td class="n">12</td></tr>
       </tbody>
     </table>
   </div>

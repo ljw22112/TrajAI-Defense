@@ -107,6 +107,16 @@ def fp(p):
     return "&lt;0.001" if p < 1e-3 else f"{p:.3f}"
 
 
+def _feedback_card():
+    if not os.path.exists(f"{R}/feedback_rts.json"):
+        return []
+    fb = json.load(open(f"{R}/feedback_rts.json"))["feedback"]["splits"]
+    d, f = fb["test_id_f05"]["default"]["miss"], fb["test_id_f05"]["feedback"]["miss"]
+    n_better = sum(v["ci_diff"][1] < 0 for v in fb.values())
+    return [("ok", "필터의 사전정보로 쓰면 최선", f"−{(1 - f / d) * 100:.0f}%",
+             f"PINN의 β 예측을 EKF 사전으로 넣으면 ID 5% IP 오차 {f0(d)} → {f0(f)} m, 시험 분할 {len(fb)}개 중 {n_better}개에서 유의하게 개선", "#sec-feedback")]
+
+
 def key_findings(html, rows, cal):
     """Abstract-level summary cards; every number is read from results/*.json so it cannot drift from §9."""
     M = json.load(open(f"{R}/metrics.json"))
@@ -123,7 +133,8 @@ def key_findings(html, rows, cal):
     c90 = [c["cal90"] for c in cal]
     cards = [
         ("ok", "지연 목표 충족", f"{onnx:.2f} ms", f"ONNX Runtime p50, CPU 1스레드. EKF + Monte Carlo {ekfmc:.0f} ms보다 약 {ekfmc / onnx:,.0f}배 빠름", "#sec-results"),
-        ("no", "정확도는 필터가 우세", f"{f0(h15)} m vs {f0(u15)} m", "최선 신경망(하이브리드) 대 UKF, ID 15% IP 오차 중앙값. 차이는 통계적으로 유의", "#sec-stats"),
+        ("no", "신경망 단독은 필터보다 부정확", f"{f0(h15)} m vs {f0(u15)} m", "최선 신경망(하이브리드) 대 UKF, ID 15% IP 오차 중앙값. 차이는 통계적으로 유의", "#sec-stats"),
+        *_feedback_card(),
         ("ok", "실제 기상 반영이 가장 큰 개선", f"−{(1 - wd / we) * 100:.0f}%", f"EKF IP 오차 {f0(we)} → {f0(wd)} m (표준 대기 → 선택 일자 기상). 기본 설정으로 채택", "#sec-weather"),
         ("ok", "신경망도 기상으로 학습하면 개선", f"{f0(n0)} → {f0(n1)} m", "직전 1년 실제 기상 속 발사 2만 회로 학습. 일자 기상 입력의 추가 효과"
          + (f"(Δ {dd['diff']:+.0f} m)는 불확실" if dd else "") , "#sec-stats"),

@@ -1,6 +1,6 @@
 import numpy as np
 
-from trajai import dataset, filters, radar, threat
+from trajai import dataset, filters, physics, radar, threat
 
 
 def _data(n=40, seed=3):
@@ -44,3 +44,29 @@ def test_threat_levels_and_windows():
     h = 50_000 * np.sin(np.pi * t / 200)
     w = threat.engagement_windows(t, h)
     assert w["upper"]["t_in"] < w["upper"]["t_out"] < w["lower"]["t_in"]
+
+
+def test_rts_smoother_beats_filter_and_beta_prior_is_used():
+    rng = np.random.default_rng(5)
+    N, dt = 30, 0.5
+    g = np.radians(rng.uniform(35, 55, N)); v0 = rng.uniform(1000, 1600, N)
+    s0 = np.stack([np.zeros(N), np.zeros(N), rng.uniform(10e3, 20e3, N), v0 * np.cos(g), np.zeros(N), v0 * np.sin(g)], 1)
+    beta = np.exp(rng.uniform(np.log(800), np.log(8000), N))
+    _, pos, vel, _, _ = physics.simulate_ballistic(s0, beta, dt=0.1, out_dt=dt)
+    K = 40
+    nz = radar.NOISE_NOMINAL
+    pol = np.zeros((N, K, 3)); car = np.zeros((N, K, 3))
+    for i in range(N):
+        pol[i], car[i] = radar.measure(pos[i, :K], rng, sigma_r=nz["sigma_r"], sigma_ang=nz["sigma_ang"])
+    n = np.full(N, K)
+    st = {}
+    filters.ekf(pol, car, n, dt, nz["sigma_r"], nz["sigma_ang"], store=st)
+    xs, _ = filters.rts_smooth(pol, car, n, dt, nz["sigma_r"], nz["sigma_ang"])
+    k = np.arange(5, K - 5)
+    e_f = np.linalg.norm(st["xf"][:, k, 3:6] - vel[:, k], axis=-1)
+    e_s = np.linalg.norm(xs[:, k, 3:6] - vel[:, k], axis=-1)
+    assert np.median(e_s) < 0.8 * np.median(e_f)                       # smoothing uses future measurements
+    lb_true = np.log(beta)
+    x0, P0, _, _ = filters.ekf(pol[:, :4], car[:, :4], np.full(N, 4), dt, nz["sigma_r"], nz["sigma_ang"],
+                               lb_prior=lb_true, slb_prior=0.05)
+    assert np.abs(x0[:, 6] - lb_true).max() < 0.3 and np.all(np.sqrt(P0[:, 6, 6]) < 0.06)

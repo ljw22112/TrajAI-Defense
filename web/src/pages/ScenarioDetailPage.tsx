@@ -1,15 +1,16 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Fragment, useMemo, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api/client";
-import { METHOD_LABEL, modelShort, type Estimate, type Method } from "../api/types";
+import { CONDITION_LABEL, METHOD_LABEL, modelShort, type Condition, type Estimate, type Method } from "../api/types";
+import { PrintButton } from "../components/PrintButton";
 import { useAuth } from "../auth/AuthContext";
 import { Legend, Plot, type Series } from "../components/Plot";
 import { ProfileChart } from "../components/ProfileChart";
 import { Card, Empty, ErrorBox, PageHead, Spinner, Stat, Term, ThreatBadge, fmt, km } from "../components/ui";
 import { useLiveTrack } from "../hooks/useLiveTrack";
 
-const METHOD_COLOR: Record<Method, string> = { ekf_std: "--truth", ekf_wx: "--ekf", ukf_wx: "--ukf", pinn: "--pred" };
+const METHOD_COLOR: Record<Method, string> = { ekf_std: "--truth", ekf_wx: "--ekf", ukf_wx: "--ukf", pinn: "--pred", ekf_pinn: "--obs" };
 
 export function ScenarioDetailPage() {
   const id = Number(useParams().id);
@@ -76,9 +77,16 @@ export function ScenarioDetailPage() {
     ];
   }, [live.states, s]);
 
+  const lastPred = live.preds[live.preds.length - 1];
+  const predSeries = useMemo<Series[]>(() => !live.preds.length ? [] : [
+    { kind: "line", x: live.preds.map(p => p.t), y: live.preds.map(p => Math.max(p.miss, 1)), color: "--pred", width: 2.2 },
+    { kind: "points", x: live.preds.map(p => p.t), y: live.preds.map(p => Math.max(p.miss, 1)), color: "--pred", size: 2.5 },
+    { kind: "line", x: live.preds.map(p => p.t), y: live.preds.map(p => p.cep), color: "--ekf", width: 1.6, dash: [6, 4] },
+  ], [live.preds]);
+
   if (q.isLoading) return <Spinner />;
   if (q.error || !s) return <ErrorBox error={q.error ?? new Error("시나리오를 찾을 수 없습니다.")} />;
-  const methods: Method[] = s.weather ? ["ekf_std", "ekf_wx", "ukf_wx", "pinn"] : ["ekf_std", "pinn"];
+  const methods: Method[] = s.weather ? ["ekf_std", "ekf_wx", "ukf_wx", "ekf_pinn", "pinn"] : ["ekf_std", "ekf_pinn", "pinn"];
   const lastState = live.states[live.states.length - 1];
 
   return (
@@ -88,12 +96,16 @@ export function ScenarioDetailPage() {
           {can("analyst") && methods.map(m => (
             <button key={m} className="btn ghost" disabled={run.isPending} onClick={() => run.mutate(m)}>{METHOD_LABEL[m]} 실행</button>
           ))}
+          <Link className="btn ghost no-print" to={`/compare?a=${s.id}`}>비교</Link>
+          <PrintButton />
           {can("analyst") && (user?.role === "admin" || s.created_by === user?.id) && (
             <button className="btn danger" disabled={del.isPending} onClick={() => del.mutate()}>삭제</button>
           )}
         </>
       }>
-        {s.weather ? <>대기: <span className="chip on">{new Date(s.weather.valid_time).toISOString().slice(0, 13).replace("T", " ")}Z 기상</span> 최대풍 {fmt(s.weather.max_wind)} m/s</> : <>대기: 표준 모델 (무풍)</>}
+        {s.weather ? (s.weather.source === "custom"
+          ? <>대기: <span className="chip on">직접 설정</span> 지상 {fmt((s.weather.levels as any).custom?.t_sfc_c)}°C · 습도 {fmt((s.weather.levels as any).custom?.rh_pct)}% · {CONDITION_LABEL[(s.weather.levels as any).custom?.condition as Condition] ?? ""} · 최대풍 {fmt(s.weather.max_wind)} m/s</>
+          : <>대기: <span className="chip on">{new Date(s.weather.valid_time).toISOString().slice(0, 13).replace("T", " ")}Z 기상</span> 최대풍 {fmt(s.weather.max_wind)} m/s</>) : <>대기: 표준 모델 (무풍)</>}
         {" · "}seed {s.seed}
       </PageHead>
       <ErrorBox error={run.error || del.error} />
@@ -184,6 +196,21 @@ export function ScenarioDetailPage() {
             </dl>
           </div>
         ) : <Empty>재생을 누르면 측정이 시간 순서대로 도착하고 서버의 EKF가 단계마다 갱신됩니다.</Empty>}
+        {live.preds.length > 0 && (
+          <div className="grid g2" style={{ marginTop: 12 }}>
+            <div>
+              <Plot series={predSeries} xLabel="관측 종료 시각 t (s)" yLabel="IP 오차 (m)" height={220} logY ariaLabel="트랙 길이에 따른 PINN 예측 IP 오차" />
+              <Legend items={[{ label: "PINN 예측 IP 오차", color: "--pred" }, { label: "CEP50", color: "--ekf", dash: true }]} />
+            </div>
+            <dl className="kv" style={{ alignContent: "start" }}>
+              <dt>PINN 예측 (마지막)</dt><dd>{fmt(lastPred!.ip_x / 1000, 2)}, {fmt(lastPred!.ip_y / 1000, 2)} km</dd>
+              <dt>IP 오차 · CEP</dt><dd>{fmt(lastPred!.miss)} m · {fmt(lastPred!.cep)} m</dd>
+              <dt>예측 갱신</dt><dd>{live.preds.length}회 · 회당 {fmt(lastPred!.latency_ms, 1)} ms</dd>
+              <dt>모델</dt><dd>{modelShort(lastPred!.model) ?? lastPred!.model}</dd>
+              <dt className="label" style={{ gridColumn: "1 / -1" }}>측정 {"4"}개마다 그때까지의 트랙으로 PINN을 다시 실행합니다. 오차는 사후 검증용(실제 탄착점 기준)입니다.</dt>
+            </dl>
+          </div>
+        )}
       </Card>
       {s.weather && (
         <Card title="이 시나리오의 대기 프로파일">
