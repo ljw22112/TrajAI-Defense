@@ -99,6 +99,8 @@ def main():
     ap.add_argument("--global-key", default="g", help="EKF posterior features: g (split default) or g_date")
     ap.add_argument("--wx", action="store_true", help="feed the selected date's weather summary (27 features)")
     ap.add_argument("--phys-atm", default="std", choices=["std", "clim", "date"], help="atmosphere in the physics residual")
+    ap.add_argument("--save-every", type=int, default=0,
+                    help="also save the resume state every N steps inside an epoch (on resume the interrupted epoch restarts its shuffle)")
     ap.add_argument("--resume", action="store_true", help="continue from checkpoints/<name>_last.pt if present")
     a = ap.parse_args()
     torch.manual_seed(a.seed)
@@ -137,6 +139,9 @@ def main():
             opt.step(); sched.step(); step += 1
             for k, v in parts.items():
                 agg[k] = agg.get(k, 0) + v
+            if a.save_every and step % a.save_every == 0:
+                torch.save(dict(state=model.state_dict(), opt=opt.state_dict(), sched=sched.state_dict(), gen=gen.get_state(),
+                                rng=torch.get_rng_state(), step=step, best=best, log=log, elapsed=time.time() - t0), last_path)
             if step >= total_steps:
                 break
         model.eval()

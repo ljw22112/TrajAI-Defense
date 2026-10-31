@@ -322,7 +322,7 @@ footer b{color:var(--ink); font-weight:600}
       <tbody>
         <tr><td><b>RQ1</b> 짧은 관측(10–15%)만으로 PINN이 탄착점을 실시간으로 예측할 수 있는가</td><td><a href="#sec-results">§9.1</a>, Fig. 8</td><td>지연은 충족(0.87 ms, EKF + MC보다 약 260배 빠름). 정확도는 입력에 따라 다름: Savitzky–Golay 특징으로는 EKF/UKF보다 낮지만, RTS 평활 특징을 쓰면 고잡음에서 EKF보다 정확(607 m vs 629 m)</td></tr>
         <tr><td><b>RQ2</b> 물리 손실이 데이터만 쓴 학습보다 나은가</td><td><a href="#sec-results">§9.2</a>, <a href="#sec-stats">§9.4</a>, <a href="#sec-ensemble">§9.7</a></td><td>궤적의 물리 일관성은 확실히 개선(잔차 0.40 → 0.10 g). IP 정확도 이득은 seed 2쌍 모두에서 ID 10%·OOD에만 일관되고, 나머지 조건은 학습 무작위성 수준</td></tr>
-        <tr><td><b>RQ3</b> 칼만 필터와 PINN을 어떻게 결합해야 가장 좋은가</td><td><a href="#sec-est">§6.2</a>, <a href="#sec-feedback">§9.6</a>, Table R8b</td><td>필터를 신경망의 앞뒤에 두는 결합이 효과적: EKF-RTS 평활 특징을 입력으로(PINN 오차 40–64% 감소), PINN의 β 예측을 EKF 사전정보로(5개 조건 모두 EKF보다 정확)</td></tr>
+        <tr><td><b>RQ3</b> 칼만 필터와 PINN을 어떻게 결합해야 가장 좋은가</td><td><a href="#sec-est">§6.2</a>, <a href="#sec-feedback">§9.6</a>, Table R8b</td><td>필터를 신경망의 앞뒤에 두는 결합이 효과적: EKF-RTS 평활 특징을 입력으로(PINN 오차가 ID 10%·15%·고잡음에서 40–64% 감소, 관측 5%에서는 이득 없음), PINN의 β 예측을 EKF 사전정보로(5개 조건 모두 EKF보다 정확)</td></tr>
         <tr><td><b>RQ4</b> 실제 기상(기온·바람)이 예측 오차에 얼마나 영향을 주는가</td><td><a href="#sec-weather">§9.3</a>, <a href="#sec-wximpact">§12.1</a></td><td>가장 큰 오차 원인. 일자 기상 반영으로 EKF 오차 87% 감소, 신경망도 기상 학습으로 2.8 → 0.7 km</td></tr>
         <tr><td><b>RQ5</b> 예측 불확실성(CEP)을 믿을 수 있는가</td><td><a href="#sec-calib">§9.5</a>, <a href="#sec-ensemble">§9.7</a></td><td>계수 하나로 50% 포함률 보정 가능, 꼬리는 두꺼움. 분포 밖에서는 보정·앙상블 모두 실패</td></tr>
       </tbody>
@@ -596,9 +596,9 @@ footer b{color:var(--ink); font-weight:600}
       <caption><b>Table 6</b>시스템 안에서 칼만 필터가 맡는 세 가지 역할</caption>
       <thead><tr><th>역할</th><th>방식</th><th>효과</th></tr></thead>
       <tbody>
-        <tr><td>전처리</td><td>Savitzky–Golay 미분 또는 EKF-RTS 평활로 속도·가속도 특징 생성 (§9.6, RTS가 오차 40–64% 감소)</td><td>미분으로 증폭되는 잡음을 억제해 인코더 입력 분포를 안정화</td></tr>
+        <tr><td>전처리</td><td>Savitzky–Golay 미분 또는 EKF-RTS 평활로 속도·가속도 특징 생성 (§9.6: RTS가 ID 10%·15%·고잡음 오차를 40–64% 줄임, 관측 5%에서는 이득 없음)</td><td>미분으로 증폭되는 잡음을 억제해 인코더 입력 분포를 안정화</td></tr>
         <tr><td>Baseline</td><td>EKF / UKF + Monte Carlo 분산 전파 (Fig. 1)</td><td>같은 물리 모델 위에서 PINN의 속도·정확도 이득을 정량화</td></tr>
-        <tr class="prop"><td><b>하이브리드</b></td><td>EKF 사후 <span class="m">(x̂, P)</span>를 PINN 인코더의 추가 입력으로 넣고, PINN 예측을 EKF 예측 단계의 사전분포로 되먹이는 것은 계획 단계</td><td>필터가 단기 상태를, PINN이 장기 궤적을 담당. 구현된 부분은 EKF → PINN 방향이며 §9에서 효과를 검증</td></tr>
+        <tr class="prop"><td><b>하이브리드</b></td><td>EKF 사후 <span class="m">(x̂, P)</span>를 PINN 인코더의 추가 입력으로 넣고(EKF → PINN), PINN이 예측한 ln β를 EKF의 사전분포로 되먹임(PINN → EKF, §9.6)</td><td>필터가 단기 상태를, PINN이 장기 궤적과 β 사전을 담당. 되먹임 EKF가 5개 시험 조건 모두에서 기본 EKF보다 정확</td></tr>
       </tbody>
     </table>
   </div>
@@ -1017,7 +1017,7 @@ footer b{color:var(--ink); font-weight:600}
       <caption><b>Table R7</b>결론을 약하게 만들 수 있는 요인과 이 연구에서의 대응</caption>
       <thead><tr><th>구분</th><th>위협</th><th>영향</th><th>대응 / 남은 일</th></tr></thead>
       <tbody>
-        <tr><td style="white-space:nowrap">내적</td><td>학습 seed 수가 적음</td><td>Table R5의 신뢰구간은 시험 표본의 변동만 반영하고 학습 무작위성은 반영하지 않음</td><td>하이브리드는 seed 3개로 변동을 측정(§9.7, ID에서는 작고 OOD에서는 큼). PINN·data-only·기상 모델은 seed 1개라 차이가 작은 비교(물리 손실 ID 10% −61 m, 일자 기상 입력 −36 m)는 결론을 유보</td></tr>
+        <tr><td style="white-space:nowrap">내적</td><td>학습 seed 수가 적음</td><td>Table R5의 신뢰구간은 시험 표본의 변동만 반영하고 학습 무작위성은 반영하지 않음</td><td>하이브리드는 seed 3개, PINN·data-only는 seed 2개로 변동을 측정(§9.7, ID에서는 작고 OOD에서는 큼). 물리 손실의 정확도 이득은 두 seed 쌍 모두에서 ID 10%·OOD에만 일관. 기상 모델·RTS 입력 모델·불일치 학습 모델은 seed 1개라 차이가 작은 비교(일자 기상 입력 −36 m 등)는 결론을 유보</td></tr>
         <tr><td style="white-space:nowrap">내적</td><td>CPU 학습 4,500 step에서 중단</td><td>검증 ADE가 마지막 구간까지 감소(하이브리드 v2: 703 → 580 m), 신경망 성능이 과소평가되었을 수 있음</td><td>GPU 장기 학습으로 상한 재측정</td></tr>
         <tr><td style="white-space:nowrap">내적</td><td>"inverse crime": 필터와 데이터 생성기가 같은 동역학</td><td>EKF/UKF에 유리한 조건 (§9.1)</td><td>기상 실험은 분석장 오차 섭동으로, 동역학은 Cd(M) 곡선 오차·약한 양력을 넣은 불일치 시험(§9.9)으로 점검</td></tr>
         <tr><td style="white-space:nowrap">내적</td><td>보정 계수를 시험 분할 안에서 교차 적합</td><td>보고한 포함률은 out-of-fold지만, 같은 분포의 자료를 재사용</td><td>운용에는 별도 보정 세트와 주기적 재보정 필요</td></tr>
