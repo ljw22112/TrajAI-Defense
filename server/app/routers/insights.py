@@ -14,7 +14,17 @@ router = APIRouter(prefix="/api", tags=["models & statistics"])
 
 
 # most accurate first, by the paired comparisons of §9.4 (weather-aware filters < PINN < standard EKF)
-PREFERENCE = [Method.ekf_wx, Method.ukf_wx, Method.pinn, Method.ekf_std]
+PREFERENCE = [Method.ekf_wx, Method.ukf_wx, Method.ekf_pinn, Method.pinn, Method.ekf_std]
+
+
+@router.get("/alerts", summary="Recent threat alerts (level >= 4), newest first")
+def recent_alerts(limit: int = 20, db: Session = Depends(get_db), _: User = Depends(current_user)):
+    from .. import alerts
+    from .scenarios import _alert_of
+    rows = db.scalars(select(Estimate).join(ThreatAssessment).where(ThreatAssessment.level >= alerts.ALERT_LEVEL)
+                      .order_by(Estimate.id.desc()).limit(min(limit, 100))).all()
+    names = {a.id: a.name for a in db.scalars(select(Asset)).all()}
+    return [_alert_of(e, e.scenario.name, names) for e in rows]
 
 
 @router.get("/threats", response_model=list[ThreatBoardRow],
@@ -54,6 +64,8 @@ def activate(mid: int, db: Session = Depends(get_db), admin: User = Depends(requ
     m = db.get(ModelVersion, mid)
     if not m:
         raise HTTPException(404, "model not found")
+    if not m.kind.startswith("pinn-hybrid"):
+        raise HTTPException(422, "only PINN hybrid models can serve the 'pinn' estimator")
     for other in db.scalars(select(ModelVersion)).all():
         other.is_active = other.id == mid
     db.commit(); db.refresh(m)

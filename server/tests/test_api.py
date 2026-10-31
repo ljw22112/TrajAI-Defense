@@ -207,3 +207,79 @@ def test_weather_impact_analysis(client, users, admin):
     assert client.get(f"/api/analyses/{a['id']}", headers=users["viewer"]).json()["params"]["days"] == 2
     assert client.delete(f"/api/analyses/{a['id']}", headers=users["viewer"]).status_code == 403
     assert client.delete(f"/api/analyses/{a['id']}", headers=admin).status_code == 204
+
+
+FLIGHT = {"h0": 15000, "v0": 1400, "gamma_deg": 45, "beta": 2500, "obs_fraction": 0.12, "seed": 3}
+
+
+def test_custom_atmosphere_preview_and_scenario(client, users):
+    hot = client.post("/api/weather/custom/preview", json={"t_sfc_c": 40, "rh_pct": 90, "condition": "heavy_rain"}, headers=users["viewer"]).json()
+    cold = client.post("/api/weather/custom/preview", json={"t_sfc_c": -20, "rh_pct": 10}, headers=users["viewer"]).json()
+    assert hot["surface_density"] < cold["surface_density"] and hot["noise_factor"] == 2.0
+    assert client.post("/api/weather/custom/preview", json={"rh_pct": 150}, headers=users["viewer"]).status_code == 422
+    body = {"name": "custom", **FLIGHT, "sigma_r": 10, "sigma_ang_mrad": 0.3, "custom_atm": {"jet_ms": 80, "condition": "rain"}}
+    s = client.post("/api/scenarios", json=body, headers=users["analyst"]).json()
+    assert s["weather"]["source"] == "custom" and abs(s["sigma_r"] - 13.0) < 1e-6      # rain: noise x 1.3
+    e = client.post(f"/api/scenarios/{s['id']}/estimates", json={"method": "ekf_wx"}, headers=users["analyst"])
+    assert e.status_code == 201
+
+
+def test_latency_sensor_sensitivity_analyses(client, users):
+    h = users["analyst"]
+    lat = client.post("/api/analyses/latency", json={**FLIGHT, "start_date": "2026-10-14", "days": 1, "hours": [0, 12]}, headers=h)
+    assert lat.status_code == 201, lat.text
+    curve = lat.json()["summary"]["curve"]
+    assert [c["lag_h"] for c in curve] == [0, 6, 12, 24, None] and lat.json()["kind"] == "latency"
+    sen = client.post("/api/analyses/sensor", json={**FLIGHT, "atmosphere": "custom", "custom_atm": {"jet_ms": 60}}, headers=h)
+    assert sen.status_code == 201, sen.text
+    cells = sen.json()["items"]
+    assert len(cells) == 16
+    worst = max(cells, key=lambda c: c["median_miss"]); best = min(cells, key=lambda c: c["median_miss"])
+    assert worst["noise_mult"] >= best["noise_mult"] and worst["obs_fraction"] <= best["obs_fraction"]   # monotone extremes
+    st = client.post("/api/analyses/sensitivity", json={**FLIGHT, "param": "jet_ms", "base": {"jet_dir": 270}}, headers=h)
+    assert st.status_code == 201, st.text
+    items = st.json()["items"]
+    assert [i["value"] for i in items] == [0, 20, 40, 60, 80, 100]
+    assert items[-1]["impact_x"] > items[0]["impact_x"]                 # stronger tail wind (from the west) -> longer range
+    kinds = {a["kind"] for a in client.get("/api/analyses", headers=users["viewer"]).json()["items"]}
+    assert {"latency", "sensor", "sensitivity"} <= kinds
+
+
+def test_raid_timeline_and_alerts(scenarios, client, users, admin):
+    std, wx = scenarios
+    h = users["analyst"]
+    for sid in (std["id"], wx["id"]):
+        client.post(f"/api/scenarios/{sid}/estimates", json={"method": "ekf_std"}, headers=h)
+    bad = client.post("/api/raids", json={"name": "x", "members": [{"scenario_id": std["id"]}]}, headers=h)
+    assert bad.status_code == 422                                           # a raid needs >= 2 members
+    r = client.post("/api/raids", json={"name": "salvo", "members": [{"scenario_id": std["id"], "offset_s": 0},
+                                                                     {"scenario_id": wx["id"], "offset_s": 20}]}, headers=h)
+    assert r.status_code == 201, r.text
+    t = r.json()
+    assert len(t["tracks"]) == 2 and t["peak_simultaneous"] >= 1
+    off = next(x for x in t["tracks"] if x["scenario_id"] == wx["id"])
+    assert off["track_end"] > 20 and all(w["open"] >= 20 for w in off["windows"])   # offset applied to the raid clock
+    assert client.get(f"/api/raids/{t['id']}", headers=users["viewer"]).status_code == 200
+    assert client.delete(f"/api/raids/{t['id']}", headers=users["viewer"]).status_code == 403
+    assert isinstance(client.get("/api/alerts", headers=users["viewer"]).json(), list)
+    with client.websocket_connect(f"/api/ws/alerts?token={users['viewer']['Authorization'][7:]}") as ws:
+        assert ws.receive_json()["type"] == "ready"
+    with client.websocket_connect("/api/ws/alerts?token=bad") as ws:
+        assert ws.receive_json()["type"] == "error"
+
+
+def test_alert_published_for_high_threat(client, users, admin):
+    from app import alerts
+    q = alerts.subscribe()
+    try:
+        body = {"name": "hit", "h0": 15000, "v0": 1400, "gamma_deg": 45, "beta": 2500, "seed": 4}
+        s = client.post("/api/scenarios", json=body, headers=users["analyst"]).json()
+        a = client.post("/api/assets", json={"name": "AT-IMPACT", "x_km": s["impact_x"] / 1000, "y_km": s["impact_y"] / 1000,
+                                             "radius_km": 5, "priority": 5}, headers=users["analyst"]).json()
+        e = client.post(f"/api/scenarios/{s['id']}/estimates", json={"method": "ekf_std"}, headers=users["analyst"]).json()
+        assert e["threat"]["level"] >= 4
+        msg = q.get_nowait()
+        assert msg["type"] == "alert" and msg["scenario_id"] == s["id"] and msg["top_asset"] == "AT-IMPACT"
+        client.delete(f"/api/assets/{a['id']}", headers=admin)
+    finally:
+        alerts.unsubscribe(q)

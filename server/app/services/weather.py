@@ -116,27 +116,51 @@ def get_or_fetch(db: Session, day: date, hour: int, lat: float | None = None, lo
     return row
 
 
+def _prof(levels: dict, t: str) -> dict:
+    # Tv (custom humid atmospheres) sets density and is used in place of T when present
+    return dict(time=t, z=np.array(levels["z"]), p=np.array(levels["p"]), T=np.array(levels.get("Tv", levels["T"])),
+                u=np.array(levels["u"]), v=np.array(levels["v"]))
+
+
 def bank_of_many(rows: list[WeatherProfile]):
     """One ProfileBank holding several cached profiles (index i <-> rows[i])."""
-    profs = [dict(time=r.valid_time.isoformat(), z=np.array(r.levels["z"]), p=np.array(r.levels["p"]), T=np.array(r.levels["T"]),
-                  u=np.array(r.levels["u"]), v=np.array(r.levels["v"])) for r in rows]
-    return wx.build_grid(profs)
+    return wx.build_grid([_prof(r.levels, r.valid_time.isoformat()) for r in rows])
+
+
+def custom_preview(params: dict) -> dict:
+    from trajai import physics
+    lv = wx.custom_levels(params)
+    bank = wx.build_grid([_prof(lv, "custom")])
+    speed = np.hypot(lv["u"], lv["v"]); i = int(np.argmax(speed))
+    return dict(levels=lv, curves=_curves(bank), noise_factor=wx.CONDITION_NOISE[lv["custom"]["condition"]],
+                max_wind=float(speed[i]), max_wind_alt=float(lv["z"][i]), surface_density=float(bank.rho[0, 0]),
+                density_vs_standard_pct=float((bank.rho[0, 0] / physics.density(np.array([0.0]))[0] - 1) * 100))
+
+
+def save_custom(db: Session, params: dict, lat: float | None, lon: float | None) -> WeatherProfile:
+    lat, lon = snap(lat, lon)
+    lv = wx.custom_levels(params)
+    speed = np.hypot(lv["u"], lv["v"]); i = int(np.argmax(speed))
+    row = WeatherProfile(valid_time=datetime.now(timezone.utc), lat=lat, lon=lon, source="custom", levels=lv,
+                         max_wind=float(speed[i]), max_wind_alt=float(lv["z"][i]))
+    db.add(row); db.commit(); db.refresh(row)
+    return row
 
 
 def bank_of(row: WeatherProfile | None):
     """trajai ProfileBank (one profile) for a cached row, or None for the standard model."""
     if row is None:
         return None
-    lv = row.levels
-    prof = dict(time=row.valid_time.isoformat(), z=np.array(lv["z"]), p=np.array(lv["p"]), T=np.array(lv["T"]),
-                u=np.array(lv["u"]), v=np.array(lv["v"]))
-    return wx.build_grid([prof])
+    return wx.build_grid([_prof(row.levels, row.valid_time.isoformat())])
 
 
 def profile_curves(row: WeatherProfile, step_m: float = 1000.0) -> dict:
     """Altitude curves for plotting: T [K], wind u/v [m/s], density ratio vs the standard model."""
+    return _curves(bank_of(row), step_m)
+
+
+def _curves(bank, step_m: float = 1000.0) -> dict:
     from trajai import physics
-    bank = bank_of(row)
     h = np.arange(0, 40_001, step_m)
     k = (h / wx.DH).astype(int)
     return dict(h=h.tolist(), T=bank.T[0, k].round(2).tolist(), u=bank.u[0, k].round(2).tolist(), v=bank.v[0, k].round(2).tolist(),

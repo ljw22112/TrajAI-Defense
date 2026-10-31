@@ -2,7 +2,10 @@ import { NavLink, Navigate, Route, Routes, useLocation } from "react-router-dom"
 import { DEMO } from "./api/client";
 import type { Role } from "./api/types";
 import { useAuth } from "./auth/AuthContext";
+import { AlertCenter } from "./components/AlertCenter";
 import { Spinner } from "./components/ui";
+import { ComparePage } from "./pages/ComparePage";
+import { RaidDetailPage, RaidsPage } from "./pages/RaidsPage";
 import { AdminPage } from "./pages/AdminPage";
 import { AssetsPage } from "./pages/AssetsPage";
 import { DashboardPage } from "./pages/DashboardPage";
@@ -43,9 +46,11 @@ export function App() {
           <NavLink to="/" end>대시보드</NavLink>
           <NavLink to="/scenarios">시나리오</NavLink>
           {can("analyst") && <NavLink to="/scenarios/new">새 시나리오</NavLink>}
-          <span className="sec">자료</span>
+          <NavLink to="/raids">다표적 교전</NavLink>
+          <NavLink to="/compare">비교</NavLink>
+          <span className="sec">분석 · 자료</span>
+          <NavLink to="/analyses">환경 · 센서 분석</NavLink>
           <NavLink to="/weather">기상 프로파일</NavLink>
-          <NavLink to="/analyses">기상 영향 분석</NavLink>
           <NavLink to="/assets">보호 자산</NavLink>
           <NavLink to="/models">모델 레지스트리</NavLink>
           {can("admin") && <><span className="sec">관리</span><NavLink to="/admin">사용자 · 감사 로그</NavLink></>}
@@ -59,6 +64,7 @@ export function App() {
         </div>
       </aside>
       <main>
+        <div className="topbar"><AlertCenter /></div>
         <Routes>
           <Route path="/login" element={<Navigate to="/" replace />} />
           <Route path="/" element={<Guard><DashboardPage /></Guard>} />
@@ -68,6 +74,9 @@ export function App() {
           <Route path="/weather" element={<Guard><WeatherPage /></Guard>} />
           <Route path="/analyses" element={<Guard><AnalysesPage /></Guard>} />
           <Route path="/analyses/:id" element={<Guard><AnalysisDetailPage /></Guard>} />
+          <Route path="/raids" element={<Guard><RaidsPage /></Guard>} />
+          <Route path="/raids/:id" element={<Guard><RaidDetailPage /></Guard>} />
+          <Route path="/compare" element={<Guard><ComparePage /></Guard>} />
           <Route path="/assets" element={<Guard><AssetsPage /></Guard>} />
           <Route path="/models" element={<Guard><ModelsPage /></Guard>} />
           <Route path="/admin" element={<Guard role="admin"><AdminPage /></Guard>} />

@@ -23,13 +23,16 @@ from . import __version__  # noqa: E402
 from .config import get_settings  # noqa: E402
 from .db import Base, SessionLocal, engine  # noqa: E402
 from .models import Asset, ModelVersion, Role, User  # noqa: E402
-from .routers import analysis, assets, auth, insights, scenarios, stream, weather  # noqa: E402
+from .routers import analysis, assets, auth, insights, raids, scenarios, stream, weather  # noqa: E402
 from .security import hash_password  # noqa: E402
 
 MODELS = [  # registry seed: (name, kind, onnx file, uses weather, metrics key)
     ("wx_hybrid_date", "pinn-hybrid · weather input", "wx_hybrid_date.onnx", True, "wx_hybrid_date"),
     ("pinn_tf_hybrid_v2", "pinn-hybrid · std atm · v2", "pinn_tf_hybrid_v2.onnx", False, "pinn_tf_hybrid_v2"),
     ("pinn_tf_hybrid", "pinn-hybrid · std atm · v1", "pinn_tf_hybrid.onnx", False, "pinn_tf_hybrid"),
+    ("ens_hybrid_v2", "pinn-hybrid · ensemble ×3",
+     "pinn_tf_hybrid_v2.onnx;pinn_tf_hybrid_v2_s1.onnx;pinn_tf_hybrid_v2_s2.onnx", False, "ens_hybrid_v2"),
+    ("pinn_tf_v2", "pinn · track only (β prior)", "pinn_tf_v2.onnx", False, "pinn_tf_v2"),
 ]
 
 
@@ -43,21 +46,28 @@ def seed(db) -> None:
             db.add(Asset(name=a["name"], x_km=a["x"], y_km=a["y"], radius_km=a["radius"], priority=5 - i % 3))
     metrics_path = ROOT / "results" / "metrics.json"
     allm = json.loads(metrics_path.read_text()) if metrics_path.exists() else {}
+    fb_path = ROOT / "results" / "feedback_rts.json"
     cal_path = ROOT / "results" / "calibration.json"
     for k, v in (json.loads(cal_path.read_text()) if cal_path.exists() else {}).items():
         if k in allm:
             allm[k] = {**allm[k], "cep_scale": v["cep_scale"], "cep_scale_fitted_on": v["fitted_on"]}
     have_active = db.scalar(select(ModelVersion.id).where(ModelVersion.is_active.is_(True)))
     for name, kind, fname, uses_wx, key in MODELS:
-        path = s.model_dir / fname
+        paths = [s.model_dir / f for f in fname.split(";")]
+        path = paths[0]
         row = db.scalar(select(ModelVersion).where(ModelVersion.name == name))
-        if row is None and path.exists():
+        if row is None and all(p.exists() for p in paths):
             m = {k: v for k, v in allm.get(key, {}).items() if k != "args"}
-            row = ModelVersion(name=name, kind=kind, file_path=str(path), uses_weather=uses_wx, metrics=m)
+            if name == "pinn_tf_v2" and fb_path.exists():
+                m["prior_sd"] = json.loads(fb_path.read_text())["feedback"]["prior_sd"]
+            row = ModelVersion(name=name, kind=kind, file_path=";".join(str(p) for p in paths), uses_weather=uses_wx, metrics=m)
             db.add(row)
         elif row is not None and key in allm:
-            row.metrics = {k: v for k, v in allm[key].items() if k != "args"}  # refresh after re-evaluation
-        if row is not None and not have_active and path.exists():
+            m = {k: v for k, v in allm[key].items() if k != "args"}           # refresh after re-evaluation
+            if name == "pinn_tf_v2" and fb_path.exists():
+                m["prior_sd"] = json.loads(fb_path.read_text())["feedback"]["prior_sd"]
+            row.metrics = m
+        if row is not None and not have_active and path.exists() and kind.startswith("pinn-hybrid"):
             row.is_active = True
             have_active = True
     db.commit()
@@ -94,7 +104,7 @@ def create_app() -> FastAPI:
     def health():
         return {"status": "ok", "version": __version__}
 
-    for r in (auth.router, assets.router, weather.router, scenarios.router, analysis.router, insights.router, stream.router):
+    for r in (auth.router, assets.router, weather.router, scenarios.router, analysis.router, raids.router, insights.router, stream.router):
         app.include_router(r)
     dist = ROOT / "web" / "dist"
     if dist.exists():                                # single-container deployment: serve the built SPA at /

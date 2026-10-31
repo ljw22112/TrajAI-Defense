@@ -53,3 +53,24 @@ def test_weather_features_shape():
     bank = weather.build_grid([_synthetic_profile(), _synthetic_profile(jet=20.0)])
     f = bank.features(np.array([0, 1, 1]))
     assert f.shape == (3, weather.N_WX) and np.isfinite(f).all()
+
+
+def test_custom_atmosphere_defaults_match_standard():
+    lv = weather.custom_levels(dict(rh_pct=0.0, wind_sfc_ms=0.0, jet_ms=0.0))
+    bank = weather.build_grid([dict(time="c", **{k: np.array(lv[k]) for k in ("z", "p", "u", "v")}, T=np.array(lv["Tv"]))])
+    ussa = weather.ussa_bank()
+    k = np.searchsorted(weather.H_GRID, [0, 5_000, 11_000, 25_000])
+    assert np.allclose(bank.rho[0, k], ussa.rho[0, k], rtol=0.01)        # dry, calm, 15 C, 1013 hPa == USSA-1976
+    assert np.abs(bank.u[0]).max() < 1e-9
+
+
+def test_custom_atmosphere_humidity_heat_and_wind():
+    dry = weather.custom_levels(dict(t_sfc_c=30.0, rh_pct=0.0))
+    wet = weather.custom_levels(dict(t_sfc_c=30.0, rh_pct=100.0))
+    assert wet["Tv"][0] > dry["Tv"][0] + 4.0                             # ~27 g/kg of vapour at 30 C -> Tv up ~5 K
+    # moist air is lighter: lower density at the surface for the same pressure
+    rho = lambda lv: lv["p"][0] / (physics.R_AIR * lv["Tv"][0])
+    assert rho(wet) < rho(dry)
+    w = weather.custom_levels(dict(jet_ms=60.0, jet_km=12.0, jet_dir=270.0, wind_sfc_ms=0.0))
+    i = int(np.argmax(np.hypot(w["u"], w["v"])))
+    assert abs(w["z"][i] - 12_000) <= 500 and w["u"][i] > 59.0             # westerly jet blows toward +x (east)

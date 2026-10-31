@@ -1,6 +1,6 @@
 // Thin typed client for the FastAPI server, with a read-only static "demo" adapter for GitHub Pages.
 import type {
-  Analysis, AnalysisIn, AnalysisRow, ThreatRow,
+  Alert, Analysis, AnalysisIn, AnalysisRow, CustomAtm, CustomPreview, Raid, RaidRow, ThreatRow,
   Asset, AssetIn, AuditRow, Estimate, Method, ModelVersion, Page, Scenario, ScenarioIn, ScenarioSummary, Stats, Token, User,
   Weather, WeatherCurves,
 } from "./types";
@@ -112,6 +112,15 @@ export const api = {
   analyses: () => request<Page<AnalysisRow>>("GET", "/api/analyses?limit=50"),
   analysis: (id: number) => request<Analysis>("GET", `/api/analyses/${id}`),
   createAnalysis: (b: AnalysisIn) => request<Analysis>("POST", "/api/analyses", b),
+  createLatency: (b: AnalysisIn) => request<Analysis>("POST", "/api/analyses/latency", b),
+  createSensor: (b: Record<string, unknown>) => request<Analysis>("POST", "/api/analyses/sensor", b),
+  createSensitivity: (b: Record<string, unknown>) => request<Analysis>("POST", "/api/analyses/sensitivity", b),
+  customPreview: (b: CustomAtm) => request<CustomPreview>("POST", "/api/weather/custom/preview", b),
+  raids: () => request<RaidRow[]>("GET", "/api/raids"),
+  raid: (id: number) => request<Raid>("GET", `/api/raids/${id}`),
+  createRaid: (b: { name: string; members: { scenario_id: number; offset_s: number }[] }) => request<Raid>("POST", "/api/raids", b),
+  deleteRaid: (id: number) => request<void>("DELETE", `/api/raids/${id}`),
+  alerts: () => request<Alert[]>("GET", "/api/alerts"),
   deleteAnalysis: (id: number) => request<void>("DELETE", `/api/analyses/${id}`),
   audit: () => request<AuditRow[]>("GET", "/api/audit"),
 };
@@ -123,5 +132,13 @@ export function liveUrl(id: number, speed: number, weather: boolean): string {
   u.searchParams.set("token", tokenStore.get() ?? "");
   u.searchParams.set("speed", String(speed));
   u.searchParams.set("weather", weather ? "1" : "0");
+  return u.toString();
+}
+
+export function alertsUrl(): string {
+  const base = BASE || window.location.origin;
+  const u = new URL(`${base}/api/ws/alerts`);
+  u.protocol = u.protocol === "https:" ? "wss:" : "ws:";
+  u.searchParams.set("token", tokenStore.get() ?? "");
   return u.toString();
 }

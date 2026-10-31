@@ -51,17 +51,18 @@ def _wrap(a):
     return (a + np.pi) % (2 * np.pi) - np.pi
 
 
-def _init(meas_c, dt, sigma_r, sigma_ang):
+def _init(meas_c, dt, sigma_r, sigma_ang, lb_prior=None, slb_prior=None):
     c0, c1 = meas_c[:, 0], meas_c[:, 1]
     n = c0.shape[0]
-    x = np.concatenate([c1, (c1 - c0) / dt, np.full((n, 1), LB0)], 1)
+    lb0 = np.full(n, LB0) if lb_prior is None else np.broadcast_to(np.asarray(lb_prior, float), (n,))
+    x = np.concatenate([c1, (c1 - c0) / dt, lb0[:, None]], 1)
     rng = np.linalg.norm(c1 - radar.RADAR_SITE, axis=1)
     pv = sigma_r ** 2 + (rng * sigma_ang) ** 2
     P = np.zeros((n, NX, NX))
     for k in range(3):
         P[:, k, k] = pv
         P[:, k + 3, k + 3] = 2 * pv / dt ** 2 + 400.0
-    P[:, 6, 6] = SLB0 ** 2
+    P[:, 6, 6] = (SLB0 if slb_prior is None else np.broadcast_to(np.asarray(slb_prior, float), (n,))) ** 2
     return x, P
 
 
@@ -74,10 +75,12 @@ def _R(n, sigma_r, sigma_ang):
     return R
 
 
-def ekf(meas_pol, meas_c, n_meas, dt, sigma_r, sigma_ang, atm=None):
+def ekf(meas_pol, meas_c, n_meas, dt, sigma_r, sigma_ang, atm=None, lb_prior=None, slb_prior=None, store=None):
     """Run the EKF on a batch. Returns x (N,7), P (N,7,7), mean NIS (N,), ln-beta history (N, K, 2).
-    sigma_r / sigma_ang may be scalars or per-track arrays (N,)."""
-    x, P = _init(meas_c, dt, sigma_r, sigma_ang)
+    sigma_r / sigma_ang may be scalars or per-track arrays (N,).
+    lb_prior / slb_prior: per-track prior on ln beta (e.g. from a learned model) instead of the broad default.
+    store: optional dict that receives filtered/predicted moments and Jacobians for the RTS smoother."""
+    x, P = _init(meas_c, dt, sigma_r, sigma_ang, lb_prior, slb_prior)
     n = x.shape[0]
     Rall = _R(n, sigma_r, sigma_ang)
     Q = Qd(dt)
@@ -85,6 +88,11 @@ def ekf(meas_pol, meas_c, n_meas, dt, sigma_r, sigma_ang, atm=None):
     nis_cnt = np.zeros(n)
     hist = np.full((n, meas_c.shape[1], 2), np.nan)
     I = np.eye(NX)
+    if store is not None:
+        Km = meas_c.shape[1]
+        store.update(xf=np.full((n, Km, NX), np.nan), Pf=np.zeros((n, Km, NX, NX)), xp=np.full((n, Km, NX), np.nan),
+                     Pp=np.zeros((n, Km, NX, NX)), F=np.zeros((n, Km, NX, NX)))
+        store["xf"][:, 1], store["Pf"][:, 1] = x, P
     for k in range(2, int(n_meas.max())):
         act = k < n_meas
         if not act.any():
@@ -112,9 +120,36 @@ def ekf(meas_pol, meas_c, n_meas, dt, sigma_r, sigma_ang, atm=None):
         nis_sum[idx] += e * late
         nis_cnt[idx] += late
         x[act], P[act] = xu, Pu
+        if store is not None:
+            store["xf"][idx, k], store["Pf"][idx, k] = xu, Pu
+            store["xp"][idx, k], store["Pp"][idx, k], store["F"][idx, k] = xp, Pp, F
         hist[idx, k, 0] = xu[:, 6]
         hist[idx, k, 1] = np.sqrt(Pu[:, 6, 6])
     return x, P, nis_sum / np.maximum(nis_cnt, 1), hist
+
+
+def rts_smooth(meas_pol, meas_c, n_meas, dt, sigma_r, sigma_ang, atm=None):
+    """EKF forward pass + Rauch-Tung-Striebel backward pass over each observed track.
+
+    Returns smoothed states xs (N, K, 7) and their covariances' position/velocity std (N, K, 2). Steps 0-1 are the
+    two-point initialisation and are left NaN. The last smoothed state equals the filtered one, so the smoother changes
+    the track history (features), not the posterior handed to the impact predictor.
+    """
+    st = {}
+    ekf(meas_pol, meas_c, n_meas, dt, sigma_r, sigma_ang, atm=atm, store=st)
+    xs, Ps = st["xf"].copy(), st["Pf"].copy()
+    for k in range(int(n_meas.max()) - 2, 0, -1):
+        act = (k + 1 < n_meas) & (k >= 1)
+        if not act.any():
+            continue
+        Pf, Pp1, F1 = st["Pf"][act, k], st["Pp"][act, k + 1], st["F"][act, k + 1]
+        C = Pf @ np.transpose(F1, (0, 2, 1)) @ np.linalg.inv(Pp1)
+        xs[act, k] = st["xf"][act, k] + np.einsum("nij,nj->ni", C, xs[act, k + 1] - st["xp"][act, k + 1])
+        Ps[act, k] = Pf + C @ (Ps[act, k + 1] - Pp1) @ np.transpose(C, (0, 2, 1))
+    sd = np.stack([np.sqrt(np.trace(Ps[..., :3, :3], axis1=-2, axis2=-1) / 3),
+                   np.sqrt(np.trace(Ps[..., 3:6, 3:6], axis1=-2, axis2=-1) / 3)], -1)
+    xs[:, :2] = np.nan
+    return xs, sd
 
 
 def ukf(meas_pol, meas_c, n_meas, dt, sigma_r, sigma_ang, alpha=1e-1, beta_ut=2.0, kappa=0.0, atm=None):

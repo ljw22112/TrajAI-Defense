@@ -4,6 +4,8 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Generic, TypeVar
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
 from .models import Method, Role
@@ -78,6 +80,32 @@ class WeatherOut(ORM):
     levels: dict
 
 
+class CustomAtmIn(BaseModel):
+    """User-defined atmosphere. Ranges cover observed surface climates; the profile shape follows USSA-1976."""
+    t_sfc_c: float = Field(15.0, ge=-50, le=50, description="surface temperature [degC]")
+    p_sfc_hpa: float = Field(1013.25, ge=900, le=1060, description="surface pressure [hPa]")
+    rh_pct: float = Field(50.0, ge=0, le=100, description="surface relative humidity [%]")
+    lapse_k_per_km: float = Field(6.5, ge=3, le=9.8, description="tropospheric lapse rate [K/km]")
+    tropopause_km: float = Field(11.0, ge=8, le=18)
+    wind_sfc_ms: float = Field(5.0, ge=0, le=40)
+    wind_sfc_dir: float = Field(270.0, ge=0, le=360, description="direction the wind blows FROM [deg]")
+    jet_ms: float = Field(40.0, ge=0, le=120)
+    jet_km: float = Field(11.0, ge=4, le=20)
+    jet_width_km: float = Field(3.0, ge=0.5, le=8)
+    jet_dir: float = Field(270.0, ge=0, le=360)
+    condition: Literal["clear", "cloudy", "fog", "rain", "heavy_rain", "snow"] = "clear"
+
+
+class CustomAtmPreview(BaseModel):
+    levels: dict
+    curves: dict
+    noise_factor: float
+    max_wind: float
+    max_wind_alt: float
+    surface_density: float
+    density_vs_standard_pct: float
+
+
 class WeatherQuery(BaseModel):
     date: date
     hour: int = Field(0, ge=0, le=23)
@@ -107,12 +135,13 @@ class ScenarioIn(BaseModel):
     weather_hour: int = Field(0, ge=0, le=23)
     weather_lat: float | None = Field(None, ge=-80, le=80, description="weather location (engagement area); default from settings")
     weather_lon: float | None = Field(None, ge=-180, le=180)
+    custom_atm: CustomAtmIn | None = Field(None, description="user-defined atmosphere (takes precedence over weather_date)")
     seed: int | None = None
 
 
-class AnalysisIn(BaseModel):
-    """Weather-impact study: the flight/sensor of a scenario, flown through every profile in a time window."""
-    name: str = Field("weather impact", min_length=1, max_length=120)
+class FlightIn(BaseModel):
+    """Flight and sensor of a study (same ranges as a scenario)."""
+    name: str = Field("analysis", min_length=1, max_length=120)
     h0: float = Field(15_000.0, ge=5_000, le=40_000)
     v0: float = Field(1_400.0, ge=500, le=2_500)
     gamma_deg: float = Field(45.0, ge=15, le=75)
@@ -122,11 +151,16 @@ class AnalysisIn(BaseModel):
     sigma_r: float = Field(15.0, ge=1, le=200)
     sigma_ang_mrad: float = Field(0.4, ge=0.05, le=5)
     seed: int = Field(7, ge=0)
+    lat: float | None = Field(None, ge=-80, le=80)
+    lon: float | None = Field(None, ge=-180, le=180)
+
+
+class AnalysisIn(FlightIn):
+    """Weather-impact study: the flight/sensor of a scenario, flown through every profile in a time window."""
+    name: str = Field("weather impact", min_length=1, max_length=120)
     start_date: date
     days: int = Field(3, ge=1, le=7)
     hours: list[int] = Field(default_factory=lambda: [0, 6, 12, 18], min_length=1, max_length=4)
-    lat: float | None = Field(None, ge=-80, le=80)
-    lon: float | None = Field(None, ge=-180, le=180)
 
     @field_validator("hours")
     @classmethod
@@ -143,8 +177,30 @@ class AnalysisIn(BaseModel):
         return v
 
 
+class LatencyIn(AnalysisIn):
+    """Weather-data latency: the EKF uses the profile valid 0/6/12/24 h before the flight."""
+    name: str = Field("weather-data latency", min_length=1, max_length=120)
+
+
+class SensorIn(FlightIn):
+    """Sensor sweep: radar noise x observed fraction, in one atmosphere."""
+    name: str = Field("sensor sweep", min_length=1, max_length=120)
+    atmosphere: Literal["standard", "date", "custom"] = "standard"
+    weather_date: date | None = None
+    weather_hour: int = Field(0, ge=0, le=23)
+    custom_atm: CustomAtmIn | None = None
+
+
+class SensitivityIn(FlightIn):
+    """Vary one user-set variable of a custom atmosphere."""
+    name: str = Field("environment sensitivity", min_length=1, max_length=120)
+    base: CustomAtmIn = Field(default_factory=CustomAtmIn)
+    param: Literal["t_sfc_c", "rh_pct", "p_sfc_hpa", "jet_ms", "jet_dir", "wind_sfc_ms", "lapse_k_per_km", "condition"] = "t_sfc_c"
+
+
 class AnalysisSummaryOut(ORM):
     id: int
+    kind: str
     name: str
     created_by: int | None
     created_at: datetime
@@ -268,6 +324,53 @@ class ThreatBoardRow(BaseModel):
     first_window_open: float | None   # earliest engagement window opening, seconds after the end of the track (<= 0: already open)
     first_window_close: float | None
     miss_m: float
+
+
+class RaidMemberIn(BaseModel):
+    scenario_id: int
+    offset_s: float = Field(0.0, ge=0, le=600, description="launch time after the raid start [s]")
+
+
+class RaidIn(BaseModel):
+    name: str = Field("raid", min_length=1, max_length=120)
+    members: list[RaidMemberIn] = Field(..., min_length=2, max_length=12)
+
+    @field_validator("members")
+    @classmethod
+    def _unique(cls, v):
+        if len({m.scenario_id for m in v}) != len(v):
+            raise ValueError("each scenario can appear once")
+        return v
+
+
+class RaidTrack(BaseModel):
+    scenario_id: int
+    scenario: str
+    offset_s: float
+    track_end: float          # end of radar track (raid clock) [s]
+    impact: float             # predicted impact (raid clock) [s]
+    windows: list[dict]       # [{band, open, close}] on the raid clock
+    level: int | None
+    max_prob: float | None
+    top_asset: str | None
+    method: Method | None
+
+
+class RaidOut(BaseModel):
+    id: int
+    name: str
+    created_at: datetime
+    tracks: list[RaidTrack]
+    peak_simultaneous: int            # most engagement windows open at once (interceptor channels needed)
+    peak_at: float | None
+    first_impact: float | None
+
+
+class RaidRow(BaseModel):
+    id: int
+    name: str
+    created_at: datetime
+    n: int
 
 
 class Stats(BaseModel):

@@ -2,7 +2,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, ApiError } from "../api/client";
-import type { ScenarioIn } from "../api/types";
+import { CUSTOM_DEFAULT, type CustomAtm, type ScenarioIn } from "../api/types";
+import { CustomAtmForm } from "../components/CustomAtmForm";
 import { LocationPicker } from "../components/LocationPicker";
 import { ProfileChart } from "../components/ProfileChart";
 import { Card, ErrorBox, PageHead, Spinner, fmt } from "../components/ui";
@@ -29,7 +30,9 @@ export function ScenarioNewPage() {
   const nav = useNavigate();
   const qc = useQueryClient();
   const [f, setF] = useState<ScenarioIn>(DEFAULT);
-  const [useWx, setUseWx] = useState(true);
+  const [mode, setMode] = useState<"standard" | "date" | "custom">("date");
+  const [atm, setAtm] = useState<CustomAtm>(CUSTOM_DEFAULT);
+  const useWx = mode === "date";
   const wx = useQuery({
     queryKey: ["weather", f.weather_date, f.weather_hour, f.weather_lat, f.weather_lon],
     queryFn: () => api.weather(f.weather_date!, f.weather_hour, f.weather_lat ?? undefined, f.weather_lon ?? undefined),
@@ -45,7 +48,9 @@ export function ScenarioNewPage() {
 
   function submit(e: FormEvent) {
     e.preventDefault();
-    create.mutate({ ...f, name: f.name.trim() || `scenario ${new Date().toISOString().slice(0, 16)}`, weather_date: useWx ? f.weather_date : null, weather_lat: useWx ? f.weather_lat : null, weather_lon: useWx ? f.weather_lon : null });
+    create.mutate({ ...f, name: f.name.trim() || `scenario ${new Date().toISOString().slice(0, 16)}`, weather_date: useWx ? f.weather_date : null,
+      weather_lat: mode !== "standard" ? f.weather_lat : null, weather_lon: mode !== "standard" ? f.weather_lon : null,
+      custom_atm: mode === "custom" ? atm : null });
   }
 
   return (
@@ -77,8 +82,19 @@ export function ScenarioNewPage() {
             </div>
           </div>
         </Card>
-        <Card title="대기" aside={<label className="chk"><input type="checkbox" checked={useWx} onChange={e => setUseWx(e.target.checked)} /> 선택 일자 기상 사용</label>}>
-          {useWx ? (
+        <Card title="대기 · 환경" aside={
+          <div className="toolbar" role="radiogroup" aria-label="대기 모델">
+            {([["standard", "표준 대기"], ["date", "일자 기상 (API)"], ["custom", "직접 설정"]] as const).map(([k, l]) => (
+              <label key={k} className="chk"><input type="radio" name="atm-mode" checked={mode === k} onChange={() => setMode(k)} /> {l}</label>
+            ))}
+          </div>
+        }>
+          {mode === "custom" ? (
+            <>
+              <p className="ph-sub" style={{ marginTop: 0 }}>기온·기압·습도·바람·날씨를 직접 정합니다. 비행체는 이 대기 속을 날고, "EKF · 일자 기상"과 "UKF · 일자 기상" 추정기는 같은 대기를 알고 추정합니다. 비·눈·안개는 레이더 잡음을 키웁니다.</p>
+              <CustomAtmForm value={atm} onChange={setAtm} />
+            </>
+          ) : useWx ? (
             <>
               <div className="form">
                 <div className="field"><label htmlFor="wdate">기상 일자</label><input id="wdate" type="date" min="2022-01-01" value={f.weather_date ?? ""} onChange={e => set("weather_date", e.target.value)} /></div>

@@ -36,6 +36,7 @@ class Method(str, enum.Enum):
     ekf_wx = "ekf_wx"        # EKF with the scenario's weather profile
     ukf_wx = "ukf_wx"        # UKF with the scenario's weather profile
     pinn = "pinn"            # PINN hybrid (ONNX Runtime), EKF features as input
+    ekf_pinn = "ekf_pinn"    # EKF whose ln-beta prior comes from the track-only PINN (feedback loop)
 
 
 class User(Base):
@@ -186,8 +187,10 @@ class ThreatAssessment(Base):
 class WeatherAnalysis(Base):
     """A stored weather-impact study: one flight flown through several dated profiles at one location."""
     __tablename__ = "weather_analyses"
-    __table_args__ = (CheckConstraint("n_profiles BETWEEN 1 AND 28", name="ck_analysis_size"),)
+    __table_args__ = (CheckConstraint("n_profiles BETWEEN 1 AND 28", name="ck_analysis_size"),
+                      CheckConstraint("kind IN ('weather', 'latency', 'sensor', 'sensitivity')", name="ck_analysis_kind"))
     id: Mapped[int] = mapped_column(primary_key=True)
+    kind: Mapped[str] = mapped_column(String(20), default="weather", server_default="weather", index=True)
     name: Mapped[str] = mapped_column(String(120))
     created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, index=True)
@@ -197,6 +200,16 @@ class WeatherAnalysis(Base):
     params: Mapped[dict] = mapped_column(JSONType)            # flight + sensor + time window
     summary: Mapped[dict] = mapped_column(JSONType)
     items: Mapped[list] = mapped_column(JSONType)             # one row per profile
+
+
+class Raid(Base):
+    """Several scenarios launched as one salvo; members carry their launch offset (seconds after the raid start)."""
+    __tablename__ = "raids"
+    id: Mapped[int] = mapped_column(primary_key=True)
+    name: Mapped[str] = mapped_column(String(120))
+    created_by: Mapped[int | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"), index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    members: Mapped[list] = mapped_column(JSONType)          # [{scenario_id, offset_s}]
 
 
 class AuditLog(Base):

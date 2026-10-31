@@ -8,12 +8,15 @@ from fastapi.concurrency import run_in_threadpool
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
+from .. import alerts
 from ..audit import log
 from ..db import get_db
 from ..models import Asset, Estimate, Measurement, Method, ModelVersion, Role, Scenario, ThreatAssessment, User
 from ..schemas import EstimateIn, EstimateOut, Page, ScenarioIn, ScenarioOut, ScenarioSummary
 from ..security import current_user, require
 from ..services import estimation, simulation, threat
+from trajai import weather as wx
+
 from ..services import weather as wsvc
 
 router = APIRouter(prefix="/api/scenarios", tags=["scenarios & estimates"])
@@ -68,15 +71,30 @@ def export_csv(db: Session = Depends(get_db), user: User = Depends(current_user)
                     headers={"Content-Disposition": 'attachment; filename="trajai_estimates.csv"'})
 
 
+def _alert_of(e: Estimate, scenario: str, names: dict) -> dict:
+    th = e.threat
+    return dict(type="alert", estimate_id=e.id, scenario_id=e.scenario_id, scenario=scenario, level=th.level,
+                max_prob=th.max_prob, top_asset=names.get(th.top_asset_id), method=e.method.value,
+                time_to_impact=e.tot - e.scenario.t_c, at=e.created_at.isoformat())
+
+
 @router.post("", response_model=ScenarioOut, status_code=201, summary="Create and simulate a scenario")
 async def create_scenario(body: ScenarioIn, db: Session = Depends(get_db), user: User = Depends(require(Role.analyst))):
-    wrow = wsvc.get_or_fetch(db, body.weather_date, body.weather_hour, body.weather_lat, body.weather_lon) if body.weather_date else None
+    if body.custom_atm is not None:
+        wrow = wsvc.save_custom(db, body.custom_atm.model_dump(), body.weather_lat, body.weather_lon)
+    elif body.weather_date:
+        wrow = wsvc.get_or_fetch(db, body.weather_date, body.weather_hour, body.weather_lat, body.weather_lon)
+    else:
+        wrow = None
     bank = wsvc.bank_of(wrow)
+    # precipitation / fog degrade the radar track (see trajai.weather.CONDITION_NOISE); the filter is told the degraded noise
+    k = wx.CONDITION_NOISE[body.custom_atm.condition] if body.custom_atm is not None else 1.0
+    sig_r, sig_a = body.sigma_r * k, body.sigma_ang_mrad * 1e-3 * k
     seed = body.seed if body.seed is not None else secrets.randbelow(2**31)
     sim = await run_in_threadpool(simulation.simulate, body.h0, body.v0, body.gamma_deg, body.psi_deg, body.beta,
-                                  body.obs_fraction, body.sigma_r, body.sigma_ang_mrad * 1e-3, seed, bank)
+                                  body.obs_fraction, sig_r, sig_a, seed, bank)
     s = Scenario(name=body.name, created_by=user.id, h0=body.h0, v0=body.v0, gamma_deg=body.gamma_deg, psi_deg=body.psi_deg,
-                 beta=body.beta, obs_fraction=body.obs_fraction, sigma_r=body.sigma_r, sigma_ang=body.sigma_ang_mrad * 1e-3,
+                 beta=body.beta, obs_fraction=body.obs_fraction, sigma_r=sig_r, sigma_ang=sig_a,
                  seed=seed, weather_id=wrow.id if wrow else None, t_c=sim["t_c"], impact_time=sim["impact_time"],
                  impact_x=sim["impact_x"], impact_y=sim["impact_y"], apogee=sim["apogee"], truth=sim["truth"])
     s.measurements = [Measurement(**m) for m in sim["measurements"]]
@@ -122,11 +140,17 @@ async def create_estimate(sid: int, body: EstimateIn, db: Session = Depends(get_
         if mv is not None and mv.uses_weather and bank is None:
             # A weather-input model given an all-zero profile is out of distribution (scenario 6: 9.4 km vs 2.1 km),
             # so standard-atmosphere scenarios fall back to the newest registered standard-atmosphere model.
-            mv = db.scalar(select(ModelVersion).where(ModelVersion.uses_weather.is_(False)).order_by(ModelVersion.id.desc())) or mv
+            mv = db.scalar(select(ModelVersion).where(ModelVersion.uses_weather.is_(False), ModelVersion.kind.like("pinn-hybrid%"))
+                           .order_by(ModelVersion.id.desc())) or mv
         try:
             res = await run_in_threadpool(estimation.run_pinn, s, bank, mv)
         except FileNotFoundError as e:
             raise HTTPException(503, str(e))
+    elif body.method == Method.ekf_pinn:
+        mv = db.scalar(select(ModelVersion).where(ModelVersion.kind.like("pinn · track only%")).order_by(ModelVersion.id.desc()))
+        if mv is None:
+            raise HTTPException(503, "no track-only PINN registered (needed for the beta prior)")
+        res = await run_in_threadpool(estimation.run_ekf_pinn, s, mv, float(mv.metrics.get("prior_sd", 0.35)), bank)
     else:
         res = await run_in_threadpool(estimation.run_filter, s, bank, body.method)
     sc = estimation.score(res, s)
@@ -138,6 +162,8 @@ async def create_estimate(sid: int, body: EstimateIn, db: Session = Depends(get_
     e.threat = ThreatAssessment(**th)
     db.add(e); db.commit(); db.refresh(e)
     log(db, user, "estimate", "scenario", s.id, {"method": body.method.value, "miss_m": round(sc["miss_m"], 1)})
+    if e.threat.level >= alerts.ALERT_LEVEL:
+        alerts.publish(_alert_of(e, s.name, {a.id: a.name for a in assets}))
     return e
 
 
