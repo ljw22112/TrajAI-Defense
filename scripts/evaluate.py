@@ -127,6 +127,9 @@ def main(names):
         splits = ["test_wx"] if a.get("train_split", "").endswith("_wx") else TESTS + (["test_wx"] if os.path.exists("data/prep_test_wx.npz") else [])
         for s in splits:
             d = dict(np.load(f"data/prep_{s}.npz"))
+            if a.get("feat_key", "feats") not in d:          # e.g. RTS features were not built for this split
+                print(f"{name}: skip {s} (no {a['feat_key']})", flush=True)
+                continue
             p = predict(model, d, a, s)
             cep = metrics.gaussian_cep(p["sig"][:, 0], p["sig"][:, 1])
             res = dict(ade=metrics.ade(p["grid"], d["future"]), miss=metrics.ip_miss(p["ip"], d["impact"]),

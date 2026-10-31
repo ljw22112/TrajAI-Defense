@@ -64,7 +64,7 @@ def activate(mid: int, db: Session = Depends(get_db), admin: User = Depends(requ
     m = db.get(ModelVersion, mid)
     if not m:
         raise HTTPException(404, "model not found")
-    if not m.kind.startswith("pinn-hybrid"):
+    if not m.kind.startswith(("pinn-hybrid", "pinn-rts")):
         raise HTTPException(422, "only PINN hybrid models can serve the 'pinn' estimator")
     for other in db.scalars(select(ModelVersion)).all():
         other.is_active = other.id == mid

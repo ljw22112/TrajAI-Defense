@@ -19,6 +19,10 @@
   "cep_scale": 0.8261275573726254,
   "fitted_on": "test_id_f10"
  },
+ "pinn_tf_v2_rts": {
+  "cep_scale": 0.7737882175660578,
+  "fitted_on": "test_id_f10"
+ },
  "wx_hybrid_clim": {
   "cep_scale": 0.8282908909815361,
   "fitted_on": "test_wx"

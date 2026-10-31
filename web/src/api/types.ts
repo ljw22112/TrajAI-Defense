@@ -69,6 +69,7 @@ export const MODEL_SHORT: Record<string, string> = {
   wx_hybrid_date: "기상 입력",
   ens_hybrid_v2: "앙상블 ×3",
   pinn_tf_v2: "트랙 전용",
+  pinn_tf_v2_rts: "RTS 입력",
   pinn_tf_hybrid_v2: "표준 대기 v2",
   pinn_tf_hybrid: "v1 (구버전)",
 };

@@ -30,7 +30,7 @@ def _pinn_model(db, has_weather: bool):
     from ..models import ModelVersion
     mv = db.scalar(_sel(ModelVersion).where(ModelVersion.is_active.is_(True)))
     if mv is not None and mv.uses_weather and not has_weather:
-        mv = db.scalar(_sel(ModelVersion).where(ModelVersion.uses_weather.is_(False), ModelVersion.kind.like("pinn-hybrid%"))
+        mv = db.scalar(_sel(ModelVersion).where(ModelVersion.uses_weather.is_(False), ModelVersion.kind.like("pinn-%"))
                        .order_by(ModelVersion.id.desc())) or mv
     return mv
 
