@@ -81,6 +81,10 @@ if MM and "pinn_rts_mm" in MM["test_mm_lift"]:
     claim(r"필터를 넘지 못함\(양력 [\d,]+ m vs EKF ([\d,]+) m", lf["ekf"]["miss"], 0.01, "RQ1 EKF lift")
     if "넘지 못함" in html and lf["pinn_rts_mm"]["miss"] < lf["ekf"]["miss"]:
         fails.append("BAD RQ1: retrained model does beat the EKF under lift")
+if "pinn_rts_ft_l10" in M:
+    claim(r"서빙 모델 ([\d.]+) g \(ID 10%\)", M["pinn_tf_v2_rts"]["test_id_f10"]["phys_rms_g"]["median"], 0.01, "REQ-F-03 served residual")
+    claim(r"λ = 10 이어 학습으로 ([\d.]+) g까지", M["pinn_rts_ft_l10"]["test_id_f10"]["phys_rms_g"]["median"], 0.01, "REQ-F-03 lambda 10 residual")
+    claim(r"IP 오차가 대조 대비 (\d+)% 커짐", (M["pinn_rts_ft_l10"]["test_id_f10"]["miss"]["median"] / M["pinn_rts_ft_l1"]["test_id_f10"]["miss"]["median"] - 1) * 100, 0.03, "REQ-F-03 accuracy cost")
 MN = load("maneuver.json")
 if MN:
     claim(r"기동 가설을 넣으면 포함률 ([\d.]+)까지", MN["robust"]["test_mm_lift"]["0.10"]["coverage"], 0.02, "RQ5 manoeuvre-hypothesis coverage")

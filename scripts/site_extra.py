@@ -296,6 +296,30 @@ def _ens_text(ens):
     return t
 
 
+def physw_block():
+    """REQ-F-03: fine-tuning the served RTS-input PINN with a larger physics weight (scripts/train.py --init-from)."""
+    M = json.load(open("results/metrics.json"))
+    names = [("pinn_tf_v2_rts", "기준 (λ = 1, 4,500 step)"), ("pinn_rts_ft_l1", "+300 step, λ = 1 (대조)"), ("pinn_rts_ft_l10", "+300 step, λ = 10")]
+    if not all(k in M for k in (n for n, _ in names)):
+        return ""
+    sp = ("test_id_f10", "test_id_f15", "test_id_noise")
+    rows = [f'<tr><td>{lab}</td>' + "".join(f'<td class="n">{M[k][s]["phys_rms_g"]["median"]:.3f} / {f0(M[k][s]["miss"]["median"])}</td>' for s in sp) + "</tr>"
+            for k, lab in names]
+    r10, r1 = M["pinn_rts_ft_l10"], M["pinn_rts_ft_l1"]
+    best = min(r10[s]["phys_rms_g"]["median"] for s in sp)
+    return f"""
+  <div class="tw">
+    <table>
+      <caption><b>Table R10b</b>물리 손실 가중치 λ: RTS 입력 PINN을 이어서 학습. 물리 잔차 RMS [g] / IP 오차 중앙값 [m]</caption>
+      <thead><tr><th>모델</th><th class="n">ID 10%</th><th class="n">ID 15%</th><th class="n">고잡음</th></tr></thead>
+      <tbody>
+        {chr(10).join("        " + r for r in rows).strip()}
+      </tbody>
+    </table>
+  </div>
+  <div class="prose"><p><b>물리 잔차 목표(REQ-F-03, 0.05 g).</b> 같은 학습량의 대조(λ = 1)와 비교하면, λ를 10으로 키운 이어 학습은 ID 10% 잔차를 {r1["test_id_f10"]["phys_rms_g"]["median"]:.3f} → {r10["test_id_f10"]["phys_rms_g"]["median"]:.3f} g로 줄이지만 IP 오차가 {f0(r1["test_id_f10"]["miss"]["median"])} → {f0(r10["test_id_f10"]["miss"]["median"])} m로 커집니다. 가장 낮은 잔차도 {best:.3f} g로 목표에 {"닿지 못합니다" if best > 0.05 else "닿습니다"}. 잔차는 신경망 궤적이 운동 방정식을 얼마나 지키는지를 재지만 탄착점 정확도와는 다른 목표라, 잔차를 더 줄이려면 정확도를 내줘야 하는 맞바꿈이 있습니다. 서빙 모델은 정확도를 우선해 λ = 1을 유지합니다.</p></div>"""
+
+
 def ensemble_block():
     if not os.path.exists("results/ensemble.json"):
         return ""
@@ -352,7 +376,7 @@ def ensemble_block():
   </div>
   <div class="prose"><p>Table R5의 신뢰구간은 시험 표본 변동만 반영합니다. 학습 seed를 바꾼 반복으로 학습 변동을 따로 쟀습니다. seed 간 표준편차는 ID 10% {sd_rng('test_id_f10')} m, 고잡음 {sd_rng('test_id_noise')} m로, ID 10%에서 EKF와 가장 가까운 신경망의 차이({gap:,.0f} m)보다 작지만 물리 손실 유무 같은 신경망끼리의 차이(수십 m)와는 비슷한 크기입니다. OOD는 seed에 따라 {sd_rng('test_ood', 1000)} km 흔들리므로 OOD 수치는 단일 모델 값보다 이 범위로 읽어야 합니다.{pl_txt or " 물리 손실 비교용 PINN·data-only 모델의 추가 seed는 CPU 학습 시간 제약으로 돌리지 못해, §9.4의 물리 손실 효과(특히 ID 10%의 −61 m)는 단일 seed 결과로 남아 있습니다."}</p></div>"""
     return f"""
-  <h3 class="sub" id="sec-ensemble"><span class="no">9.7</span>Deep ensemble과 학습 seed 변동</h3>{head}{seed_tbl}"""
+  <h3 class="sub" id="sec-ensemble"><span class="no">9.7</span>Deep ensemble과 학습 seed 변동</h3>{head}{seed_tbl}{physw_block()}"""
 
 
 if __name__ == "__main__":

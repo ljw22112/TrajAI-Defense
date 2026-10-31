@@ -321,7 +321,7 @@ footer b{color:var(--ink); font-weight:600}
       <thead><tr><th>질문</th><th>근거</th><th>현재 답</th></tr></thead>
       <tbody>
         <tr><td><b>RQ1</b> 짧은 관측(10–15%)만으로 PINN이 탄착점을 실시간으로 예측할 수 있는가</td><td><a href="#sec-results">§9.1</a>, Fig. 8, <a href="#sec-mismatch">§9.9</a></td><td>지연은 충족(0.87 ms, EKF + MC보다 약 262배 빠름). 정확도는 입력에 따라 다름: Savitzky–Golay 특징으로는 EKF/UKF보다 낮지만, RTS 평활 특징을 쓰면 고잡음에서 EKF보다 정확(607 m vs 629 m). 실제 비행이 공칭 모델과 다르면 격차는 줄지만(양력 기동에서 EKF의 1.02배) 불일치 데이터로 다시 학습해도 필터를 넘지 못함(양력 1,142 m vs EKF 1,125 m)</td></tr>
-        <tr><td><b>RQ2</b> 물리 손실이 데이터만 쓴 학습보다 나은가</td><td><a href="#sec-results">§9.2</a>, <a href="#sec-stats">§9.4</a>, <a href="#sec-ensemble">§9.7</a></td><td>궤적의 물리 일관성은 확실히 개선(잔차 0.40 → 0.10 g). IP 정확도 이득은 seed 2쌍 모두에서 ID 10%·OOD에만 일관되고, 나머지 조건은 학습 무작위성 수준</td></tr>
+        <tr><td><b>RQ2</b> 물리 손실이 데이터만 쓴 학습보다 나은가</td><td><a href="#sec-results">§9.2</a>, <a href="#sec-stats">§9.4</a>, <a href="#sec-ensemble">§9.7</a></td><td>궤적의 물리 일관성은 확실히 개선(잔차 0.40 → 0.10 g). 가중치를 더 키우면 잔차는 더 줄지만 IP 정확도를 내줌(Table R10b). IP 정확도 이득은 seed 2쌍 모두에서 ID 10%·OOD에만 일관되고, 나머지 조건은 학습 무작위성 수준</td></tr>
         <tr><td><b>RQ3</b> 칼만 필터와 PINN을 어떻게 결합해야 가장 좋은가</td><td><a href="#sec-est">§6.2</a>, <a href="#sec-feedback">§9.6</a>, Table R8b</td><td>필터를 신경망의 앞뒤에 두는 결합이 효과적: EKF-RTS 평활 특징을 입력으로(PINN 오차가 ID 10%·15%·고잡음에서 40–64% 감소, 관측 5%에서는 이득 없음), PINN의 β 예측을 EKF 사전정보로(5개 조건 모두 EKF보다 정확)</td></tr>
         <tr><td><b>RQ4</b> 실제 기상(기온·바람)이 예측 오차에 얼마나 영향을 주는가</td><td><a href="#sec-weather">§9.3</a>, <a href="#sec-wximpact">§12.1</a></td><td>가장 큰 오차 원인. 일자 기상 반영으로 EKF 오차 87% 감소, 신경망도 기상 학습으로 2.8 → 0.7 km</td></tr>
         <tr><td><b>RQ5</b> 예측 불확실성(CEP)을 믿을 수 있는가</td><td><a href="#sec-calib">§9.5</a>, <a href="#sec-ensemble">§9.7</a>, <a href="#sec-ood">§9.8</a>, <a href="#sec-mismatch">§9.9</a></td><td>계수 하나로 50% 포함률 보정 가능, 꼬리는 두꺼움. 분포 밖에서는 보정·앙상블 모두 실패하지만, 내부 표현 거리로 감지(AUROC 0.999)해 EKF로 넘기면 OOD 오차 11.7 → 0.44 km. 모르는 양력 기동 앞에서는 공칭 모델 추정기 모두 과신(포함률 0.07–0.19)하고, 정점 이후까지 추적해도 혁신 검정·IMM으로 감지되지 않음. 예측에 기동 가설을 넣으면 포함률 0.43까지 오르나 CEP가 약 2배로 넓어짐</td></tr>
@@ -434,7 +434,7 @@ footer b{color:var(--ink); font-weight:600}
 <!-- REQ:BEGIN -->
         <tr><td class="id">REQ-F-01</td><td>초기 관측 구간만으로 탄착까지의 전 궤적 예측</td><td class="c">관측 ≤ 15 %</td><td>전 구간 출력, IP 오차 317 m (ID 15%)</td><td><span class="st part">부분 충족</span></td><td><span class="vm">T</span></td></tr>
         <tr><td class="id">REQ-F-02</td><td>IP, ToT, CEP<sub>50</sub> 동시 출력</td><td class="c">3종 + 1σ</td><td>출력됨, CEP 포함률 0.59 (ID) / 0.14 (OOD). split-conformal 보정 후 ID 0.50, OOD는 보장 안 됨 (§9.5)</td><td><span class="st part">부분 충족</span></td><td><span class="vm">D</span></td></tr>
-        <tr><td class="id">REQ-F-03</td><td>예측 궤적의 물리 일관성 (운동 방정식 잔차)</td><td class="c">잔차 RMS ≤ 0.05 g</td><td>0.09 g (ID 10%)</td><td><span class="st no">미충족</span></td><td><span class="vm">A</span></td></tr>
+        <tr><td class="id">REQ-F-03</td><td>예측 궤적의 물리 일관성 (운동 방정식 잔차)</td><td class="c">잔차 RMS ≤ 0.05 g</td><td>서빙 모델 0.084 g (ID 10%). λ = 10 이어 학습으로 0.066 g까지 줄지만 IP 오차가 대조 대비 52% 커짐 (§9.7 Table R10b)</td><td><span class="st no">미충족</span></td><td><span class="vm">A</span></td></tr>
         <tr><td class="id">REQ-F-04</td><td>보호 자산 DB 대비 위협 등급과 요격 고도 창 산출</td><td class="c">5단계</td><td>구현, 가상 자산으로 시연 (운용 콘솔, 3D 뷰어)</td><td><span class="st ok">충족</span></td><td><span class="vm">D</span></td></tr>
         <tr><td class="id">REQ-P-01</td><td>단일 표적 추론 지연 (전처리 제외, p99)</td><td class="c">≤ 50 ms</td><td>5.3 ms (ONNX Runtime, CPU)</td><td><span class="st ok">충족</span></td><td><span class="vm">T</span></td></tr>
         <tr><td class="id">REQ-P-02</td><td>IP / CEP 추정 오차, EKF baseline 대비</td><td class="c">−40 %</td><td>EKF + PINN β 사전 -16 % (ID 10%), -33 % (ID 5%). 신경망 단독은 +28 %</td><td><span class="st part">부분 충족</span></td><td><span class="vm">T</span></td></tr>
@@ -974,6 +974,18 @@ footer b{color:var(--ink); font-weight:600}
     </table>
   </div>
   <div class="prose"><p>Table R5의 신뢰구간은 시험 표본 변동만 반영합니다. 학습 seed를 바꾼 반복으로 학습 변동을 따로 쟀습니다. seed 간 표준편차는 ID 10% 7–44 m, 고잡음 4–56 m로, ID 10%에서 EKF와 가장 가까운 신경망의 차이(96 m)보다 작지만 물리 손실 유무 같은 신경망끼리의 차이(수십 m)와는 비슷한 크기입니다. OOD는 seed에 따라 1.1–2.3 km 흔들리므로 OOD 수치는 단일 모델 값보다 이 범위로 읽어야 합니다. 물리 손실의 IP 오차 효과(PINN − data only)는 seed를 바꿔도 부호가 같은 분할이 ID 10%, OOD, 바뀌는 분할이 ID 5%, ID 15%, 고잡음입니다. 부호가 바뀌는 분할의 효과는 학습 무작위성 수준이므로 결론에서 뺍니다.</p></div>
+  <div class="tw">
+    <table>
+      <caption><b>Table R10b</b>물리 손실 가중치 λ: RTS 입력 PINN을 이어서 학습. 물리 잔차 RMS [g] / IP 오차 중앙값 [m]</caption>
+      <thead><tr><th>모델</th><th class="n">ID 10%</th><th class="n">ID 15%</th><th class="n">고잡음</th></tr></thead>
+      <tbody>
+        <tr><td>기준 (λ = 1, 4,500 step)</td><td class="n">0.084 / 437</td><td class="n">0.069 / 317</td><td class="n">0.076 / 607</td></tr>
+        <tr><td>+300 step, λ = 1 (대조)</td><td class="n">0.082 / 468</td><td class="n">0.068 / 374</td><td class="n">0.074 / 634</td></tr>
+        <tr><td>+300 step, λ = 10</td><td class="n">0.066 / 710</td><td class="n">0.059 / 497</td><td class="n">0.063 / 837</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="prose"><p><b>물리 잔차 목표(REQ-F-03, 0.05 g).</b> 같은 학습량의 대조(λ = 1)와 비교하면, λ를 10으로 키운 이어 학습은 ID 10% 잔차를 0.082 → 0.066 g로 줄이지만 IP 오차가 468 → 710 m로 커집니다. 가장 낮은 잔차도 0.059 g로 목표에 닿지 못합니다. 잔차는 신경망 궤적이 운동 방정식을 얼마나 지키는지를 재지만 탄착점 정확도와는 다른 목표라, 잔차를 더 줄이려면 정확도를 내줘야 하는 맞바꿈이 있습니다. 서빙 모델은 정확도를 우선해 λ = 1을 유지합니다.</p></div>
   <h3 class="sub" id="sec-ood"><span class="no">9.8</span>분포 밖 입력 감지와 EKF 대체</h3>
   <div class="prose">
     <p>§9.2·§9.7에서 신경망은 학습 범위 밖(OOD)에서 10 km 이상 틀리면서도 그 사실을 알리지 못했습니다. 그래서 예측마다 "학습 데이터와 얼마나 다른가"를 재고, 기준을 넘으면 신경망 대신 EKF 결과를 쓰는 장치를 붙였습니다. 기준은 검증 분할 점수의 95번째 백분위수(정상 트랙의 약 5%가 넘는 값)이며 시험 자료는 쓰지 않았습니다.</p>

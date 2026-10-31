@@ -8,6 +8,7 @@
 - PINN·data-only seed 1, RTS 특징 PINN(pinn_tf_v2_rts) 학습·평가 → §9.6 Table R8b, §9.7, 연구 질문 표 갱신, 콘솔 서빙
 - 분포 밖 감지·EKF 전환(§9.8, 콘솔 적용), 모델 불일치 시험과 불일치 데이터 재학습(§9.9: pinn_rts_mm, data_rts_mm), CEP90 별도 보정
 - 교전 판단 시점 실험(decision_time.py, Table R8c, REQ-P-03), IMM·혁신 검정·기동 가설 CEP(maneuver.py, Table R14·R15, filters.imm)
+- 물리 손실 가중치 이어 학습(pinn_rts_ft_l1·l10, train.py --init-from, Table R10b, REQ-F-03). 미실행: 불일치 재학습 모델 seed 추가(CPU 약 7시간)
 - 오류 점검: scripts/check_site.py(CI)로 본문 수치를 결과 JSON과 대조, 하드코딩 수치를 계산값으로 교체(1.29→1.28배, 4.1→4.2 km, seed 표준편차), 공개 데모의 E2E 잔여 데이터 제거
 
 ## 2026-10-30 (4차 세션, 완료)
