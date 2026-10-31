@@ -12,7 +12,11 @@ Usage: python scripts/ensemble.py
 import json
 import os
 
+import sys
+
 import numpy as np
+
+sys.path.insert(0, ".")
 
 from trajai import metrics
 

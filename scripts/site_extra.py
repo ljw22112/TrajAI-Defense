@@ -50,6 +50,24 @@ def feedback_block():
   </div>"""
 
 
+def _ens_text(ens):
+    ids = [k for k in ("test_id_f05", "test_id_f10", "test_id_f15", "test_id_noise") if k in ens]
+    better = [k for k in ids if ens[k]["ensemble"]["miss"]["median"] < ens[k]["single"]["miss"]["median"]]
+    t = ""
+    if "test_id_f10" in ens:
+        r = ens["test_id_f10"]
+        t += (f"학습 분포 안(ID)에서는 {len(better)}/{len(ids)}개 분할에서 IP 오차가 줄고(ID 10% {f0(r['single']['miss']['median'])} → "
+              f"{f0(r['ensemble']['miss']['median'])} m), 50% 포함률이 0.5 쪽으로 올라갑니다. ")
+    if "test_ood" in ens:
+        o = ens["test_ood"]
+        t += (f"반면 OOD에서는 오차가 {f0(o['single']['miss']['median'])} → {f0(o['ensemble']['miss']['median'])} m로 "
+              + ("줄지만" if o["ensemble"]["miss"]["median"] < o["single"]["miss"]["median"] else "오히려 늘고")
+              + f" 90% 포함률도 {o['ensemble']['coverage90']:.2f}에 그칩니다. 모델 간 분산이 전체 예측 분산에서 차지하는 비율이 OOD에서도 "
+              f"{o['epistemic_share']:.2f}로 ID와 비슷해, 같은 데이터로 seed만 바꾼 3개 모델은 분포 밖 입력을 알아채지 못합니다. "
+              "분포 이동 탐지에는 입력 특징의 분포 거리나 데이터 다양화 같은 별도 장치가 필요합니다.")
+    return t
+
+
 def ensemble_block():
     if not os.path.exists("results/ensemble.json"):
         return ""
@@ -86,7 +104,7 @@ def ensemble_block():
     </table>
   </div>
   <div class="prose">
-    <p>앙상블 예측 분산은 구성원 분산의 평균(관측 잡음에서 오는 불확실성)과 구성원 예측의 분산(모델 불확실성)의 합입니다. {f'ID 10%에서 IP 오차는 {f0(id10["single"]["miss"]["median"])} → {f0(id10["ensemble"]["miss"]["median"])} m, 90% 포함률은 {id10["single"]["coverage90"]:.2f} → {id10["ensemble"]["coverage90"]:.2f}입니다. ' if id10 else ''}모델 간 분산은 분포 밖(OOD)에서 커지므로, 단일 모델이 과신하던 구간에서 불확실성이 넓어지는 것이 앙상블의 주된 이점입니다. 콘솔 모델 레지스트리에 앙상블(<code>ens_hybrid_v2</code>, ONNX 3개)을 등록했습니다.</p>
+    <p>앙상블 예측 분산은 구성원 분산의 평균(관측 잡음에서 오는 불확실성)과 구성원 예측의 분산(모델 불확실성)의 합입니다. {_ens_text(ens)} 콘솔 모델 레지스트리에 앙상블(<code>ens_hybrid_v2</code>, ONNX 3개)을 등록했습니다.</p>
   </div>"""
     seed_tbl = "" if not srows else f"""
   <div class="tw">
@@ -98,7 +116,7 @@ def ensemble_block():
       </tbody>
     </table>
   </div>
-  <div class="prose"><p>Table R5의 신뢰구간은 시험 표본 변동만 반영합니다. 학습 seed를 바꾼 반복으로 학습 변동을 따로 쟀습니다.{pl_txt}</p></div>"""
+  <div class="prose"><p>Table R5의 신뢰구간은 시험 표본 변동만 반영합니다. 학습 seed를 바꾼 반복으로 학습 변동을 따로 쟀습니다. ID 10%·고잡음의 seed 간 표준편차(수 m)는 §9.4에서 유의하다고 판정한 차이보다 훨씬 작아 그 결론은 학습 변동에 흔들리지 않지만, OOD는 seed에 따라 수 km 달라지므로 OOD 수치는 단일 모델 값보다 이 범위로 읽어야 합니다.{pl_txt or " 물리 손실 비교용 PINN·data-only 모델의 추가 seed는 CPU 학습 시간 제약으로 돌리지 못해, §9.4의 물리 손실 효과(특히 ID 10%의 −61 m)는 단일 seed 결과로 남아 있습니다."}</p></div>"""
     return f"""
   <h3 class="sub" id="sec-ensemble"><span class="no">9.7</span>Deep ensemble과 학습 seed 변동</h3>{head}{seed_tbl}"""
 
