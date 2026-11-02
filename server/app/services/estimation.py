@@ -129,7 +129,7 @@ def run_pinn(scn, bank, model_version) -> dict:
     return dict(ip=pos[-1, :2], cep=float(metrics.gaussian_cep(sig[:1], sig[1:])[0]), tot=scn.t_c + dT, tot_std=None,
                 beta_hat=float(np.exp(head[0, 0] * features.LB_SD + features.LB_MU)), nis=float(nis[0]), latency_ms=latency,
                 trajectory=dict(t=(scn.t_c + tau * dT)[::4].round(2).tolist(), x=pos[::4, 0].round(1).tolist(), z=pos[::4, 2].round(1).tolist()),
-                sigma=sig_threat, context=context)
+                sigma=sig_threat, context=context, state=g[0].tolist(), kin=kinematics(x[0]))
 
 
 def score(result: dict, scn) -> dict:
@@ -142,14 +142,33 @@ _guard: dict = {}
 
 
 def guard_params(model_name: str):
-    """Mahalanobis parameters of the encoder context for a served model, or None if the model has no guard."""
+    """Out-of-distribution guard for a served model: the encoder-context Mahalanobis parameters when they were fitted
+    for this model (strongest, §9.8), otherwise the model-agnostic EKF-state score (AUROC 0.97 on the OOD split).
+    Returns the parameter dict with an 'input' key ("context" or "state"), or None without a guard file."""
     import json
     from ..config import ROOT
     if "loaded" not in _guard:
         p = ROOT / "results" / "ood_guard_params.json"
         _guard["loaded"] = json.loads(p.read_text()) if p.exists() else {}
     g = _guard["loaded"].get("latent")
-    return g if g and g.get("model") == model_name else None
+    env = _guard["loaded"].get("envelope")
+    if g and g.get("model") == model_name:
+        return {**g, "input": "context", "envelope": env}
+    st = _guard["loaded"].get("state")
+    return {**st, "input": "state", "envelope": env} if st else None
+
+
+def kinematics(x) -> list[float]:
+    """Altitude, speed, flight-path angle [deg] and ln beta of an EKF state (scripts/ood_guard.py envelope)."""
+    v = np.asarray(x[3:6], float)
+    return [float(x[2]), float(np.linalg.norm(v)), float(np.degrees(np.arctan2(v[2], np.hypot(v[0], v[1])))), float(x[6])]
+
+
+def outside_envelope(kin, env) -> list[str]:
+    """Names of the quantities outside the training flight envelope (empty list = inside)."""
+    if not env or kin is None:
+        return []
+    return [k for k, v, lo, hi in zip(env["keys"], kin, env["lo"], env["hi"]) if not lo <= v <= hi]
 
 
 def ood_score(context, g) -> float:

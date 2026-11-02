@@ -28,9 +28,9 @@ export TRAJAI_JWT_SECRET=$(openssl rand -hex 32)
 docker compose up --build                         # http://localhost:8000
 
 # 테스트
-python -m pytest -q tests server/tests            # 코어 22 + API 24
+python -m pytest -q tests server/tests            # 코어 22 + API 25
 cd web && npm test                                # 프론트엔드 9
-E2E_BASE=http://127.0.0.1:8000 python -m pytest e2e   # Playwright 12 (서버 실행 + seed_demo.py 필요, 만든 데이터는 끝나고 삭제)
+E2E_BASE=http://127.0.0.1:8000 python -m pytest e2e   # Playwright 13 (서버 실행 + seed_demo.py 필요, 만든 데이터는 끝나고 삭제)
 ```
 
 ## 구성
@@ -105,6 +105,7 @@ python -m pytest -q tests
 - **기동 대응(§9.9)**: 정점 이후까지 추적해도 약한 양력은 혁신 검정·IMM으로 감지되지 않습니다(레이더 창 안의 양력 가속도가 비행 전체 최대의 약 5%). 예측에 기동 가설을 넣으면 CEP 포함률이 0.07 → 0.43으로 오르지만 CEP가 약 2배로 넓어집니다.
 - **물리 손실 가중치(§9.7, REQ-F-03)**: λ를 1 → 10으로 키워 이어 학습하면 잔차가 0.084 → 0.066 g으로 줄지만 IP 오차가 같은 학습량 대조보다 52% 커집니다. 목표 0.05 g에는 못 미칩니다.
 - **교전 판단 시점(§9.6, REQ-P-03)**: PINN β 사전을 쓰면 보정 CEP ≤ 300 m 기준 판단이 중앙값 3.5 s, 평균 9.8 s 빨라집니다(목표 +25 s 미달).
+- **콘솔 비행 재생**: 발사체 유형(단·중·장거리 탄도 미사일급, 관측 로켓, 상단 낙하 잔해의 일반 예시)을 고르고 장소·날씨를 정하면, 시나리오 화면에서 발사체가 실제 대기 속을 움직이며 대류권계면·제트기류·희박 대기·음속 구간·최대 동압·레이더 관측 종료 같은 환경 변화 시점을 보여 줍니다. 화면 테마는 라이트·다크·밀리터리 중 고를 수 있고, 모든 테마의 글자 대비를 CI에서 검사합니다.
 - 콘솔은 표준 대기 시나리오의 PINN 추정에 RTS 입력 모델(`pinn_tf_v2_rts`, 서버에서 EKF-RTS 평활 후 ONNX 추론)을 씁니다.
 - 기상 시나리오에는 `wx_hybrid_date`를 씁니다. 자세한 표와 해석은 프로젝트 페이지 §9에 있습니다.
 

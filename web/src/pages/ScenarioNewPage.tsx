@@ -2,13 +2,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import { api, ApiError } from "../api/client";
-import { CUSTOM_DEFAULT, type CustomAtm, type ScenarioIn } from "../api/types";
+import { CUSTOM_DEFAULT, type CustomAtm, type ScenarioIn, type Vehicle } from "../api/types";
 import { CustomAtmForm } from "../components/CustomAtmForm";
 import { LocationPicker } from "../components/LocationPicker";
 import { ProfileChart } from "../components/ProfileChart";
 import { Card, ErrorBox, PageHead, Spinner, fmt } from "../components/ui";
 
-type Num = Exclude<keyof ScenarioIn, "name" | "weather_date" | "seed">;
+type Num = Exclude<keyof ScenarioIn, "name" | "weather_date" | "seed" | "vehicle" | "custom_atm" | "weather_lat" | "weather_lon">;
 const FIELDS: { key: Num; label: string; unit: string; min: number; max: number; step: number; help?: string }[] = [
   { key: "h0", label: "연소 종료 고도", unit: "m", min: 5000, max: 40000, step: 500 },
   { key: "v0", label: "연소 종료 속도", unit: "m/s", min: 500, max: 2500, step: 50 },
@@ -19,12 +19,18 @@ const FIELDS: { key: Num; label: string; unit: string; min: number; max: number;
   { key: "sigma_r", label: "거리 잡음 1σ", unit: "m", min: 1, max: 200, step: 1 },
   { key: "sigma_ang_mrad", label: "각도 잡음 1σ", unit: "mrad", min: 0.05, max: 5, step: 0.05 },
 ];
-const PRESETS: Record<string, Partial<ScenarioIn>> = {
-  "단거리 · 저탄도계수": { h0: 10000, v0: 1000, gamma_deg: 40, beta: 900 },
-  "중거리 (기본)": { h0: 15000, v0: 1400, gamma_deg: 45, beta: 2500 },
-  "장거리 · 고탄도계수": { h0: 22000, v0: 1900, gamma_deg: 50, beta: 8000 },
-};
-const DEFAULT: ScenarioIn = { name: "", h0: 15000, v0: 1400, gamma_deg: 45, psi_deg: 0, beta: 2500, obs_fraction: 0.12, sigma_r: 15, sigma_ang_mrad: 0.4, weather_date: "2026-10-15", weather_hour: 0, weather_lat: 36.5, weather_lon: 127.5, seed: null };
+/** Vehicle classes: generic example values (not any real system), the burnout state and beta they fill in. */
+const VEHICLES: { key: Vehicle; label: string; note: string; len: number; p: Partial<ScenarioIn> }[] = [
+  { key: "srbm", label: "단거리 탄도 미사일급", note: "낮은 정점, 짧은 비행. 짙은 공기를 오래 지나 β 영향이 큼", len: 26, p: { h0: 10000, v0: 1000, gamma_deg: 40, beta: 900 } },
+  { key: "mrbm", label: "중거리 탄도 미사일급", note: "기본 예시. 성층권을 넘어 희박 대기까지 올라감", len: 34, p: { h0: 15000, v0: 1400, gamma_deg: 45, beta: 2500 } },
+  { key: "lrbm", label: "장거리 탄도 미사일급", note: "높고 빠른 비행. 재진입 때 동압이 큼. 학습 범위 경계(속도)", len: 42, p: { h0: 22000, v0: 1900, gamma_deg: 50, beta: 8000 } },
+  { key: "sounding", label: "관측 로켓 (과학 탐사)", note: "거의 수직으로 올라가 가까이 떨어짐. 학습 범위 밖(경로각 75°)", len: 30, p: { h0: 12000, v0: 1700, gamma_deg: 75, beta: 1500 } },
+  { key: "debris", label: "로켓 상단 낙하 잔해", note: "높은 곳에서 낮은 각도로, 공기 저항을 크게 받음(β 낮음). 학습 범위 밖", len: 18, p: { h0: 40000, v0: 1200, gamma_deg: 15, beta: 400 } },
+];
+function VehicleIcon({ len }: { len: number }) {
+  return <svg viewBox="0 0 46 22" aria-hidden><path d={`M${2 + 44 - len},11 l${len - 8},-4 l8,4 l-8,4 z M${2 + 44 - len},11 l-2,-5 h3 l3,5 l-3,5 h-3 z`} fill="currentColor" /></svg>;
+}
+const DEFAULT: ScenarioIn = { name: "", h0: 15000, v0: 1400, gamma_deg: 45, psi_deg: 0, beta: 2500, obs_fraction: 0.12, sigma_r: 15, sigma_ang_mrad: 0.4, weather_date: "2026-10-15", weather_hour: 0, weather_lat: 36.5, weather_lon: 127.5, seed: null, vehicle: "mrbm" };
 
 export function ScenarioNewPage() {
   const nav = useNavigate();
@@ -59,9 +65,20 @@ export function ScenarioNewPage() {
         연소 종료 상태와 센서 조건을 정하고, 대기를 고르면 서버가 궤적을 적분하고 레이더 측정을 생성해 데이터베이스에 저장합니다.
       </PageHead>
       <form onSubmit={submit} className="page" noValidate>
-        <Card title="비행체와 센서" aside={
-          <div className="toolbar">{Object.entries(PRESETS).map(([k, v]) => <button type="button" key={k} className="btn ghost sm" onClick={() => setF(p => ({ ...p, ...v }))}>{k}</button>)}</div>
-        }>
+        <Card title="발사체 유형">
+          <div className="veh" role="radiogroup" aria-label="발사체 유형">
+            {VEHICLES.map(v => (
+              <label key={v.key}>
+                <input type="radio" name="vehicle" checked={f.vehicle === v.key} onChange={() => setF(p => ({ ...p, ...v.p, vehicle: v.key }))} />
+                <VehicleIcon len={v.len} />
+                <b>{v.label}</b>
+                <small>{v.note}</small>
+              </label>
+            ))}
+          </div>
+          <small className="label">유형은 비행 조건의 예시 값을 채웁니다(실제 기종이 아닌 일반 유형). 아래에서 값을 직접 바꿀 수 있습니다.</small>
+        </Card>
+        <Card title="비행 조건과 센서">
           <div className="form">
             <div className="field" style={{ gridColumn: "1 / -1" }}>
               <label htmlFor="name">이름</label>

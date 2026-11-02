@@ -1,3 +1,4 @@
+import { ThemePicker } from "./components/ThemePicker";
 import { NavLink, Navigate, Route, Routes, useLocation } from "react-router-dom";
 import { DEMO } from "./api/client";
 import type { Role } from "./api/types";
@@ -29,6 +30,7 @@ function Guard({ role, children }: { role?: Role; children: JSX.Element }) {
 
 export function App() {
   const { user, logout, can } = useAuth();
+  const loc = useLocation();
   if (!user && !DEMO) {
     return (
       <Routes>
@@ -44,7 +46,7 @@ export function App() {
         <nav className="nav" aria-label="주 메뉴">
           <span className="sec">운용</span>
           <NavLink to="/" end>대시보드</NavLink>
-          <NavLink to="/scenarios">시나리오</NavLink>
+          <NavLink to="/scenarios" className={({ isActive }) => (isActive && !loc.pathname.startsWith("/scenarios/new") ? "active" : "")}>시나리오</NavLink>
           {can("analyst") && <NavLink to="/scenarios/new">새 시나리오</NavLink>}
           <NavLink to="/raids">다표적 교전</NavLink>
           <NavLink to="/compare">비교</NavLink>
@@ -64,7 +66,7 @@ export function App() {
         </div>
       </aside>
       <main>
-        <div className="topbar"><AlertCenter /></div>
+        <div className="topbar"><ThemePicker /><AlertCenter /></div>
         <Routes>
           <Route path="/login" element={<Navigate to="/" replace />} />
           <Route path="/" element={<Guard><DashboardPage /></Guard>} />

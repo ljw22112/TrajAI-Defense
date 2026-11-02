@@ -14,7 +14,7 @@ from ..db import get_db
 from ..models import Asset, Estimate, Measurement, Method, ModelVersion, Role, Scenario, ThreatAssessment, User
 from ..schemas import EstimateIn, EstimateOut, Page, ScenarioIn, ScenarioOut, ScenarioSummary
 from ..security import current_user, require
-from ..services import estimation, simulation, threat
+from ..services import estimation, flight, simulation, threat
 from trajai import weather as wx
 
 from ..services import weather as wsvc
@@ -95,7 +95,7 @@ async def create_scenario(body: ScenarioIn, db: Session = Depends(get_db), user:
                                   body.obs_fraction, sig_r, sig_a, seed, bank)
     s = Scenario(name=body.name, created_by=user.id, h0=body.h0, v0=body.v0, gamma_deg=body.gamma_deg, psi_deg=body.psi_deg,
                  beta=body.beta, obs_fraction=body.obs_fraction, sigma_r=sig_r, sigma_ang=sig_a,
-                 seed=seed, weather_id=wrow.id if wrow else None, t_c=sim["t_c"], impact_time=sim["impact_time"],
+                 seed=seed, vehicle=body.vehicle, weather_id=wrow.id if wrow else None, t_c=sim["t_c"], impact_time=sim["impact_time"],
                  impact_x=sim["impact_x"], impact_y=sim["impact_y"], apogee=sim["apogee"], truth=sim["truth"])
     s.measurements = [Measurement(**m) for m in sim["measurements"]]
     db.add(s); db.commit()
@@ -113,6 +113,15 @@ def get_scenario(sid: int, db: Session = Depends(get_db), _: User = Depends(curr
     out.n_estimates = len(s.estimates)
     out.best_miss_m = min((e.miss_m for e in s.estimates), default=None)
     return out
+
+
+@router.get("/{sid}/flight", summary="Flight replay with the environment along the trajectory and the events where it changes")
+async def get_flight(sid: int, db: Session = Depends(get_db), _: User = Depends(current_user)):
+    s = db.scalar(select(Scenario).where(Scenario.id == sid).options(selectinload(Scenario.weather)))
+    if not s:
+        raise HTTPException(404, "scenario not found")
+    cond = ((s.weather.levels or {}).get("custom") or {}).get("condition") if s.weather is not None else None
+    return await run_in_threadpool(flight.flight_profile, s, wsvc.bank_of(s.weather), cond, s.vehicle)
 
 
 @router.delete("/{sid}", status_code=204)
@@ -147,13 +156,15 @@ async def create_estimate(sid: int, body: EstimateIn, db: Session = Depends(get_
         except FileNotFoundError as e:
             raise HTTPException(503, str(e))
         g = estimation.guard_params(mv.name)
-        if g is not None and res.get("context") is not None:
-            score = estimation.ood_score(res["context"], g)
-            if score > g["threshold"]:
+        if g is not None and res.get(g["input"]) is not None:
+            score = estimation.ood_score(res[g["input"]], g)
+            out = estimation.outside_envelope(res.get("kin"), g.get("envelope"))
+            flag = score > g["threshold"] or bool(out)
+            if flag:
                 # the track is unlike the training data: the network is not trusted, the EKF answers instead (§9.8)
                 res = await run_in_threadpool(estimation.run_filter, s, bank, Method.ekf_wx if bank is not None else Method.ekf_std)
             res["trajectory"] = {**res["trajectory"], "guard": dict(score=round(score, 2), threshold=round(g["threshold"], 2),
-                                                                    fallback="ekf" if score > g["threshold"] else None)}
+                                                                    fallback="ekf" if flag else None, input=g["input"], outside=out)}
     elif body.method == Method.ekf_pinn:
         mv = db.scalar(select(ModelVersion).where(ModelVersion.kind.like("pinn · track only%")).order_by(ModelVersion.id.desc()))
         if mv is None:

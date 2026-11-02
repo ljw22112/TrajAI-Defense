@@ -119,7 +119,8 @@ export function Plot({ series, xLabel, yLabel, height = 320, equal, xDomain, yDo
     draw();
     const ro = new ResizeObserver(draw); ro.observe(cv);
     const mq = window.matchMedia("(prefers-color-scheme: dark)"); mq.addEventListener("change", draw);
-    return () => { ro.disconnect(); mq.removeEventListener("change", draw); };
+    window.addEventListener("trajai-theme", draw);
+    return () => { ro.disconnect(); mq.removeEventListener("change", draw); window.removeEventListener("trajai-theme", draw); };
   }, [series, xLabel, yLabel, height, equal, xDomain, yDomain, logY, fmtX, fmtY]);
 
   return <canvas ref={ref} className="plot" style={{ height }} role="img" aria-label={ariaLabel} />;

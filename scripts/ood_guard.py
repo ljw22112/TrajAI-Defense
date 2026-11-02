@@ -120,11 +120,47 @@ def main():
     json.dump(dict(state=dict(mu=m_state.mu.tolist(), P=m_state.P.tolist(), threshold=thr["state"]),
                    latent=dict(model=NET, mu=m_lat.mu.tolist(), P=m_lat.P.tolist(), threshold=thr["latent"]), quantile=Q),
               open("results/ood_guard_params.json", "w"))
+    envelope()
     for s, r in out["detect"].items():
         print(s, {k: (round(v["auroc"], 3), round(v["flagged"], 2)) for k, v in r.items()})
     for s, r in out["guard"].items():
         print(s, {k: (round(v, 0) if isinstance(v, float) else {kk: round(vv, 2) for kk, vv in v.items()}) for k, v in r.items()})
 
 
+def kinematics(split):
+    """Altitude [m], speed [m/s], flight-path angle [deg] and ln beta of the EKF state at t_c (from the prep file)."""
+    from trajai import features as F
+    d = np.load(f"data/prep_{split}.npz")
+    g, o = d["g"], d["origin"]
+    z = o[:, 2] + g[:, 2] * F.L_POS
+    v = g[:, 3:6] * F.V_SCALE
+    sp = np.linalg.norm(v, axis=1)
+    gam = np.degrees(np.arctan2(v[:, 2], np.hypot(v[:, 0], v[:, 1])))
+    return np.stack([z, sp, gam, g[:, 6] * F.LB_SD + F.LB_MU], 1)
+
+
+ENV_KEYS = ["altitude_m", "speed_ms", "path_angle_deg", "ln_beta"]
+
+
+def envelope(q=0.001):
+    """Flight envelope of the training data (validation split, 0.1-99.9 %): a transparent check that complements the
+    Mahalanobis scores; a track outside it on any quantity is handed to the EKF. Added to ood.json / guard params."""
+    K = kinematics("val_aug")
+    lo, hi = np.quantile(K, q, 0), np.quantile(K, 1 - q, 0)
+    out = {"lo": lo.tolist(), "hi": hi.tolist(), "keys": ENV_KEYS, "flagged": {}}
+    for s in ID + SHIFTED:
+        if os.path.exists(f"data/prep_{s}.npz"):
+            k = kinematics(s)
+            out["flagged"][s] = float(((k < lo) | (k > hi)).any(1).mean())
+    o = json.load(open("results/ood.json")); o["envelope"] = out
+    json.dump(o, open("results/ood.json", "w"), indent=1)
+    gp = json.load(open("results/ood_guard_params.json")); gp["envelope"] = {k: out[k] for k in ("lo", "hi", "keys")}
+    json.dump(gp, open("results/ood_guard_params.json", "w"))
+    print({k: round(v, 3) for k, v in out["flagged"].items()}, dict(zip(ENV_KEYS, zip(np.round(lo, 2), np.round(hi, 2)))))
+
+
 if __name__ == "__main__":
-    main()
+    if sys.argv[1:] == ["envelope"]:
+        envelope()
+    else:
+        main()

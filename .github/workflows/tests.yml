@@ -15,6 +15,7 @@ jobs:
       - run: pip install numpy scipy pytest
       - run: python -m pytest -q tests
       - run: python scripts/check_site.py        # report numbers vs results/*.json, links, section refs
+      - run: python scripts/check_contrast.py    # console colour tokens: WCAG AA in light / dark / military
 
   backend:
     name: API (FastAPI + PostgreSQL)

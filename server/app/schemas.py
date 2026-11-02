@@ -137,6 +137,7 @@ class ScenarioIn(BaseModel):
     weather_lon: float | None = Field(None, ge=-180, le=180)
     custom_atm: CustomAtmIn | None = Field(None, description="user-defined atmosphere (takes precedence over weather_date)")
     seed: int | None = None
+    vehicle: Literal["srbm", "mrbm", "lrbm", "sounding", "debris", "generic"] = Field("generic", description="vehicle class (label and preset only; the flight is set by h0, v0, gamma, beta)")
 
 
 class FlightIn(BaseModel):
@@ -268,6 +269,7 @@ class ScenarioSummary(ORM):
     impact_x: float
     impact_y: float
     apogee: float
+    vehicle: str = "generic"
     n_estimates: int = 0
     best_miss_m: float | None = None
 

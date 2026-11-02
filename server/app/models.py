@@ -99,6 +99,7 @@ class Scenario(Base):
     sigma_r: Mapped[float] = mapped_column(Float)
     sigma_ang: Mapped[float] = mapped_column(Float)
     seed: Mapped[int] = mapped_column(Integer)
+    vehicle: Mapped[str] = mapped_column(String(16), default="generic", server_default="generic")
     weather_id: Mapped[int | None] = mapped_column(ForeignKey("weather_profiles.id", ondelete="SET NULL"))
     # simulation outputs
     t_c: Mapped[float] = mapped_column(Float)

@@ -3,6 +3,7 @@ import { Fragment, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api/client";
 import { CONDITION_LABEL, METHOD_LABEL, modelShort, type Condition, type Estimate, type Method } from "../api/types";
+import { FlightReplay } from "../components/FlightReplay";
 import { PrintButton } from "../components/PrintButton";
 import { useAuth } from "../auth/AuthContext";
 import { Legend, Plot, type Series } from "../components/Plot";
@@ -12,6 +13,10 @@ import { useLiveTrack } from "../hooks/useLiveTrack";
 
 const METHOD_COLOR: Record<Method, string> = { ekf_std: "--truth", ekf_wx: "--ekf", ukf_wx: "--ukf", pinn: "--pred", ekf_pinn: "--obs" };
 
+const ENV_LABEL: Record<string, string> = { altitude_m: "고도", speed_ms: "속도", path_angle_deg: "경로각", ln_beta: "탄도계수" };
+const guardWhy = (g: { score: number; threshold: number; outside?: string[] }) =>
+  [g.score > g.threshold ? `분포 거리 ${g.score} > 기준 ${g.threshold}` : "", g.outside?.length ? `학습 범위 밖: ${g.outside.map(k => ENV_LABEL[k] ?? k).join(", ")}` : ""].filter(Boolean).join(" · ");
+
 export function ScenarioDetailPage() {
   const id = Number(useParams().id);
   const nav = useNavigate();
@@ -19,6 +24,7 @@ export function ScenarioDetailPage() {
   const { can, user } = useAuth();
   const q = useQuery({ queryKey: ["scenario", id], queryFn: () => api.scenario(id), enabled: Number.isFinite(id) });
   const assets = useQuery({ queryKey: ["assets"], queryFn: api.assets });
+  const flight = useQuery({ queryKey: ["flight", id], queryFn: () => api.flight(id), enabled: Number.isFinite(id), staleTime: Infinity });
   const run = useMutation({
     mutationFn: (m: Method) => api.estimate(id, m),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["scenario", id] }); qc.invalidateQueries({ queryKey: ["stats"] }); },
@@ -116,6 +122,9 @@ export function ScenarioDetailPage() {
         <Stat label="실제 탄착점" value={`${km(s.impact_x)}, ${km(s.impact_y)}`} unit="km" note="하향거리, 횡거리" />
         <Stat label="최선 IP 오차" value={s.best_miss_m === null ? "—" : fmt(s.best_miss_m)} unit="m" tone="acc" />
       </div>
+      <Card title={`비행 재생과 환경 변화${flight.data ? ` · ${flight.data.vehicle_label}` : ""}`} aside={<small className="label">점 = 환경이 바뀌는 순간 · 목록을 누르면 그 시각으로 이동</small>}>
+        {flight.isLoading ? <Spinner label="비행 경로의 대기 계산 중" /> : flight.error ? <ErrorBox error={flight.error} /> : flight.data && <FlightReplay f={flight.data} />}
+      </Card>
       <div className="grid g2 g57">
         <Card title="측면 궤적 (고도–하향거리)" className="span2">
           <Plot series={sideSeries} xLabel="하향거리 x (km)" yLabel="고도 h (km)" height={340} ariaLabel="측면 궤적: 실제, 측정, 추정" />
@@ -138,7 +147,7 @@ export function ScenarioDetailPage() {
                   {[...s.estimates].reverse().map(e => (
                     <tr key={e.id} className={latestIds.has(e.id) ? "" : "muted-row"} title={latestIds.has(e.id) ? undefined : "같은 추정기의 이전 실행"}>
                       <td className="nowrap">{METHOD_LABEL[e.method]}{modelShort(e.model_name) && <span className="chip model">{modelShort(e.model_name)}</span>}
-                        {e.trajectory.guard?.fallback && <span className="chip acc model"><Term k="분포 밖">분포 밖 → EKF</Term></span>}</td>
+                        {e.trajectory.guard?.fallback && <span className="chip acc model" title={guardWhy(e.trajectory.guard)}><Term k="분포 밖">분포 밖 → EKF</Term></span>}</td>
                       <td className="n">{fmt(e.miss_m)} m</td><td className="n">{fmt(e.cep)} m</td>
                       <td className={`nowrap ${e.inside_cep ? "ok" : "bad"}`}>{e.inside_cep ? "✓ 포함" : "✗ 밖"}</td>
                       <td className="n">{fmt(e.tot, 1)} s</td><td className="n">{fmt(e.beta_hat)}</td>

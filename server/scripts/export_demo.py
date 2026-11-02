@@ -53,6 +53,7 @@ def main():
     save("scenarios", page)
     for s in page["items"]:
         save(f"scenarios_{s['id']}", c.get(f"/api/scenarios/{s['id']}").json())
+        save(f"scenarios_{s['id']}_flight", c.get(f"/api/scenarios/{s['id']}/flight").json())
         # record the live replay (streaming EKF) so the static demo can play it back without a server
         for w in ((0, 1) if s.get("weather_id") else (0,)):
             save(f"live_{s['id']}_{w}", asyncio.run(record_live(a.base, tok, s["id"], w)))
