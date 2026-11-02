@@ -161,4 +161,21 @@ def flight_profile(s, bank, condition: str | None = None, vehicle: str | None = 
         q_kpa=r(q / 1000, 2), drag_g=r(drag / G0, 3),
         layers=dict(tropopause=tropo, jet=jet, thin_air=thin),
         column=dict(z=r(zt, 0), u=r(wz[:, 0]), v=r(wz[:, 1]), temp_c=r(tz - 273.15)),
-        t_c=s.t_c, impact_time=float(T[0]), apogee=float(h.max()), events=ev)
+        t_c=s.t_c, impact_time=float(T[0]), apogee=float(h.max()), events=ev, drift=_drift(s0, s.beta, bank, t, p))
+
+
+def _drift(s0, beta, bank, t, p):
+    """Same flight with the wind switched off (temperature and density kept): how far the wind moved the vehicle.
+    None for the standard atmosphere (no wind)."""
+    if bank is None:
+        return None
+    calm = wx.ProfileBank(bank.T, bank.rho, bank.sos, bank.u * 0.0, bank.v * 0.0, bank.times)
+    times, pos, _, T, r_imp = physics.simulate_ballistic(s0, np.array([beta]), dt=0.1, out_dt=DT, atm=calm[np.zeros(1, int)])
+    ok = ~np.isnan(pos[0, :, 0])
+    tc, pc = np.append(times[ok], T[0]), np.vstack([pos[0][ok], [r_imp[0, 0], r_imp[0, 1], 0.0]])
+    xs, ys = np.interp(t, tc, pc[:, 0]), np.interp(t, tc, pc[:, 1])       # calm position at the same times
+    imp = np.array([p[-1, 0], p[-1, 1]])
+    d = imp - r_imp[0, :2]
+    return dict(x=np.round(xs, 0).tolist(), y=np.round(ys, 0).tolist(), impact_calm=[float(r_imp[0, 0]), float(r_imp[0, 1])],
+                shift_m=float(np.hypot(*d)), shift_down_m=float(d[0]), shift_cross_m=float(d[1]),
+                offset_m=np.round(np.hypot(p[:, 0] - xs, p[:, 1] - ys), 0).tolist(), impact_time_calm=float(T[0]))

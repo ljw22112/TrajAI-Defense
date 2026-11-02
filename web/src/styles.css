@@ -278,3 +278,15 @@ table.fixed th:first-child,table.fixed td:first-child{width:22%}
 .theme-pick select{width:auto; padding:5px 8px; font-size:13px}
 .fr-pan{overflow-x:auto}
 @media (max-width:860px){.fr-pan .fr-svg{min-width:680px}}
+.fr-fc path{fill:none; stroke:currentColor; stroke-width:1.8; stroke-dasharray:6 4}
+.fr-fc circle{fill:var(--sheet); stroke:currentColor; stroke-width:2}
+.fr-fcnow{display:flex; flex-direction:column; gap:4px; margin-top:10px; font-size:13px}
+.fr-fcnow div{display:flex; align-items:center; gap:8px} .fr-fcnow b{margin-left:auto}
+.fr-fcnow i{width:14px; height:3px; display:inline-block}
+.fr-fcnow small{color:var(--ink-3); font-size:12px; line-height:1.45}
+.fr-top{margin-top:6px}
+.fr-calm{fill:none; stroke:var(--ekf); stroke-width:1.6; stroke-dasharray:3 4}
+.fr-calm-dot{fill:var(--sheet); stroke:var(--ekf); stroke-width:2}
+.fr-now-dot{fill:var(--pred)}
+.fr-imp-x{font:700 16px var(--font-mono); fill:var(--danger)}
+.fr-top-all{fill:none; stroke:var(--truth); stroke-width:1.2; opacity:.8}
