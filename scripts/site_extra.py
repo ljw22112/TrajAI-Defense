@@ -75,6 +75,7 @@ def ood_block():
                      f'<td class="n"><b>{f0(lat.get("miss", float("nan")))}</b> <small class="muted">/ {f0(lat.get("miss_p90", float("nan")))}</small></td>'
                      f'<td class="n">{lat.get("flagged", 0) * 100:.0f}%</td></tr>')
     o = G.get("test_ood", {}); i10 = G.get("test_id_f10", {})
+    env = O.get("envelope", {}).get("flagged", {"test_ood": 0, "test_id_f10": 0})
     return f"""
   <h3 class="sub" id="sec-ood"><span class="no">9.8</span>분포 밖 입력 감지와 EKF 대체</h3>
   <div class="prose">
@@ -99,7 +100,7 @@ def ood_block():
     </table>
   </div>
   <div class="prose">
-    <p>신경망 내부 표현의 거리는 OOD를 거의 완벽하게 가려내고(AUROC {det["test_ood"]["latent"]["auroc"]:.3f}), 전환 전략의 OOD 오차는 {f0(o.get("network", 0))} m에서 {f0(o.get("latent", {}).get("miss", 0))} m로, p90은 {f0(o.get("network_p90", 0))} m에서 {f0(o.get("latent", {}).get("miss_p90", 0))} m로 EKF 수준까지 내려갑니다. 정상 입력은 {i10.get("latent", {}).get("flagged", 0) * 100:.0f}%만 넘겨져 비용이 거의 없고, 넘겨진 트랙이 원래 어려운 경우라 ID 10% 오차는 오히려 {f0(i10.get("network", 0))} → {f0(i10.get("latent", {}).get("miss", 0))} m로 줄어듭니다. 반면 같은 비행 범위 안에서 동역학만 다른 모델 불일치는 입력 분포가 그대로라 감지하지 못합니다(AUROC 약 0.5). 이 장치는 "입력이 낯선 경우"를 막을 뿐 "물리 모델이 틀린 경우"를 막지는 못하며, 후자는 §9.9에서 다룹니다. 운용 콘솔은 같은 기준으로 RTS 입력 PINN의 예측마다 점수를 계산해, 기준을 넘으면 EKF 결과로 바꾸고 화면에 "분포 밖 → EKF"로 표시합니다.</p>
+    <p>신경망 내부 표현의 거리는 OOD를 거의 완벽하게 가려내고(AUROC {det["test_ood"]["latent"]["auroc"]:.3f}), 전환 전략의 OOD 오차는 {f0(o.get("network", 0))} m에서 {f0(o.get("latent", {}).get("miss", 0))} m로, p90은 {f0(o.get("network_p90", 0))} m에서 {f0(o.get("latent", {}).get("miss_p90", 0))} m로 EKF 수준까지 내려갑니다. 정상 입력은 {i10.get("latent", {}).get("flagged", 0) * 100:.0f}%만 넘겨져 비용이 거의 없고, 넘겨진 트랙이 원래 어려운 경우라 ID 10% 오차는 오히려 {f0(i10.get("network", 0))} → {f0(i10.get("latent", {}).get("miss", 0))} m로 줄어듭니다. 반면 같은 비행 범위 안에서 동역학만 다른 모델 불일치는 입력 분포가 그대로라 감지하지 못합니다(AUROC 약 0.5). 이 장치는 "입력이 낯선 경우"를 막을 뿐 "물리 모델이 틀린 경우"를 막지는 못하며, 후자는 §9.9에서 다룹니다. 운용 콘솔은 같은 기준으로 RTS 입력 PINN의 예측마다 점수를 계산해, 기준을 넘으면 EKF 결과로 바꾸고 화면에 "분포 밖 → EKF"로 표시합니다. 내부 표현 기준이 없는 다른 서빙 모델(기상 입력 등)에는 EKF 상태 점수를 쓰고, 모든 모델에 학습 데이터의 비행 범위 검사(검증 분할 0.1–99.9%의 고도·속도·경로각·ln β)를 더합니다. 범위 검사만으로 OOD 트랙의 {env["test_ood"] * 100:.0f}%를 넘기고 정상 트랙(ID 10%)은 {env["test_id_f10"] * 100:.1f}%만 넘깁니다. 관측 로켓(경로각 75°)이나 상단 낙하 잔해처럼 학습하지 않은 유형은 이 검사로 걸러집니다.</p>
   </div>"""
 
 

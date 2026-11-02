@@ -183,5 +183,16 @@ def test_alert_center_opens(page):
     pw.expect(page.get_by_role("dialog", name="위협 알림 목록")).to_be_visible()
 
 
+def test_flight_replay_and_theme(page):
+    page.goto(f"{BASE}/#/scenarios/3")
+    pw.expect(page.get_by_text("비행 재생과 환경 변화")).to_be_visible(timeout=20_000)
+    page.locator(".fr-events button").filter(has=page.locator(".ti", has_text=re.compile("^정점$"))).click()
+    pw.expect(page.locator(".fr-callout")).to_contain_text("정점")
+    page.get_by_label("화면 테마").select_option("military")
+    assert page.evaluate("document.documentElement.dataset.theme") == "military"
+    page.get_by_label("화면 테마").select_option("system")
+    assert page.evaluate("document.documentElement.dataset.theme") is None
+
+
 def test_no_uncaught_errors(page):
     assert page.errors == []

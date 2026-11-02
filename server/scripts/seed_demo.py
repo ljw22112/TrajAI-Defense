@@ -8,15 +8,18 @@ import time
 import httpx
 
 SCENARIOS = [
-    dict(name="10/03 00Z 중거리", weather_date="2026-10-03", weather_hour=0, seed=301),
-    dict(name="10/08 12Z 장거리 고β", weather_date="2026-10-08", weather_hour=12, seed=302, h0=22000, v0=1900, gamma_deg=50, beta=8000),
-    dict(name="10/15 00Z 제트기류", weather_date="2026-10-15", weather_hour=0, seed=303),
-    dict(name="10/21 06Z 단거리 저β", weather_date="2026-10-21", weather_hour=6, seed=304, h0=10000, v0=1000, gamma_deg=40, beta=900),
-    dict(name="10/27 18Z 짧은 관측 5%", weather_date="2026-10-27", weather_hour=18, seed=305, obs_fraction=0.05),
-    dict(name="표준 대기 기준 시나리오", weather_date=None, seed=306),
-    dict(name="표준 대기 고잡음", weather_date=None, seed=307, sigma_r=50, sigma_ang_mrad=1.5),
+    dict(name="10/03 00Z 중거리", weather_date="2026-10-03", weather_hour=0, seed=301, vehicle="mrbm"),
+    dict(name="10/08 12Z 장거리 고β", weather_date="2026-10-08", weather_hour=12, seed=302, h0=22000, v0=1900, gamma_deg=50, beta=8000, vehicle="lrbm"),
+    dict(name="10/15 00Z 제트기류", weather_date="2026-10-15", weather_hour=0, seed=303, vehicle="mrbm"),
+    dict(name="10/21 06Z 단거리 저β", weather_date="2026-10-21", weather_hour=6, seed=304, h0=10000, v0=1000, gamma_deg=40, beta=900, vehicle="srbm"),
+    dict(name="10/27 18Z 짧은 관측 5%", weather_date="2026-10-27", weather_hour=18, seed=305, obs_fraction=0.05, vehicle="mrbm"),
+    dict(name="표준 대기 기준 시나리오", weather_date=None, seed=306, vehicle="mrbm"),
+    dict(name="표준 대기 고잡음", weather_date=None, seed=307, sigma_r=50, sigma_ang_mrad=1.5, vehicle="mrbm"),
     # outside the training envelope (v0 > 1900 m/s, beta > 10000): the console's OOD guard hands the PINN request to the EKF
     dict(name="학습 범위 밖 표적 (고속 · 고β)", weather_date=None, seed=911, v0=2150, beta=14000),
+    # vehicle classes outside the training envelope, flown through a real jet-stream day
+    dict(name="관측 로켓 · 10/15 제트기류", weather_date="2026-10-15", weather_hour=0, seed=912, vehicle="sounding", h0=12000, v0=1700, gamma_deg=75, beta=1500),
+    dict(name="상단 낙하 잔해 · 10/15 제트기류", weather_date="2026-10-15", weather_hour=0, seed=913, vehicle="debris", h0=40000, v0=1200, gamma_deg=15, beta=400),
 ]
 
 

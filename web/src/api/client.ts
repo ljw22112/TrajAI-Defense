@@ -1,6 +1,6 @@
 // Thin typed client for the FastAPI server, with a read-only static "demo" adapter for GitHub Pages.
 import type {
-  Alert, Analysis, AnalysisIn, AnalysisRow, CustomAtm, CustomPreview, Raid, RaidRow, ThreatRow,
+  Alert, Analysis, AnalysisIn, AnalysisRow, CustomAtm, CustomPreview, Flight, Raid, RaidRow, ThreatRow,
   Asset, AssetIn, AuditRow, Estimate, Method, ModelVersion, Page, Scenario, ScenarioIn, ScenarioSummary, Stats, Token, User,
   Weather, WeatherCurves,
 } from "./types";
@@ -101,6 +101,7 @@ export const api = {
   scenarios: (p: { limit?: number; offset?: number; q?: string; weather?: boolean }) =>
     request<Page<ScenarioSummary>>("GET", DEMO ? "/api/scenarios" : `/api/scenarios${qs(p)}`),
   scenario: (id: number) => request<Scenario>("GET", `/api/scenarios/${id}`),
+  flight: (id: number) => request<Flight>("GET", `/api/scenarios/${id}/flight`),
   createScenario: (b: ScenarioIn) => request<Scenario>("POST", "/api/scenarios", b),
   deleteScenario: (id: number) => request<void>("DELETE", `/api/scenarios/${id}`),
   estimate: (id: number, method: Method) => request<Estimate>("POST", `/api/scenarios/${id}/estimates`, { method }),

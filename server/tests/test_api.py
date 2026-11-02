@@ -292,4 +292,26 @@ def test_ood_guard_score():
     assert estimation.ood_score([0.0, 0.0], g) == 0.0
     assert abs(estimation.ood_score([3.0, 0.0], g) - 3.0) < 1e-9          # Mahalanobis distance
     assert estimation.ood_score([0.0, 2.0], g) > g["threshold"]            # 2 * sqrt(4) = 4 -> flagged
-    assert estimation.guard_params("no-such-model") is None
+    other = estimation.guard_params("no-such-model")                     # no context guard -> EKF-state guard
+    assert other is None or other["input"] == "state"
+    env = {"keys": ["altitude_m", "speed_ms", "path_angle_deg", "ln_beta"], "lo": [1e4, 100, 0, 6], "hi": [9e4, 1600, 55, 9.2]}
+    assert estimation.outside_envelope([3e4, 900, 35, 7.8], env) == []
+    assert estimation.outside_envelope([4e4, 700, 69, 7.3], env) == ["path_angle_deg"]     # steep sounding-rocket climb
+
+
+def test_flight_replay_environment_and_events(scenarios, client, users):
+    s = client.post("/api/scenarios", json={"name": "srbm", "seed": 21, "vehicle": "srbm", "h0": 10000, "v0": 1000, "gamma_deg": 40, "beta": 900},
+                    headers=users["analyst"]).json()
+    assert s["vehicle"] == "srbm"
+    f = client.get(f"/api/scenarios/{s['id']}/flight", headers=users["viewer"]).json()
+    assert f["vehicle_label"].startswith("단거리") and f["atmosphere"] == "standard"
+    assert abs(f["impact_time"] - s["impact_time"]) < 0.05 and abs(max(f["z"]) - s["apogee"]) < 50   # same flight as stored
+    assert all(b > a for a, b in zip(f["t"], f["t"][1:])) and len(f["t"]) == len(f["mach"]) == len(f["rho_ratio"])
+    kinds = [e["kind"] for e in f["events"]]
+    assert kinds[0] == "start" and kinds[-1] == "impact" and "apogee" in kinds and "radar" in kinds
+    assert [e["t"] for e in f["events"]] == sorted(e["t"] for e in f["events"])
+    assert f["layers"]["tropopause"] == 11000.0 and f["layers"]["jet"] is None     # standard atmosphere: no wind
+    jet = client.get(f"/api/scenarios/{scenarios[1]['id']}/flight", headers=users["viewer"]).json()
+    assert jet["atmosphere"] == "weather" and max(jet["wind"]) > 0
+    assert client.get("/api/scenarios/999999/flight", headers=users["viewer"]).status_code == 404
+    assert client.post("/api/scenarios", json={"name": "x", "vehicle": "battleship"}, headers=users["analyst"]).status_code == 422
