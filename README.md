@@ -22,6 +22,7 @@
 pip install -r server/requirements.txt
 cd server && uvicorn app.main:app --reload       # API + 문서: http://127.0.0.1:8000/api/docs
 cd web && npm ci && npm run dev                   # 콘솔: http://127.0.0.1:5173  (admin@trajai.dev / admin1234)
+# (한 포트로 쓰려면 web에서 npm run build를 먼저 하고 서버를 시작: SPA를 http://127.0.0.1:8000/ 에서 서빙)
 
 # PostgreSQL + 단일 컨테이너
 export TRAJAI_JWT_SECRET=$(openssl rand -hex 32)

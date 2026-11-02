@@ -10,6 +10,8 @@
 - 교전 판단 시점 실험(decision_time.py, Table R8c, REQ-P-03), IMM·혁신 검정·기동 가설 CEP(maneuver.py, Table R14·R15, filters.imm)
 - 물리 손실 가중치 이어 학습(pinn_rts_ft_l1·l10, train.py --init-from, Table R10b, REQ-F-03). 불일치 재학습 모델 seed 1 쌍(pinn_rts_mm_s1, data_rts_mm_s1) 완료
 - 콘솔: 발사체 유형 선택(일반 유형 5종), 비행 재생과 환경 변화 타임라인(/api/scenarios/{id}/flight), 화면 테마(라이트·다크·밀리터리, scripts/check_contrast.py로 WCAG AA 점검), 학습 비행 범위 검사(OOD 가드 보강)
+- 비행 재생 확장: 추정기 예측 겹치기, 무풍 비교 바람 표류(위에서 본 화면), 보고서 §12 Fig. 9–10
+- 새로 받은 상태 재현 점검: 깨끗한 clone + venv에서 코어 22 · API 25 · 프론트 11 · E2E 13 통과, 시드 오프라인 동작. 그 과정에서 서빙 ONNX 모델과 기상 아카이브가 저장소에 없던 문제를 발견해 포함(약 23 MB)
 - 오류 점검: scripts/check_site.py(CI)로 본문 수치를 결과 JSON과 대조, 하드코딩 수치를 계산값으로 교체(1.29→1.28배, 4.1→4.2 km, seed 표준편차), 공개 데모의 E2E 잔여 데이터 제거
 
 ## 2026-10-30 (4차 세션, 완료)
