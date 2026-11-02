@@ -25,7 +25,17 @@ function lerp(f: Flight, key: keyof Flight, i: number, a: number) {
   return arr[i] + (arr[Math.min(i + 1, arr.length - 1)] - arr[i]) * a;
 }
 
-export function FlightReplay({ f }: { f: Flight }) {
+/** An estimator's forecast made at the end of radar tracking (t, downrange x, altitude z). */
+export interface Forecast { label: string; color: string; t: number[]; x: number[]; z: number[] }
+
+function at(ts: number[], vs: number[], v: number) {
+  if (v <= ts[0]) return vs[0];
+  if (v >= ts[ts.length - 1]) return vs[vs.length - 1];
+  const k = idxAt(ts, v), a = (v - ts[k]) / (ts[k + 1] - ts[k] || 1);
+  return vs[k] + (vs[k + 1] - vs[k]) * a;
+}
+
+export function FlightReplay({ f, forecasts = [] }: { f: Flight; forecasts?: Forecast[] }) {
   const T = f.t[f.t.length - 1];
   const [t, setT] = useState(0);
   const [playing, setPlaying] = useState(false);
@@ -54,7 +64,9 @@ export function FlightReplay({ f }: { f: Flight }) {
     const dx = f.x[f.x.length - 1], dy = f.y[f.y.length - 1], n = Math.hypot(dx, dy) || 1;
     return f.x.map((x, i) => (x * dx + f.y[i] * dy) / n);
   }, [f]);
-  const xmax = Math.max(...along) * 1.04, zmax = Math.max(f.apogee * 1.12, (f.layers.tropopause ?? 11000) * 1.3);
+  const dx0 = f.x[f.x.length - 1], dy0 = f.y[f.y.length - 1], cosA = dx0 / (Math.hypot(dx0, dy0) || 1) || 1;
+  const fc = forecasts.filter(e => e.t.length > 1).map(e => ({ ...e, a: e.x.map(x => x / cosA) }));
+  const xmax = Math.max(...along, ...fc.map(e => Math.max(...e.a))) * 1.04, zmax = Math.max(f.apogee * 1.12, (f.layers.tropopause ?? 11000) * 1.3);
   const sx = (v: number) => PL + (v / xmax) * (W - PL - PR);
   const sz = (v: number) => H - PB - (v / zmax) * (H - PT - PB);
 
@@ -78,6 +90,12 @@ export function FlightReplay({ f }: { f: Flight }) {
   const dx = f.x[f.x.length - 1], dy = f.y[f.y.length - 1], nn = Math.hypot(dx, dy) || 1;
   const barbs = f.column.z.map((z, k) => ({ z, w: (f.column.u[k] * dx + f.column.v[k] * dy) / nn, s: Math.hypot(f.column.u[k], f.column.v[k]) }))
     .filter((b, k) => k % 2 === 0 && b.z <= zmax && b.z > 0);
+  const showFc = t >= f.t_c && fc.length > 0;
+  const fcNow = fc.map(e => {
+    const ax = at(e.t, e.a, t), az = Math.max(0, at(e.t, e.z, t));
+    return { ...e, ax, az, err: Math.hypot(ax - cur.x, az - cur.z) };
+  });
+  const D = f.drift;
   const ticksZ = Array.from({ length: Math.floor(zmax / 10000) + 1 }, (_, k) => k * 10000);
   const tickStep = xmax > 300000 ? 100000 : xmax > 120000 ? 50000 : 20000;
   const ticksX = Array.from({ length: Math.floor(xmax / tickStep) + 1 }, (_, k) => k * tickStep);
@@ -122,12 +140,20 @@ export function FlightReplay({ f }: { f: Flight }) {
             return <circle key={k} cx={sx(along[ii])} cy={sz(f.z[ii])} r={e.t <= t ? 4.5 : 3.5} style={{ fill: e.t <= t ? KIND_COLOR[e.kind] : "var(--sheet)", stroke: KIND_COLOR[e.kind] }} className="fr-ev">
               <title>{`T+${fmt(e.t, 1)} s · ${e.title}`}</title></circle>;
           })}
+          {/* estimator forecasts made at the end of radar tracking */}
+          {showFc && fcNow.map(e => (
+            <g key={e.label} className="fr-fc" style={{ color: `var(${e.color})` }}>
+              <path d={e.a.map((x, k) => `${k ? "L" : "M"}${sx(x).toFixed(1)},${sz(Math.max(0, e.z[k])).toFixed(1)}`).join("")} />
+              <circle cx={sx(e.ax)} cy={sz(e.az)} r={4} />
+            </g>
+          ))}
           {/* vehicle */}
           <g transform={`translate(${sx(cur.x)},${sz(cur.z)}) rotate(${-ang})`} className="fr-veh">
             <path d="M12,0 L-8,-5 L-5,0 L-8,5 Z" />
           </g>
           {t >= T && <g className="fr-impact"><line x1={sx(along[along.length - 1]) - 6} x2={sx(along[along.length - 1]) + 6} y1={sz(0) - 6} y2={sz(0) + 6} /><line x1={sx(along[along.length - 1]) - 6} x2={sx(along[along.length - 1]) + 6} y1={sz(0) + 6} y2={sz(0) - 6} /></g>}
         </svg></div>
+        {D && <DriftView f={f} along={along} t={t} i={i} a={a} />}
         <div className="fr-ctl">
           <button type="button" className="btn sm" onClick={() => { if (t >= T) setT(0); setPlaying(p => !p); }}>{playing ? "일시정지" : t >= T ? "다시 재생" : "재생"}</button>
           <div className="fr-track">
@@ -155,7 +181,16 @@ export function FlightReplay({ f }: { f: Flight }) {
             <dt>바람</dt><dd>{f.atmosphere === "standard" ? "무풍 (표준 대기)" : `${fmt(cur.wind)} m/s · ${fmt(cur.dir)}°에서`}</dd>
             <dt>동압</dt><dd>{fmt(cur.q, 1)} kPa</dd>
             <dt>항력 감속</dt><dd>{fmt(cur.drag, 2)} g</dd>
+            {D && <><dt>바람 누적 표류</dt><dd>{fmt(D.offset_m[i])} m</dd></>}
           </dl>
+          {fc.length > 0 && (
+            <div className="fr-fcnow">
+              <span className="label">예측과 실제의 차이 (지금)</span>
+              {showFc ? fcNow.map(e => (
+                <div key={e.label}><i style={{ background: `var(${e.color})` }} />{e.label}<b className="mono">{fmt(e.err)} m</b></div>
+              )) : <small>레이더 관측이 끝나는 T+{fmt(f.t_c, 1)} s부터 추정기 예측 경로가 겹쳐집니다.</small>}
+            </div>
+          )}
         </div>
         {recent && (
           <div className="fr-callout" style={{ borderColor: KIND_COLOR[recent.kind] }}>
@@ -180,5 +215,36 @@ export function FlightReplay({ f }: { f: Flight }) {
         ))}
       </ol>
     </div>
+  );
+}
+
+/** Top-down view: the flight with and without wind (same temperature and density), crossrange exaggerated. */
+function DriftView({ f, along, t, i, a }: { f: Flight; along: number[]; t: number; i: number; a: number }) {
+  const D = f.drift!;
+  const h = 130, pl = PL, pr = PR, pt = 18, pb = 22;
+  const xmax = Math.max(...along, D.impact_calm[0]) * 1.04;
+  const ymax = Math.max(200, ...f.y.map(Math.abs), ...D.y.map(Math.abs)) * 1.3;
+  const X = (v: number) => pl + (v / xmax) * (W - pl - pr);
+  const Y = (v: number) => pt + (h - pt - pb) / 2 - (v / ymax) * ((h - pt - pb) / 2);
+  const line = (xs: number[], ys: number[], k1 = xs.length - 1) => xs.slice(0, k1 + 1).map((x, k) => `${k ? "L" : "M"}${X(x).toFixed(1)},${Y(ys[k]).toFixed(1)}`).join("");
+  const cx = f.x[i] + ((f.x[i + 1] ?? f.x[i]) - f.x[i]) * a, cy = f.y[i] + ((f.y[i + 1] ?? f.y[i]) - f.y[i]) * a;
+  const kx = D.x[i] + ((D.x[i + 1] ?? D.x[i]) - D.x[i]) * a, ky = D.y[i] + ((D.y[i + 1] ?? D.y[i]) - D.y[i]) * a;
+  const T = f.t[f.t.length - 1];
+  return (
+    <svg viewBox={`0 0 ${W} ${h}`} className="fr-svg fr-top" role="img"
+      aria-label={`위에서 본 궤적: 바람 때문에 탄착점이 ${fmt(D.shift_m)} m 이동`}>
+      <line x1={pl} x2={W - pr} y1={Y(0)} y2={Y(0)} className="fr-bound" />
+      <text x={pl} y={12} className="fr-lbl">위에서 본 궤적 (횡거리 과장, ±{fmt(ymax)} m)</text>
+      <text x={W - pr} y={12} className="fr-lbl" textAnchor="end">바람에 의한 탄착 이동 {fmt(D.shift_m)} m (하향 {D.shift_down_m >= 0 ? "+" : ""}{fmt(D.shift_down_m)} · 횡 {D.shift_cross_m >= 0 ? "+" : ""}{fmt(D.shift_cross_m)})</text>
+      <path d={line(D.x, D.y)} className="fr-calm" />
+      <path d={line(f.x, f.y)} className="fr-top-all" />
+      <path d={line(f.x, f.y, i)} className="fr-path-flown" />
+      <circle cx={X(kx)} cy={Y(ky)} r={3.5} className="fr-calm-dot" />
+      <circle cx={X(cx)} cy={Y(cy)} r={4.5} className="fr-now-dot" />
+      {t >= T && <>
+        <text x={X(D.impact_calm[0])} y={Y(D.impact_calm[1]) + 4} textAnchor="middle" className="fr-lbl">○</text>
+        <text x={X(f.x[f.x.length - 1])} y={Y(f.y[f.y.length - 1]) + 4} textAnchor="middle" className="fr-imp-x">×</text></>}
+      <text x={pl} y={h - 6} className="fr-tick">주황 = 실제(바람 있음) · 파란 점선 = 무풍이었다면 · 점 = 같은 시각의 위치</text>
+    </svg>
   );
 }

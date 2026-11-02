@@ -1,6 +1,7 @@
-data/
+data/*
+# monthly Open-Meteo downloads for the default engagement area: the demo and the weather experiments work offline
+!data/weather/
 checkpoints/
-export/
 __pycache__/
 *.pyc
 .pytest_cache/
@@ -10,4 +11,8 @@ results/baseline_*.npz
 web/node_modules/
 web/dist/
 server/trajai.db
-export/*.data
+
+# trained models: only the served ONNX files (and their external weights) are versioned (about 18 MB)
+export/*
+!export/*.onnx
+!export/*.onnx.data

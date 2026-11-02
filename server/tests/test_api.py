@@ -313,5 +313,9 @@ def test_flight_replay_environment_and_events(scenarios, client, users):
     assert f["layers"]["tropopause"] == 11000.0 and f["layers"]["jet"] is None     # standard atmosphere: no wind
     jet = client.get(f"/api/scenarios/{scenarios[1]['id']}/flight", headers=users["viewer"]).json()
     assert jet["atmosphere"] == "weather" and max(jet["wind"]) > 0
+    assert f["drift"] is None                                                      # no wind -> nothing to compare
+    d = jet["drift"]                                                               # same flight with the wind off
+    assert len(d["offset_m"]) == len(jet["t"]) and d["offset_m"][0] == 0 and d["shift_m"] > 100
+    assert abs(d["shift_m"] - (d["shift_down_m"] ** 2 + d["shift_cross_m"] ** 2) ** 0.5) < 1
     assert client.get("/api/scenarios/999999/flight", headers=users["viewer"]).status_code == 404
     assert client.post("/api/scenarios", json={"name": "x", "vehicle": "battleship"}, headers=users["analyst"]).status_code == 422

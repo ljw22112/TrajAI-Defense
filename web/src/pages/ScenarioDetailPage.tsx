@@ -123,7 +123,8 @@ export function ScenarioDetailPage() {
         <Stat label="최선 IP 오차" value={s.best_miss_m === null ? "—" : fmt(s.best_miss_m)} unit="m" tone="acc" />
       </div>
       <Card title={`비행 재생과 환경 변화${flight.data ? ` · ${flight.data.vehicle_label}` : ""}`} aside={<small className="label">점 = 환경이 바뀌는 순간 · 목록을 누르면 그 시각으로 이동</small>}>
-        {flight.isLoading ? <Spinner label="비행 경로의 대기 계산 중" /> : flight.error ? <ErrorBox error={flight.error} /> : flight.data && <FlightReplay f={flight.data} />}
+        {flight.isLoading ? <Spinner label="비행 경로의 대기 계산 중" /> : flight.error ? <ErrorBox error={flight.error} /> : flight.data && <FlightReplay f={flight.data} forecasts={latest.filter(e => e.trajectory?.t?.length).map(e => ({
+          label: METHOD_LABEL[e.method] + (e.trajectory.guard?.fallback ? " (→ EKF)" : ""), color: METHOD_COLOR[e.method], t: e.trajectory.t, x: e.trajectory.x, z: e.trajectory.z }))} />}
       </Card>
       <div className="grid g2 g57">
         <Card title="측면 궤적 (고도–하향거리)" className="span2">

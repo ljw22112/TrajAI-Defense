@@ -15,8 +15,9 @@ COPY server/requirements.txt server/requirements.txt
 RUN pip install -r server/requirements.txt
 COPY trajai/ trajai/
 COPY server/ server/
-COPY results/metrics.json results/metrics.json
+COPY results/metrics.json results/feedback_rts.json results/calibration.json results/ood_guard_params.json results/
 COPY export/ export/
+COPY data/weather/ data/weather/
 COPY --from=web /web/dist web/dist
 RUN useradd --create-home app && chown -R app /srv
 USER app

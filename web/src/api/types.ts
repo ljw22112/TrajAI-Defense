@@ -53,6 +53,7 @@ export interface Flight {
   layers: { tropopause: number; jet: { bottom: number; top: number; peak: number; peak_alt: number } | null; thin_air: number | null };
   column: { z: number[]; u: number[]; v: number[]; temp_c: number[] };
   t_c: number; impact_time: number; apogee: number; events: FlightEvent[];
+  drift: { x: number[]; y: number[]; impact_calm: [number, number]; shift_m: number; shift_down_m: number; shift_cross_m: number; offset_m: number[]; impact_time_calm: number } | null;
 }
 export interface ModelVersion { id: number; name: string; kind: string; uses_weather: boolean; metrics: Record<string, any>; is_active: boolean; created_at: string }
 export interface MethodStat { method: Method; model?: string | null; n: number; median_miss_m: number | null; coverage: number | null; median_latency_ms: number | null }

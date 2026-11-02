@@ -11,8 +11,8 @@
 
 연구 코드를 감싼 웹 애플리케이션입니다 (풀스택 프로그래밍 과제).
 
-- **프론트엔드** `web/`: React 18 + TypeScript (strict) + Vite + TanStack Query. 대시보드(교전 우선순위, 위협 알림), 시나리오 생성(표준·일자 기상·**기온·습도·기압·바람·날씨 직접 설정**), 상세·실시간 재생(WebSocket, PINN 예측 갱신), 환경·센서 분석(기상 영향·자료 지연·센서 조건·환경 민감도), 다표적 교전 타임라인, 시나리오 비교, PDF 저장, 자산 CRUD, 모델 레지스트리, 사용자·감사 로그
-- **백엔드** `server/`: FastAPI + Pydantic v2. REST 37개 + WebSocket 2개, JWT 인증과 로그인 실패 제한, 추정 결과 CSV 내보내기, viewer / analyst / admin 역할, 감사 로그, OpenAPI 문서 `/api/docs`
+- **프론트엔드** `web/`: React 18 + TypeScript (strict) + Vite + TanStack Query. 대시보드(교전 우선순위, 위협 알림), 시나리오 생성(표준·일자 기상·**기온·습도·기압·바람·날씨 직접 설정**), 발사체 유형 선택, 상세·비행 재생(환경 변화 타임라인, 추정기 예측 겹치기, 바람 표류), 실시간 재생(WebSocket, PINN 예측 갱신), 환경·센서 분석(기상 영향·자료 지연·센서 조건·환경 민감도), 다표적 교전 타임라인, 시나리오 비교, PDF 저장, 화면 테마(라이트·다크·밀리터리), 자산 CRUD, 모델 레지스트리, 사용자·감사 로그
+- **백엔드** `server/`: FastAPI + Pydantic v2. REST 38개(health 제외) + WebSocket 2개, JWT 인증과 로그인 실패 제한, 추정 결과 CSV 내보내기, viewer / analyst / admin 역할, 감사 로그, OpenAPI 문서 `/api/docs`
 - **데이터베이스**: PostgreSQL 16 (개발·테스트는 SQLite), SQLAlchemy 2.0, Alembic 마이그레이션, 11개 테이블
 - **정적 데모**: https://ljw22112.github.io/TrajAI-Defense/app/ (실제 서버 스냅샷, 읽기 전용)
 - **설계 문서**: [docs/architecture.md](docs/architecture.md) (구성도, ERD, 시퀀스, 보안, 테스트 전략)
@@ -22,14 +22,17 @@
 pip install -r server/requirements.txt
 cd server && uvicorn app.main:app --reload       # API + 문서: http://127.0.0.1:8000/api/docs
 cd web && npm ci && npm run dev                   # 콘솔: http://127.0.0.1:5173  (admin@trajai.dev / admin1234)
+# (한 포트로 쓰려면 web에서 npm run build를 먼저 하고 서버를 시작: SPA를 http://127.0.0.1:8000/ 에서 서빙)
 
 # PostgreSQL + 단일 컨테이너
 export TRAJAI_JWT_SECRET=$(openssl rand -hex 32)
 docker compose up --build                         # http://localhost:8000
+# 데모 데이터 (기상 제공자의 요청 제한에 걸리면 65초 기다렸다 다시 시도하므로 몇 분 걸릴 수 있음)
+python server/scripts/seed_demo.py --base http://127.0.0.1:8000
 
 # 테스트
 python -m pytest -q tests server/tests            # 코어 22 + API 25
-cd web && npm test                                # 프론트엔드 9
+cd web && npm test                                # 프론트엔드 11
 E2E_BASE=http://127.0.0.1:8000 python -m pytest e2e   # Playwright 13 (서버 실행 + seed_demo.py 필요, 만든 데이터는 끝나고 삭제)
 ```
 
