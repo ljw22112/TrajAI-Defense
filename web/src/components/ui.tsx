@@ -33,11 +33,12 @@ export function Term({ k, children }: { k: string; children?: ReactNode }) {
   return def ? <abbr className="term" title={def} tabIndex={0}>{children ?? k}</abbr> : <>{children ?? k}</>;
 }
 
-export function Stat({ label, value, unit, tone }: { label: string; value: string; unit?: string; tone?: "acc" | "ok" }) {
+export function Stat({ label, value, unit, tone, note }: { label: string; value: string; unit?: string; tone?: "acc" | "ok"; note?: ReactNode }) {
   return (
     <div className="stat">
       <span className="label">{label}</span>
       <span className={`stat-v ${tone ?? ""}`}>{value}{unit && <small> {unit}</small>}</span>
+      {note && <span className="stat-note">{note}</span>}
     </div>
   );
 }

@@ -14,7 +14,7 @@ export function ModelsPage() {
   return (
     <div className="page">
       <PageHead kicker="Model registry" title="모델 레지스트리">
-        ONNX로 배포된 PINN 모델과 오프라인 평가 지표입니다. 활성 모델이 "PINN 하이브리드" 추정에 쓰입니다. 지표는 각 시험 분할 1,000개 궤적의 IP 오차 중앙값(m)과 CEP 포함률입니다.
+        ONNX로 배포된 PINN 모델과 오프라인 평가 지표입니다. 활성 모델이 "PINN" 추정에 쓰입니다(표준 대기 시나리오는 표준 대기 모델로 자동 전환). 지표는 각 시험 분할 1,000개 궤적의 IP 오차 중앙값(m)과 CEP 포함률입니다.
       </PageHead>
       <ErrorBox error={q.error || act.error} />
       {q.isLoading ? <Spinner /> : !q.data?.length ? <Empty>등록된 모델이 없습니다. scripts/export_onnx.py로 모델을 내보내세요.</Empty> : q.data.map(m => (
@@ -26,7 +26,7 @@ export function ModelsPage() {
         }>
           <p className="ph-sub" style={{ margin: 0 }}>{m.kind} · 등록 {new Date(m.created_at).toLocaleDateString("ko-KR")}</p>
           <div className="tw">
-            <table>
+            <table className="fixed">
               <thead><tr><th>지표</th>{SPLITS.map(([, l]) => <th key={l} className="n">{l}</th>)}</tr></thead>
               <tbody>
                 <tr><td>IP 오차 중앙값</td>{SPLITS.map(([k]) => <td key={k} className="n">{m.metrics[k] ? `${fmt(m.metrics[k].miss.median)} m` : "—"}</td>)}</tr>

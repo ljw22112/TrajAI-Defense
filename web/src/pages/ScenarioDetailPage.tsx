@@ -111,12 +111,12 @@ export function ScenarioDetailPage() {
       <ErrorBox error={run.error || del.error} />
       {run.isPending && <Spinner label="추정 실행 중" />}
       <div className="grid g4">
-        <Stat label="관측 종료" value={`T+${fmt(s.t_c, 1)}`} unit={`s · 측정 ${s.measurements.length}개`} />
-        <Stat label="실제 ToT" value={fmt(s.impact_time, 1)} unit="s" />
-        <Stat label="실제 탄착점" value={`${km(s.impact_x)}, ${km(s.impact_y)}`} unit="km" />
+        <Stat label="관측 종료" value={`T+${fmt(s.t_c, 1)}`} unit="s" note={`측정 ${s.measurements.length}개 수신`} />
+        <Stat label="실제 ToT" value={fmt(s.impact_time, 1)} unit="s" note={`관측 종료 후 ${fmt(s.impact_time - s.t_c, 0)} s`} />
+        <Stat label="실제 탄착점" value={`${km(s.impact_x)}, ${km(s.impact_y)}`} unit="km" note="하향거리, 횡거리" />
         <Stat label="최선 IP 오차" value={s.best_miss_m === null ? "—" : fmt(s.best_miss_m)} unit="m" tone="acc" />
       </div>
-      <div className="grid g2">
+      <div className="grid g2 g57">
         <Card title="측면 궤적 (고도–하향거리)" className="span2">
           <Plot series={sideSeries} xLabel="하향거리 x (km)" yLabel="고도 h (km)" height={340} ariaLabel="측면 궤적: 실제, 측정, 추정" />
           <Legend items={[{ label: "실제 궤적", color: "--truth", dash: true }, { label: "레이더 측정", color: "--obs" },

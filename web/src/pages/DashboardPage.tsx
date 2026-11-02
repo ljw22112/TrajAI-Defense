@@ -43,7 +43,7 @@ export function DashboardPage() {
           <div className="grid g4">
             <Stat label="시나리오" value={fmt(s.scenarios)} />
             <Stat label="추정 실행" value={fmt(s.estimates)} />
-            <Stat label="최선 추정기 (IP 오차 중앙값)" value={best ? fmt(best.median_miss_m) : "—"} unit={best ? `m · ${label(best)}` : ""} tone="acc" />
+            <Stat label="최선 추정기 (IP 오차 중앙값)" value={best ? fmt(best.median_miss_m) : "—"} unit={best ? "m" : ""} tone="acc" note={best ? label(best) : undefined} />
             <Stat label="캐시된 기상 프로파일" value={fmt(s.weather_profiles)} />
           </div>
           <Card title="교전 우선순위 (시나리오별 최신·최정확 추정 기준)" aside={<small className="label">위협 등급 → 탄착 확률 → 남은 시간 순</small>}>

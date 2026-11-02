@@ -60,7 +60,7 @@ export const METHOD_LABEL: Record<Method, string> = {
   ekf_std: "EKF · 표준 대기",
   ekf_wx: "EKF · 일자 기상",
   ukf_wx: "UKF · 일자 기상",
-  pinn: "PINN 하이브리드",
+  pinn: "PINN",
   ekf_pinn: "EKF · PINN β 사전",
 };
 

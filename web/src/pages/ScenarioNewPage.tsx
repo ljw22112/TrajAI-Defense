@@ -83,9 +83,9 @@ export function ScenarioNewPage() {
           </div>
         </Card>
         <Card title="대기 · 환경" aside={
-          <div className="toolbar" role="radiogroup" aria-label="대기 모델">
+          <div className="seg" role="radiogroup" aria-label="대기 모델">
             {([["standard", "표준 대기"], ["date", "일자 기상 (API)"], ["custom", "직접 설정"]] as const).map(([k, l]) => (
-              <label key={k} className="chk"><input type="radio" name="atm-mode" checked={mode === k} onChange={() => setMode(k)} /> {l}</label>
+              <label key={k}><input type="radio" name="atm-mode" checked={mode === k} onChange={() => setMode(k)} /> {l}</label>
             ))}
           </div>
         }>
