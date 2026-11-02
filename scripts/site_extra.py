@@ -182,11 +182,16 @@ def mismatch_block():
         a, b = Mm["test_mm_cd"], Mm["test_mm_lift"]
         best = min(("pinn_rts_mm", "data_rts_mm"), key=lambda k: a[k]["miss"] + b[k]["miss"])
         dcd, dlf = a["pinn_rts_mm"]["miss"] - a["data_rts_mm"]["miss"], b["pinn_rts_mm"]["miss"] - b["data_rts_mm"]["miss"]
+        s1 = all(k in a for k in ("pinn_rts_mm_s1", "data_rts_mm_s1"))
+        if s1:
+            d1cd, d1lf = a["pinn_rts_mm_s1"]["miss"] - a["data_rts_mm_s1"]["miss"], b["pinn_rts_mm_s1"]["miss"] - b["data_rts_mm_s1"]["miss"]
+            same = (dcd < 0) == (d1cd < 0) and (dlf < 0) == (d1lf < 0)
         beats = [s for s, M_ in (("Cd(M) 곡선 오차", a), ("약한 양력", b)) if M_[best]["miss"] < min(M_["ekf"]["miss"], M_["ukf"]["miss"])]
         retrain = (f' 불일치가 섞인 데이터(2만 개)로 다시 학습하면 {MMLAB[best]}이 Cd 오차 {f0(a[best]["miss"])} m, 양력 {f0(b[best]["miss"])} m로, '
                    + (f'{", ".join(beats)}에서 EKF·UKF보다 정확해집니다. 필터는 모르는 동역학을 신경망은 데이터에서 배울 수 있다는, 이 연구에서 신경망이 필터를 앞서는 첫 조건입니다.' if beats else 'EKF·UKF보다는 여전히 부정확합니다.')
                    + (" 또한" if beats else " 대신") + f' 불확실성은 훨씬 정직해져 양력에서 CEP 포함률이 {b[best]["coverage"]:.2f}까지 오릅니다(공칭 학습 {b["pinn_tf_v2_rts"]["coverage"]:.2f}).'
                    + f' 물리 손실(공칭 모델 기준)이 있는 모델과 없는 모델의 차이는 Cd 오차 {dcd:+,.0f} m, 양력 {dlf:+,.0f} m(PINN − data only)입니다.'
+                   + (f' 학습 seed를 바꾼 두 번째 쌍에서도 {d1cd:+,.0f} m, {d1lf:+,.0f} m로 {"부호가 같습니다. seed 2쌍뿐이라 확정은 아니지만 학습 무작위성만으로 보기는 어렵습니다" if same else "부호가 바뀌어 학습 무작위성 수준입니다"}(두 번째 쌍의 PINN도 Cd {f0(a["pinn_rts_mm_s1"]["miss"])} m, 양력 {f0(b["pinn_rts_mm_s1"]["miss"])} m로 필터보다 부정확).' if s1 else '')
                    + (' 실제 동역학과 다른 공칭 물리를 강제하면 손해가 된다는 점은 PINN 설계의 주의점입니다.' if dcd > 0 and dlf > 0 else
                       ' 공칭 물리가 실제와 조금 달라도 물리 손실은 해가 되지 않고 오히려 도움이 되었습니다(궤적 모양의 큰 틀은 여전히 맞기 때문으로 보입니다).' if dcd <= 0 and dlf <= 0 else
                       ' 효과의 방향이 오차 종류에 따라 갈려, 틀린 공칭 물리의 득실은 단정할 수 없습니다.')

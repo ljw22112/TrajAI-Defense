@@ -71,7 +71,7 @@ if OOD:
     claim(r"OOD 오차 ([\d.]+) → [\d.]+ km", OOD["guard"]["test_ood"]["network"] / 1000, 0.01, "RQ5 OOD before")
     claim(r"OOD 오차 [\d.]+ → ([\d.]+) km", OOD["guard"]["test_ood"]["latent"]["miss"] / 1000, 0.02, "RQ5 OOD after")
 if MM:
-    cov = [v["coverage"] for k, v in MM["test_mm_lift"].items() if not k.endswith("_mm")]
+    cov = [v["coverage"] for k, v in MM["test_mm_lift"].items() if "_mm" not in k]
     claim(r"과신\(포함률 ([\d.]+)–", min(cov), 0.03, "RQ5 lift coverage min")
     claim(r"과신\(포함률 [\d.]+–([\d.]+)\)", max(cov), 0.03, "RQ5 lift coverage max")
 if MM and "pinn_rts_mm" in MM["test_mm_lift"]:
@@ -85,6 +85,13 @@ if "pinn_rts_ft_l10" in M:
     claim(r"서빙 모델 ([\d.]+) g \(ID 10%\)", M["pinn_tf_v2_rts"]["test_id_f10"]["phys_rms_g"]["median"], 0.01, "REQ-F-03 served residual")
     claim(r"λ = 10 이어 학습으로 ([\d.]+) g까지", M["pinn_rts_ft_l10"]["test_id_f10"]["phys_rms_g"]["median"], 0.01, "REQ-F-03 lambda 10 residual")
     claim(r"IP 오차가 대조 대비 (\d+)% 커짐", (M["pinn_rts_ft_l10"]["test_id_f10"]["miss"]["median"] / M["pinn_rts_ft_l1"]["test_id_f10"]["miss"]["median"] - 1) * 100, 0.03, "REQ-F-03 accuracy cost")
+if MM and "pinn_rts_mm_s1" in MM["test_mm_cd"]:
+    for sp, nm in (("test_mm_cd", "Cd"), ("test_mm_lift", "양력")):
+        r = MM[sp]
+        for i, suf in enumerate(("", "_s1")):
+            v = r["pinn_rts_mm" + suf]["miss"] - r["data_rts_mm" + suf]["miss"]
+            pat = rf"{nm} −([\d,]+)·−[\d,]+ m" if i == 0 else rf"{nm} −[\d,]+·−([\d,]+) m"
+            claim(pat, -v, 0.02, f"README seed pair {i} {nm}", readme)
 MN = load("maneuver.json")
 if MN:
     claim(r"기동 가설을 넣으면 포함률 ([\d.]+)까지", MN["robust"]["test_mm_lift"]["0.10"]["coverage"], 0.02, "RQ5 manoeuvre-hypothesis coverage")
