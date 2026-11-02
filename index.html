@@ -1167,7 +1167,7 @@ python -m pytest -q tests server/tests</code></pre>
       <thead><tr><th>계층</th><th>기술</th><th>구현 내용</th></tr></thead>
       <tbody>
         <tr><td>프론트엔드</td><td class="c">React 18 · TypeScript (strict) · Vite · TanStack Query</td><td>대시보드(교전 우선순위, 추정기·모델별 성능), 시나리오 생성(위치·일자별 기상 미리보기), 상세·탄착 영역·실시간 재생, 기상 영향 분석, 자산 CRUD, 모델 레지스트리, 사용자·감사 로그. 용어 툴팁, 첫 방문 안내, 역할에 따라 메뉴와 버튼을 숨김</td></tr>
-        <tr><td>백엔드</td><td class="c">FastAPI · Pydantic v2 · PyJWT · bcrypt</td><td>REST 37개(health 제외) + WebSocket 2개(실시간 재생, 위협 알림) 엔드포인트, OAuth2 JWT 인증, 로그인 실패 제한(5회/5분, HTTP 429), 추정 결과 CSV 내보내기, 3단계 역할(viewer·analyst·admin), 소유권 검사, 감사 로그, OpenAPI 자동 문서</td></tr>
+        <tr><td>백엔드</td><td class="c">FastAPI · Pydantic v2 · PyJWT · bcrypt</td><td>REST 38개(health 제외) + WebSocket 2개(실시간 재생, 위협 알림) 엔드포인트, OAuth2 JWT 인증, 로그인 실패 제한(5회/5분, HTTP 429), 추정 결과 CSV 내보내기, 3단계 역할(viewer·analyst·admin), 소유권 검사, 감사 로그, OpenAPI 자동 문서</td></tr>
         <tr><td>데이터베이스</td><td class="c">PostgreSQL 16 · SQLAlchemy 2.0 · Alembic</td><td>11개 테이블(사용자, 자산, 기상 캐시, 시나리오, 측정, 추정, 위협 평가, 모델 버전, 환경·센서 분석, 동시 공격, 감사 로그), FK·CHECK·UNIQUE 제약, JSONB, 왕복 검증한 마이그레이션</td></tr>
         <tr><td>모델 서빙</td><td class="c">ONNX Runtime</td><td>모델 레지스트리의 PINN(기상 입력 하이브리드, 표준 대기 시나리오에는 RTS 입력 PINN, 앙상블 ×3)을 동적 트랙 길이로 서빙(PyTorch 대비 오차 4 cm 이내). 기상 없는 시나리오는 표준 대기 모델로 자동 대체, CEP는 split-conformal 계수로 보정</td></tr>
         <tr><td>외부 연동</td><td class="c">Open-Meteo</td><td>기압면 자료를 (시각, 위치) 키로 캐시, 일시적 오류 재시도, 429 제한 시 503으로 안내</td></tr>
@@ -1201,6 +1201,10 @@ python -m pytest -q tests server/tests</code></pre>
       </tbody>
     </table>
   </div>
+  <figure><div class="sheet fig-img"><img src="figures/console_replay.png" alt="운용 콘솔 비행 재생: 대기층과 제트기류 위를 움직이는 발사체, 추정기 예측 경로, 위에서 본 바람 표류, 환경 변화 목록" loading="lazy"></div>
+    <figcaption><b>Fig. 9</b>운용 콘솔의 비행 재생 (시나리오 "10/15 00Z 제트기류", T+165 s 최대 동압 시점). 위: 대기층(대류권·성층권·희박 대기)과 제트기류 띠 위의 실제 궤적, 레이더 관측 구간(청록), 관측 종료 시점에 각 추정기가 낸 예측 경로(점선)와 같은 시각의 예측 위치. 가운데: 같은 비행을 바람만 끄고 다시 적분한 경로(파란 점선)와 비교한 표류, 이 날 바람은 탄착점을 하향거리로 약 2 km 밀었습니다. 오른쪽: 그 순간의 고도·마하·기온·밀도·바람과 예측–실제 차이. 아래: 환경이 바뀌는 시각 목록.</figcaption></figure>
+  <figure><div class="sheet fig-img"><img src="figures/console_themes.png" alt="같은 화면의 라이트, 다크, 밀리터리 테마" loading="lazy"></div>
+    <figcaption><b>Fig. 10</b>화면 테마 (왼쪽부터 라이트 · 다크 · 밀리터리). 색은 테마별 토큰으로만 정의하고, 모든 글자·배경 쌍이 WCAG 대비 4.5:1 이상인지 CI에서 검사합니다.</figcaption></figure>
 <div class="tw">
     <table>
       <caption><b>Table 15</b>테스트</caption>
