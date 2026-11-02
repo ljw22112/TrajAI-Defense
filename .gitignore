@@ -1,4 +1,6 @@
-data/
+data/*
+# monthly Open-Meteo downloads for the default engagement area: the demo and the weather experiments work offline
+!data/weather/
 checkpoints/
 __pycache__/
 *.pyc
