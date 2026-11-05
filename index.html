@@ -1409,12 +1409,28 @@ const $=id=>document.getElementById(id);
 const LEV=[1000,925,850,700,600,500,400,300,250,200,150,100,70,50,30,20,10];
 function ussaT(h){h=Math.max(0,h); if(h<11000) return 288.15-0.0065*h; if(h<20000) return 216.65; if(h<32000) return 216.65+0.001*(h-20000); if(h<47000) return 228.65+0.0028*(h-32000); return 270.65}
 function interp(x,xs,ys){if(x<=xs[0]) return ys[0]; for(let i=1;i<xs.length;i++){if(x<=xs[i]){const f=(x-xs[i-1])/(xs[i]-xs[i-1]); return ys[i-1]+f*(ys[i]-ys[i-1])}} return ys[ys.length-1]}
+let WXINDEX=null;
+async function archivedDay(date){
+  try{
+    if(!WXINDEX) WXINDEX=await (await fetch('data/weather/index.json')).json();
+    const f=WXINDEX.files.find(e=>e.start<=date && date<=e.end); if(!f) return null;
+    const H=(await (await fetch('data/weather/'+f.file)).json()).hourly, i0=H.time.indexOf(date+'T00:00'); if(i0<0) return null;
+    const out={}; for(const key in H) out[key]=H[key].slice(i0,i0+24); return out;
+  }catch(e){ return null }
+}
 async function loadWeather(date,hourUTC){
   const v=LEV.flatMap(l=>['temperature','wind_speed','wind_direction','geopotential_height'].map(q=>q+'_'+l+'hPa')).join(',');
-  const url=`https://historical-forecast-api.open-meteo.com/v1/forecast?latitude=36.5&longitude=127.5&start_date=${date}&end_date=${date}&hourly=${v}&wind_speed_unit=ms&timezone=GMT`;
-  const js=await (await fetch(url)).json();
-  if(!js.hourly) throw new Error(js.reason||'no data');
-  const k=hourUTC, H=js.hourly, z=[],T=[],u=[],w=[],p=[];
+  // 1) the archived monthly downloads shipped with this site (no network limits), 2) the Open-Meteo API
+  let H=await archivedDay(date);
+  if(!H){
+    const url=`https://historical-forecast-api.open-meteo.com/v1/forecast?latitude=36.5&longitude=127.5&start_date=${date}&end_date=${date}&hourly=${v}&wind_speed_unit=ms&timezone=GMT`;
+    const r=await fetch(url);
+    if(r.status===429) throw new Error('기상 제공자 요청 한도 초과, 잠시 뒤 다시 시도');
+    const js=await r.json();
+    if(!js.hourly) throw new Error(js.reason||'no data');
+    H=js.hourly;
+  }
+  const k=hourUTC, z=[],T=[],u=[],w=[],p=[];
   LEV.forEach(l=>{const zz=H['geopotential_height_'+l+'hPa'][k], tt=H['temperature_'+l+'hPa'][k], ss=H['wind_speed_'+l+'hPa'][k], dd=H['wind_direction_'+l+'hPa'][k]*Math.PI/180;
     if(zz==null||tt==null||ss==null) throw new Error('missing level '+l); z.push(zz); T.push(tt+273.15); u.push(-ss*Math.sin(dd)); w.push(-ss*Math.cos(dd)); p.push(l*100)});
   const top=z[z.length-1], Tg=new Float64Array(NG), Pg=new Float64Array(NG), Ug=new Float64Array(NG), Vg=new Float64Array(NG);
