@@ -39,7 +39,7 @@ def rts_retrain_block(base="pinn_tf_v2", rts="pinn_tf_v2_rts"):
            "고잡음 조건에서는 이 PINN 단독이 EKF + MC(629 m)보다 정확하고, ID 15%에서는 EKF 사후 상태를 받는 하이브리드(428 m)보다도 정확합니다. 관측이 5%로 아주 짧으면 평활할 구간 자체가 짧아 이득이 없습니다." if wins >= len(splits) / 2 else
            "입력 특징이 훨씬 정확해졌는데도 예측 정확도 이득이 제한적이므로, 이 모델의 오차는 입력 잡음보다 짧은 관측에서의 외삽(β 불확실성)에서 주로 온다고 볼 수 있습니다.")
     body = "\n".join("        " + r for r in rows).strip()
-    return ('</div>\n  <div class="tw">\n    <table>\n'
+    return ('</div>\n  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">\n    <table>\n'
             '      <caption><b>Table R8b</b>PINN-Transformer, 입력 특징만 Savitzky–Golay → RTS 평활로 바꿔 같은 seed·같은 설정으로 다시 학습: '
             'IP 오차 중앙값 [m], 차이의 95% CI, 물리 잔차 RMS [g], ADE [m]</caption>\n'
             '      <thead><tr><th>분할</th><th class="n">IP 오차</th><th class="n">Δ 중앙값</th><th class="n">물리 잔차</th><th class="n">ADE</th><th>판정 (Wilcoxon, Bonferroni)</th></tr></thead>\n'
@@ -81,7 +81,7 @@ def ood_block():
   <div class="prose">
     <p>§9.2·§9.7에서 신경망은 학습 범위 밖(OOD)에서 10 km 이상 틀리면서도 그 사실을 알리지 못했습니다. 그래서 예측마다 "학습 데이터와 얼마나 다른가"를 재고, 기준을 넘으면 신경망 대신 EKF 결과를 쓰는 장치를 붙였습니다. 기준은 검증 분할 점수의 {O["threshold_quantile"] * 100:.0f}번째 백분위수(정상 트랙의 약 {100 - O["threshold_quantile"] * 100:.0f}%가 넘는 값)이며 시험 자료는 쓰지 않았습니다.</p>
   </div>
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table R11</b>감지 점수별 AUROC(정상 ID 10·15% 트랙 대비)와 괄호 안의 감지율</caption>
       <thead><tr><th>점수</th><th class="n">OOD (고속·고β)</th><th class="n">Cd(M) 곡선 오차</th><th class="n">약한 양력</th></tr></thead>
@@ -90,7 +90,7 @@ def ood_block():
       </tbody>
     </table>
   </div>
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table R12</b>RTS 입력 PINN 단독, EKF, 내부 표현 감지로 전환하는 전략: IP 오차 중앙값 / p90 [m], EKF로 넘긴 비율</caption>
       <thead><tr><th>분할</th><th class="n">신경망</th><th class="n">EKF</th><th class="n">감지 + 전환</th><th class="n">전환 비율</th></tr></thead>
@@ -130,7 +130,7 @@ def maneuver_block():
     mlc = f'{_mm["pinn_rts_mm"]["coverage"]:.2f}' if "pinn_rts_mm" in _mm else "—"
     n0, n1 = rb["test_id_f10"]["0.00"], rb["test_id_f10"]["0.10"]
     return f"""
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table R14</b>정점 이후까지 추적(관측 {R["frac"] * 100:.0f}%, 최대 100 s, 정점 통과 트랙 {nom["past_apogee"]:.0%}): IP 오차 중앙값 [m]과 CEP 포함률, 혁신(NIS) 검정 감지율과 AUROC</caption>
       <thead><tr><th>실제 비행</th><th class="n">EKF</th><th class="n">IMM (탄도 + 기동 모드)</th><th class="n">감지율 (오경보 기준 5%)</th><th class="n">AUROC</th></tr></thead>
@@ -139,7 +139,7 @@ def maneuver_block():
       </tbody>
     </table>
   </div>
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table R15</b>기동 가설 CEP: Monte Carlo 입자마다 L/D ~ U(0, 상한)의 양력을 무작위 부호로 넣어 전파. CEP 중앙값 [m] / 포함률, 관측 12%</caption>
       <thead><tr><th>가정한 기동</th><th class="n">공칭 (ID 10%)</th><th class="n">약한 양력</th><th class="n">Cd(M) 곡선 오차</th></tr></thead>
@@ -205,7 +205,7 @@ def mismatch_block():
   <div class="prose">
     <p>지금까지의 시험은 EKF와 데이터 생성기가 같은 동역학을 써서 필터에 유리했습니다(§9.10의 "inverse crime"). 실제 표적은 공칭 모델과 다르게 날기 때문에, 실제 비행에만 두 가지 오차를 넣은 시험 분할(각 1,000회, 관측 12%)을 만들었습니다. 추정기는 모두 공칭 모델을 그대로 씁니다. (1) Cd(M) 곡선 모양 오차: 천음속 정점과 초음속 꼬리를 궤적마다 ±25% 독립적으로 바꿉니다. Cd 전체에 같은 배율을 곱하는 오차는 β로 흡수되므로 불일치가 아닙니다. (2) 약한 양력 기동: 정점 이후 L/D 0.03–0.10의 횡방향 양력. 탄착점은 공칭 비행 대비 중앙값 약 {sh['test_mm_cd'] / 1000:.1f} km(Cd), {sh['test_mm_lift'] / 1000:.1f} km(양력) 움직입니다.</p>
   </div>
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table R13</b>모델 불일치에서의 IP 오차 중앙값 [m], 괄호는 EKF 대비 배율, CEP 포함률 (Cd / 양력)</caption>
       <thead><tr><th>추정기</th><th class="n">불일치 없음 (ID 10%)</th><th class="n">Cd(M) 곡선 오차</th><th class="n">약한 양력</th><th class="n">포함률</th></tr></thead>
@@ -233,7 +233,7 @@ def decision_block():
     c, raw = D["radii"]["cal"]["300"], D["radii"]["raw"]
     cuts = D["per_cut"]
     return f"""
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table R8c</b>교전 판단 시점: 같은 {D["n"]}개 비행을 관측 {cuts[0]["frac"] * 100:.0f}–{cuts[-1]["frac"] * 100:.0f}%에서 잘라, CEP<sub>50</sub> ≤ R이 처음 되는 시점에 판단. EKF → EKF + PINN β 사전</caption>
       <thead><tr><th>CEP</th><th class="n">R [m]</th><th class="n">판단 가능 비율</th><th class="n">판단 시 남은 시간 중앙값 [s]</th><th class="n">앞당긴 시간 중앙값 / 평균 [s]</th><th class="n">빨라진 / 늦어진 비율</th></tr></thead>
@@ -269,7 +269,7 @@ def feedback_block():
   <div class="prose">
     <p>Table 6에서 계획으로 남겼던 결합의 나머지 방향을 구현했습니다. 트랙만 보는 PINN(<code>{fb["model"]}</code>, EKF 입력 없음)이 예측한 ln β를 EKF의 사전분포로 넣습니다. 기본 사전은 ln 2450 ± {fb["default_sd"]:.1f}(학습 범위 전체)이고, 되먹임 사전의 폭 {fb["prior_sd"]:.3f}은 검증 분할에서 PINN 예측 오차의 강건 표준편차로 정했습니다. 나머지 EKF + Monte Carlo는 그대로입니다.</p>
   </div>
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table R8</b>EKF 기본 사전 → PINN β 사전: IP 오차 중앙값 [m], 차이의 95% bootstrap CI, 승률, CEP 포함률, |Δ ln β| 중앙값</caption>
       <thead><tr><th>분할</th><th class="n">IP 오차</th><th class="n">Δ 중앙값</th><th class="n">승률</th><th class="n">CEP 포함률</th><th class="n">|Δ ln β|</th><th>판정</th></tr></thead>
@@ -314,7 +314,7 @@ def physw_block():
     r10, r1 = M["pinn_rts_ft_l10"], M["pinn_rts_ft_l1"]
     best = min(r10[s]["phys_rms_g"]["median"] for s in sp)
     return f"""
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table R10b</b>물리 손실 가중치 λ: RTS 입력 PINN을 이어서 학습. 물리 잔차 RMS [g] / IP 오차 중앙값 [m]</caption>
       <thead><tr><th>모델</th><th class="n">ID 10%</th><th class="n">ID 15%</th><th class="n">고잡음</th></tr></thead>
@@ -352,7 +352,7 @@ def ensemble_block():
     else:
         id10 = ens.get("test_id_f10")
         head = f"""
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table R9</b>하이브리드 단일 모델(seed 0) → 앙상블(seed 0–2): IP 오차 중앙값 [m], CEP<sub>50</sub>·CEP<sub>90</sub> 포함률(보정 전, 목표 0.50 / 0.90), 예측 분산 중 모델 간 분산 비율</caption>
       <thead><tr><th>분할</th><th class="n">IP 오차</th><th class="n">50% 포함률</th><th class="n">90% 포함률</th><th class="n">모델 간 분산 비율</th></tr></thead>
@@ -371,7 +371,7 @@ def ensemble_block():
         v = [g["splits"][k]["sd"] / div for g in sv["groups"].values() if k in g["splits"]]
         return f"{min(v):,.0f}–{max(v):,.0f}" if div == 1 else f"{min(v):.1f}–{max(v):.1f}"
     seed_tbl = "" if not srows else f"""
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table R10</b>학습 seed에 따른 IP 오차 중앙값 [m], 평균 ± 표준편차</caption>
       <thead><tr><th>모델</th><th class="n">ID 10%</th><th class="n">ID 15%</th><th class="n">고잡음</th><th class="n">OOD</th></tr></thead>

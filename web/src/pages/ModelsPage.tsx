@@ -25,7 +25,7 @@ export function ModelsPage() {
           </div>
         }>
           <p className="ph-sub" style={{ margin: 0 }}>{m.kind} · 등록 {new Date(m.created_at).toLocaleDateString("ko-KR")}</p>
-          <div className="tw">
+          <div className="tw" tabIndex={0} role="region" aria-label="표 (가로로 스크롤)">
             <table className="fixed">
               <thead><tr><th>지표</th>{SPLITS.map(([, l]) => <th key={l} className="n">{l}</th>)}</tr></thead>
               <tbody>

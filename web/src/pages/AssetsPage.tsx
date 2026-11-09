@@ -61,7 +61,7 @@ export function AssetsPage() {
         ) : <Card title="권한"><Empty>자산 추가·수정은 analyst 이상 권한이 필요합니다.</Empty></Card>}
       </div>
       <Card title={`자산 목록 (${q.data?.length ?? 0})`}>
-        <div className="tw">
+        <div className="tw" tabIndex={0} role="region" aria-label="표 (가로로 스크롤)">
           <table>
             <thead><tr><th>이름</th><th className="n">x</th><th className="n">y</th><th className="n">반경</th><th className="n">우선순위</th><th>수정</th><th /></tr></thead>
             <tbody>

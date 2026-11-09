@@ -17,18 +17,18 @@
 /* Layout: technical report. Sticky masthead, left table of contents on wide screens, numbered sections, figures with captions.
    Ink-navy on cool paper; teal = measurement, amber = prediction. */
 :root{
-  --paper:#f3f5f8; --sheet:#ffffff; --ink:#14233a; --ink-2:#4b5b71; --ink-3:#7a8798; --rule:#d3dae3; --grid:#e6ebf1;
-  --obs:#17806f; --pred:#cf5f14; --pred-a:rgba(207,95,20,.13); --pred-line:rgba(207,95,20,.28); --truth:#7d8a9c; --hl:#fff4e8;
+  --paper:#f3f5f8; --sheet:#ffffff; --ink:#14233a; --ink-2:#46566b; --ink-3:#5f6b7c; --rule:#d3dae3; --grid:#e6ebf1;
+  --obs:#137566; --pred:#b8510e; --pred-a:rgba(207,95,20,.13); --pred-line:rgba(207,95,20,.28); --truth:#7d8a9c; --hl:#fff4e8;
   --font-sans:"IBM Plex Sans KR","Apple SD Gothic Neo","Malgun Gothic",system-ui,sans-serif;
   --font-mono:"IBM Plex Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
   --font-math:"STIX Two Text","Cambria Math","Times New Roman",serif;
   color-scheme:light;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --paper:#0d1521; --sheet:#131e2e; --ink:#e2e8f0; --ink-2:#9fadbf; --ink-3:#6c7b8f; --rule:#26354a; --grid:#1a2738;
+  --paper:#0d1521; --sheet:#131e2e; --ink:#e2e8f0; --ink-2:#a9b6c6; --ink-3:#8c9aac; --rule:#26354a; --grid:#1a2738;
   --obs:#47c1a6; --pred:#f2903f; --pred-a:rgba(242,144,63,.14); --pred-line:rgba(242,144,63,.30); --truth:#62718a; --hl:#2a2116; color-scheme:dark}}
 :root[data-theme="dark"]{
-  --paper:#0d1521; --sheet:#131e2e; --ink:#e2e8f0; --ink-2:#9fadbf; --ink-3:#6c7b8f; --rule:#26354a; --grid:#1a2738;
+  --paper:#0d1521; --sheet:#131e2e; --ink:#e2e8f0; --ink-2:#a9b6c6; --ink-3:#8c9aac; --rule:#26354a; --grid:#1a2738;
   --obs:#47c1a6; --pred:#f2903f; --pred-a:rgba(242,144,63,.14); --pred-line:rgba(242,144,63,.30); --truth:#62718a; --hl:#2a2116; color-scheme:dark}
 
 *{box-sizing:border-box}
@@ -56,6 +56,8 @@ body::before{content:""; position:fixed; inset:0 0 auto; height:env(safe-area-in
 .mast a.gh:hover{border-color:var(--pred); color:var(--pred)}
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .mast, :root:not([data-theme="light"]) body::before{background:#08101a}}
 :root[data-theme="dark"] .mast, :root[data-theme="dark"] body::before{background:#08101a}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .gantt .bar.acc span{color:#141006}}
+:root[data-theme="dark"] .gantt .bar.acc span{color:#141006}
 
 /* frame */
 .frame{max-width:1240px; margin:0 auto; display:grid; grid-template-columns:220px minmax(0,1fr); gap:48px;
@@ -178,7 +180,7 @@ canvas{display:block; width:100%; height:auto; max-width:100%}
 .phase{display:grid; grid-template-columns:1.1fr 2.6fr 1.3fr; border:1px solid var(--rule); border-radius:3px; overflow:hidden; background:var(--sheet)}
 .phase > div{padding:14px 16px; display:flex; flex-direction:column; gap:6px; min-width:0}
 .phase > div + div{border-left:1px solid var(--rule)}
-.phase h4{font-size:15px}
+.phase h3{font-size:15px}
 .phase p{font-size:13.5px; color:var(--ink-2); line-height:1.6}
 .phase .bar{height:6px; border-radius:1px; background:var(--rule)}
 .phase .bar.o{background:var(--obs)} .phase .bar.p{background:repeating-linear-gradient(90deg,var(--pred) 0 10px,transparent 10px 16px)}
@@ -191,7 +193,8 @@ canvas{display:block; width:100%; height:auto; max-width:100%}
 .arch .bx.ghost rect{stroke-dasharray:5 4; stroke:var(--ink-3)}
 .arch text{fill:var(--ink); font-family:var(--font-sans); font-size:13px}
 .arch text.t{font-weight:600; font-size:13.5px}
-.arch text.s{fill:var(--ink-2); font-family:var(--font-mono); font-size:11px}
+td small, th small{font-size:12px}
+.arch text.s{fill:var(--ink-2); font-family:var(--font-mono); font-size:12px}
 .arch text.lane{fill:var(--ink-3); font-family:var(--font-mono); font-size:11px; letter-spacing:.08em}
 .arch .ln{stroke:var(--ink-2); stroke-width:1.4; fill:none}
 .arch .ln.p{stroke:var(--pred); stroke-dasharray:6 4}
@@ -207,7 +210,7 @@ canvas{display:block; width:100%; height:auto; max-width:100%}
 .gantt .tk{font-weight:500}
 .gantt .bar{display:flex; align-items:center; padding:6px 4px}
 .gantt .bar span{display:block; width:100%; background:var(--ink); color:var(--paper); font-size:12px; padding:3px 8px; border-radius:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis}
-.gantt .bar.acc span{background:var(--pred)}
+.gantt .bar.acc span{background:var(--pred); color:#fff}
 .gantt .last{border-bottom:0}
 
 /* results */
@@ -221,7 +224,7 @@ td.grp{font-family:var(--font-mono); font-size:11.5px; letter-spacing:.07em; tex
 @media (max-width:720px){.fig-row{grid-template-columns:1fr}}
 
 /* refs */
-ol.refs{margin:0; padding-left:28px; display:flex; flex-direction:column; gap:8px; font-size:14px; color:var(--ink-2); max-width:92ch}
+ol.refs{margin:0; padding-left:28px; display:flex; flex-direction:column; gap:8px; font-size:14px; color:var(--ink-2); max-width:62ch; text-wrap:pretty}
 ol.refs li::marker{font-family:var(--font-mono); color:var(--ink-3)}
 ol.refs i{color:var(--ink)}
 
@@ -401,13 +404,13 @@ footer b{color:var(--ink); font-weight:600}
   <div class="sh"><span class="no">§2</span><h2>운용 개념과 문제 정의</h2></div>
   <figure>
     <div class="phase">
-      <div><span class="label">Phase I</span><h4>추진 · 상승</h4><div class="bar o"></div><p>탐지와 초기 추적. 시스템 입력은 이 구간과 중간 비행 초입까지의 트랙(전체의 10~15%)입니다.</p></div>
-      <div><span class="label">Phase II</span><h4>중간 비행</h4><div class="bar p"></div><p>고고도에서는 항력이 작아 <span class="m">β</span>를 관측하기 어렵습니다. 변칙 활공 비행체(HGV)는 이 구간에서 양력 기동으로 탄도 궤적을 벗어납니다.</p></div>
-      <div><span class="label">Phase III</span><h4>종말 · 재진입</h4><div class="bar p"></div><p>항력이 지배적이 되어 <span class="m">β</span> 오차가 하향거리 IP 오차로 크게 증폭됩니다.</p></div>
+      <div><span class="label">Phase I</span><h3>추진 · 상승</h3><div class="bar o"></div><p>탐지와 초기 추적. 시스템 입력은 이 구간과 중간 비행 초입까지의 트랙(전체의 10~15%)입니다.</p></div>
+      <div><span class="label">Phase II</span><h3>중간 비행</h3><div class="bar p"></div><p>고고도에서는 항력이 작아 <span class="m">β</span>를 관측하기 어렵습니다. 변칙 활공 비행체(HGV)는 이 구간에서 양력 기동으로 탄도 궤적을 벗어납니다.</p></div>
+      <div><span class="label">Phase III</span><h3>종말 · 재진입</h3><div class="bar p"></div><p>항력이 지배적이 되어 <span class="m">β</span> 오차가 하향거리 IP 오차로 크게 증폭됩니다.</p></div>
     </div>
     <figcaption><b>Fig. 2</b>비행 단계별 관측 가능성. 실선은 관측 입력 구간, 점선은 예측 대상 구간입니다.</figcaption>
   </figure>
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table 1</b>기존 접근의 한계와 본 시스템의 대응</caption>
       <thead><tr><th>접근</th><th>한계</th><th>TrajAI-Defense의 대응</th></tr></thead>
@@ -426,7 +429,7 @@ footer b{color:var(--ink); font-weight:600}
 <!-- 3 REQ -->
 <section id="sec-req">
   <div class="sh"><span class="no">§3</span><h2>요구 성능</h2></div>
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table 2</b>시스템 요구사항과 현재 측정값. 검증 방법: T 시험, A 분석, D 시연, I 검사. 측정값은 §9.1 결과에서 자동 생성</caption>
       <thead><tr><th>ID</th><th>요구사항</th><th>목표값</th><th>측정값</th><th>판정</th><th>검증</th></tr></thead>
@@ -491,7 +494,7 @@ footer b{color:var(--ink); font-weight:600}
     </div>
     <figcaption><b>Fig. 3</b>블록도. 학습과 추론이 같은 대기·중력·항력 모델을 공유하므로, 시뮬레이터로 만든 데이터와 PINN 물리 잔차가 서로 다른 물리를 가정하는 일이 생기지 않습니다. 괄호 안은 계획 단계 항목입니다.</figcaption>
   </figure>
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table 3</b>계층별 구성과 개발 환경</caption>
       <thead><tr><th>계층</th><th>역할</th><th>기술</th></tr></thead>
@@ -522,7 +525,7 @@ footer b{color:var(--ink); font-weight:600}
     <p>식 (5.5)에서 보듯 탄도 비행 구간의 궤적은 질량, 형상, 항력을 묶은 탄도계수 <span class="m">β</span> 하나로 매개화됩니다. 따라서 IP 예측 문제는 사실상 "초기 상태와 <span class="m">β</span>를 얼마나 정확히 아느냐"의 문제가 됩니다. 수치 적분은 4차 Runge–Kutta(RK4)를 쓰며, <span class="m">Δt</span> = 0.05 s에서 전역 오차는 <span class="m">O(Δt<sup>4</sup>)</span>입니다. 초기 프로토타입의 명시적 Euler(1차)를 대체했으며, 수렴 차수는 단위 시험으로 확인합니다. 데이터 생성은 Δt = 0.1 s를 씁니다. 대기는 지수 밀도(식 5.4) 외에 USSA-1976과 날짜별 기상 격자(§9.3)를 고를 수 있습니다.</p>
   </div>
   <div class="nom">
-    <div class="tw"><table>
+    <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)"><table>
       <caption><b>Table 4a</b>기호</caption>
       <thead><tr><th>기호</th><th>정의</th><th>단위</th></tr></thead>
       <tbody>
@@ -534,7 +537,7 @@ footer b{color:var(--ink); font-weight:600}
         <tr><td><span class="m">T</span>, <span class="m">I<sub>sp</sub></span>, <span class="m">t<sub>b</sub></span></td><td>추력, 비추력, 연소 시간</td><td class="c">N, s, s</td></tr>
       </tbody>
     </table></div>
-    <div class="tw"><table>
+    <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)"><table>
       <caption><b>Table 4b</b>상수 및 대기 모델</caption>
       <thead><tr><th>기호</th><th>값</th><th>비고</th></tr></thead>
       <tbody>
@@ -570,7 +573,7 @@ footer b{color:var(--ink); font-weight:600}
     <div class="eq"><span class="e"><b class="vec">x̂</b><sub><i>k</i>|<i>k</i></sub><span class="op">=</span><b class="vec">x̂</b><sub><i>k</i>|<i>k</i>−1</sub> + <b class="vec">K</b><sub><i>k</i></sub><b class="vec">ν</b><sub><i>k</i></sub>,&nbsp;&nbsp; <b class="vec">P</b><sub><i>k</i>|<i>k</i></sub><span class="op">=</span>(<b class="vec">I</b> − <b class="vec">K</b><sub><i>k</i></sub><b class="vec">H</b>) <b class="vec">P</b><sub><i>k</i>|<i>k</i>−1</sub> (<b class="vec">I</b> − <b class="vec">K</b><sub><i>k</i></sub><b class="vec">H</b>)<sup>T</sup> + <b class="vec">K</b><sub><i>k</i></sub><b class="vec">R</b><b class="vec">K</b><sub><i>k</i></sub><sup>T</sup></span><span class="tag">(6.7)</span></div>
     <div class="eq"><span class="e"><i>ε</i><sub><i>k</i></sub><span class="op">=</span><b class="vec">ν</b><sub><i>k</i></sub><sup>T</sup><b class="vec">S</b><sub><i>k</i></sub><sup>−1</sup><b class="vec">ν</b><sub><i>k</i></sub> ~ <i>χ</i><sup>2</sup><sub>3</sub>,&nbsp;&nbsp; E[<i>ε</i>] = 3</span><span class="tag">(6.8)</span></div>
   </div>
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table 5</b>EKF 구현 파라미터 (Fig. 1 시연)</caption>
       <thead><tr><th>항목</th><th>설정</th><th>근거</th></tr></thead>
@@ -591,7 +594,7 @@ footer b{color:var(--ink); font-weight:600}
   </div>
 
   <h3 class="sub"><span class="no">6.2</span>칼만 필터와 PINN의 결합</h3>
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table 6</b>시스템 안에서 칼만 필터가 맡는 세 가지 역할</caption>
       <thead><tr><th>역할</th><th>방식</th><th>효과</th></tr></thead>
@@ -618,7 +621,7 @@ footer b{color:var(--ink); font-weight:600}
   <div class="prose">
     <p>데이터 항은 관측 구간과 학습용 실제 궤적에서 계산하고, 물리 항은 정규화 시간 <span class="m">τ = (t − t<sub>c</sub>)/(t<sub>I</sub> − t<sub>c</sub>) ∈ [0, 1]</span>에서 균등 추출한 <span class="m">N<sub>c</sub></span> = 32개의 배치점(collocation point)에서 계산합니다. 위치는 <span class="m">L</span> = 100 km로 무차원화하고, 연쇄 법칙 <span class="m">d/dt = (1/Δ) d/dτ</span>로 잔차를 SI 단위로 되돌린 뒤 <span class="m">g<sub>0</sub></span>로 나눕니다. PINN은 손실 항 간 기울기 불균형으로 수렴이 불안정하기 쉬우므로 <span class="m">λ<sub>p</sub></span>를 학습 초반 40% 동안 0에서 1까지 선형으로 늘리는 커리큘럼을 적용했습니다. 기울기 노름 기반 적응 가중 [5]은 다음 단계입니다.</p>
   </div>
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table 7</b>모델 구성. 초기 프로토타입(<span class="mono">legacy/pinn_model.py</span>)과 현재 구현(<span class="mono">trajai/model.py</span>), 향후 계획</caption>
       <thead><tr><th>구성 요소</th><th>초기 프로토타입</th><th>현재 구현</th><th>향후</th></tr></thead>
@@ -646,7 +649,7 @@ footer b{color:var(--ink); font-weight:600}
 <section id="sec-data">
   <div class="sh"><span class="no">§8</span><h2>합성 데이터셋</h2></div>
   <div class="prose"><p>실측 비행 데이터는 보안상 확보할 수 없으므로 Monte Carlo로 파라미터를 표본 추출하고 §5의 모델로 적분해 합성 궤적을 만듭니다. 각 궤적에는 식 (6.1)의 극좌표 센서 잡음을 주입한 관측본과 잡음 없는 정답 궤적을 함께 저장합니다. v2 데이터셋은 연소 종료 이후의 탄도 구간을 다룹니다. 추력 곡선이 알려지지 않은 추진 구간을 넣으면 물리 잔차 (7.2)에 미지 항이 생기기 때문이며, 추진 구간 시뮬레이션(<span class="mono">simulate_powered</span>)은 구현되어 있으나 학습에는 아직 쓰지 않습니다.</p></div>
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table 8</b>Monte Carlo 파라미터 분포, v2 (<span class="mono">trajai/dataset.py</span>, 균등 분포, β는 로그 균등)</caption>
       <thead><tr><th>파라미터</th><th>기호</th><th>학습 / ID 시험</th><th>OOD 시험</th></tr></thead>
@@ -663,7 +666,7 @@ footer b{color:var(--ink); font-weight:600}
       </tbody>
     </table>
   </div>
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table 9</b>텐서 규격과 분할</caption>
       <thead><tr><th>항목</th><th>규격</th></tr></thead>
@@ -681,7 +684,7 @@ footer b{color:var(--ink); font-weight:600}
 <!-- 9 V&V -->
 <section id="sec-vv">
   <div class="sh"><span class="no">§9</span><h2>검증과 실험 결과</h2></div>
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table 10</b>평가 지표</caption>
       <thead><tr><th>지표</th><th>정의</th><th>대응 요구</th></tr></thead>
@@ -695,7 +698,7 @@ footer b{color:var(--ink); font-weight:600}
       </tbody>
     </table>
   </div>
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table 11</b>비교 모델. 같은 test-ID / test-OOD 분할과 같은 관측 비율에서 평가합니다</caption>
       <thead><tr><th>모델</th><th>물리 모델</th><th>불확실성</th><th>비고</th></tr></thead>
@@ -716,7 +719,7 @@ footer b{color:var(--ink); font-weight:600}
   <div class="prose">
     <p>모든 수치는 각 시험 분할 1,000개 궤적의 중앙값입니다. 신경망은 CPU에서 4,500 step(batch 128) 학습했고 잡음 증강 데이터로 학습했습니다. EKF/UKF는 데이터 생성기와 같은 동역학 모델을 쓰므로 모델 불일치가 없는, baseline에 유리한 조건입니다. 재현 방법은 저장소의 README에 있습니다.</p>
   </div>
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table R1</b>IP 오차 중앙값 [m]과 괄호 안의 CEP<sub>50</sub> 포함률 (보정된 추정기는 0.50)</caption>
       <thead><tr><th>모델</th><th>ID 5%</th><th>ID 10%</th><th>ID 15%</th><th>ID 고잡음</th><th>OOD 12%</th></tr></thead>
@@ -732,7 +735,7 @@ footer b{color:var(--ink); font-weight:600}
   </div>
   <figure><div class="sheet fig-img"><img src="figures/ip_miss.png" alt="시험 분할별 모델의 IP 오차 중앙값 막대그래프 (로그 축)"></div>
     <figcaption><b>Fig. 5</b>IP 오차 중앙값 (로그 축). 같은 색 순서는 Table R1의 행 순서와 같습니다.</figcaption></figure>
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table R2</b>세부 지표, ID 10% / OOD: ADE [m], ToT 오차 [s], CEP<sub>50</sub> [m], 물리 잔차 RMS [g]</caption>
       <thead><tr><th>모델</th><th>ADE</th><th>ToT</th><th>CEP</th><th>잔차</th></tr></thead>
@@ -754,7 +757,7 @@ footer b{color:var(--ink); font-weight:600}
       </tbody>
     </table>
   </div>
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table R4</b>v1 → v2: IP 오차 중앙값 [m]. v1은 공칭 잡음 학습·1,500 step, v2는 잡음 증강 학습·4,500 step</caption>
       <thead><tr><th>모델</th><th>ID 5%</th><th>ID 10%</th><th>ID 15%</th><th>ID 고잡음</th><th>OOD 12%</th></tr></thead>
@@ -787,7 +790,7 @@ footer b{color:var(--ink); font-weight:600}
   <div class="prose">
     <p>Open-Meteo 기압면 자료(1000–10 hPa, 약 0–31 km의 기온, 바람, 지오퍼텐셜 고도)를 날짜별로 받아 250 m 격자의 기온·밀도·음속·바람 분포로 만들고, 비행 동역학의 항력을 공기 상대속도 기준으로 계산했습니다. 시험 발사 1,000회는 2026-10-01–28의 프로파일(하루 4회, 112개)을 따르되, 분석장 오차를 흉내 내도록 상관 길이 4 km의 무작위 섭동(바람 1σ 4 m/s, 기온 1σ 1.5 K)을 더한 대기를 실제로 사용했습니다. "그 전 발사 데이터"로는 직전 1년(2025-10–2026-09, 1,460개 프로파일)의 실제 기상 속에서 시뮬레이션한 발사 20,000회를 썼습니다. 실제 발사 기록은 공개 자료가 없어 쓰지 않았습니다.</p>
   </div>
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table W1</b>추정기의 대기 모델별 성능 (관측 12%, 1,000회 중앙값): ADE [m], IP 오차 [m], CEP<sub>50</sub> [m], CEP 포함률, ln β 오차</caption>
       <thead><tr><th>필터</th><th>대기 모델</th><th>ADE</th><th>IP 오차</th><th>CEP</th><th>포함률</th><th>|Δ ln β|</th></tr></thead>
@@ -802,7 +805,7 @@ footer b{color:var(--ink); font-weight:600}
       </tbody>
     </table>
   </div>
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table W2</b>신경망, 같은 기상 시험 분할: ADE [m], IP 오차 [m], ToT 오차 [s], CEP<sub>50</sub> [m], CEP 포함률</caption>
       <thead><tr><th>모델</th><th>ADE</th><th>IP 오차</th><th>ToT</th><th>CEP</th><th>포함률</th></tr></thead>
@@ -825,7 +828,7 @@ footer b{color:var(--ink); font-weight:600}
   <div class="prose">
     <p>모든 비교는 같은 1,000개 시험 궤적에 대한 쌍대 비교입니다. 중앙값의 95% 신뢰구간은 percentile bootstrap(B = 2,000), 중앙값 차이의 구간은 쌍대 bootstrap, p값은 Wilcoxon 부호순위 검정이며 표 전체 16개 비교에 Holm–Bonferroni 보정을 했습니다. 승률은 같은 궤적에서 A의 IP 오차가 B보다 작은 비율입니다.</p>
   </div>
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table R5</b>쌍대 비교, IP 오차 중앙값 [m]과 95% CI. Δ = A − B (음수면 A가 더 정확)</caption>
       <thead><tr><th>효과</th><th>A vs B</th><th>분할</th><th class="n">A / B 중앙값</th><th class="n">Δ 중앙값</th><th class="n">승률</th><th class="n">p (Holm)</th><th>판정</th></tr></thead>
@@ -856,7 +859,7 @@ footer b{color:var(--ink); font-weight:600}
   <div class="prose">
     <p>CEP 포함률이 0.5에서 벗어나면 위협 평가의 확률이 틀립니다. 각 추정기의 CEP<sub>50</sub> 반경을 스칼라 s 하나로 늘리거나 줄이되, s는 시험 분할의 절반(보정용)에서 IP 오차 / CEP 비의 중앙값으로 정하고 나머지 절반에서 포함률을 쟀습니다. 두 절반을 바꿔 가며 50번 무작위 분할한 평균입니다. 90% 열은 같은 s에 원형 Rayleigh 비 √(ln 10 / ln 2) ≈ 1.823를 곱한 반경으로, 따로 맞추지 않으므로 오차 분포 꼬리의 모양을 검사합니다. 마지막 열은 ID 10%에서 정한 s를 다시 맞추지 않고 분포가 바뀐 분할에 그대로 쓴 결과입니다.</p>
   </div>
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table R6</b>CEP 포함률, 보정 전 → 보정 후 (목표 0.50 / 0.90). 보정 후 값은 모두 보정에 쓰지 않은 절반에서 잰 것</caption>
       <thead><tr><th>추정기</th><th>분할</th><th class="n">50% 전</th><th class="n">50% 후</th><th class="n">90% 전</th><th class="n">90% · 같은 s</th><th class="n">90% · 별도 보정</th><th class="n">s</th><th class="n">CEP 중앙값 [m]</th><th class="n">ID 10% s 이전</th></tr></thead>
@@ -895,7 +898,7 @@ footer b{color:var(--ink); font-weight:600}
   <div class="prose">
     <p>Table 6에서 계획으로 남겼던 결합의 나머지 방향을 구현했습니다. 트랙만 보는 PINN(<code>pinn_tf_v2</code>, EKF 입력 없음)이 예측한 ln β를 EKF의 사전분포로 넣습니다. 기본 사전은 ln 2450 ± 1.0(학습 범위 전체)이고, 되먹임 사전의 폭 0.068은 검증 분할에서 PINN 예측 오차의 강건 표준편차로 정했습니다. 나머지 EKF + Monte Carlo는 그대로입니다.</p>
   </div>
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table R8</b>EKF 기본 사전 → PINN β 사전: IP 오차 중앙값 [m], 차이의 95% bootstrap CI, 승률, CEP 포함률, |Δ ln β| 중앙값</caption>
       <thead><tr><th>분할</th><th class="n">IP 오차</th><th class="n">Δ 중앙값</th><th class="n">승률</th><th class="n">CEP 포함률</th><th class="n">|Δ ln β|</th><th>판정</th></tr></thead>
@@ -911,7 +914,7 @@ footer b{color:var(--ink); font-weight:600}
   <div class="prose">
     <p>β를 관측하기 어려운 짧은 관측에서 효과가 가장 큽니다(ID 5%: 1,429 → 956 m). 학습된 사전은 EKF가 관측만으로 좁히지 못하는 β 불확실성을 메우는 역할을 하며, 신경망을 대체가 아니라 필터의 사전정보로 쓰는 것이 이 시스템에서 가장 효과적인 결합 방식입니다. OOD(β 10,000–16,000, 학습 범위 밖)에서도 438 → 363 m로 개선되는데, PINN의 ln β 오차(0.025)가 EKF 기본 사전으로 수렴한 값의 오차(0.130)보다 작기 때문입니다. 신경망 단독으로는 OOD에서 실패하지만(§9.2), 필터 안의 사전정보로 쓰면 필터의 물리 모델이 잘못된 사전을 측정으로 바로잡을 수 있습니다.</p>
     <p><b>RTS 평활.</b> 같은 동역학으로 새로 만든 트랙 300개(측정 40개)에서 측정 시각의 실제 속도 대비 오차 중앙값은 Savitzky–Golay 미분 7.2 m/s, EKF(필터) 3.8 m/s, RTS 평활 1.2 m/s입니다. 가속도는 SG 12.0 → RTS 0.3 m/s²입니다. 평활은 마지막 상태를 바꾸지 않으므로 필터 기반 추정기에는 영향이 없고, 신경망 입력 특징을 정제하는 용도입니다.</p></div>
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table R8b</b>PINN-Transformer, 입력 특징만 Savitzky–Golay → RTS 평활로 바꿔 같은 seed·같은 설정으로 다시 학습: IP 오차 중앙값 [m], 차이의 95% CI, 물리 잔차 RMS [g], ADE [m]</caption>
       <thead><tr><th>분할</th><th class="n">IP 오차</th><th class="n">Δ 중앙값</th><th class="n">물리 잔차</th><th class="n">ADE</th><th>판정 (Wilcoxon, Bonferroni)</th></tr></thead>
@@ -927,7 +930,7 @@ footer b{color:var(--ink); font-weight:600}
   <div class="prose">
     <p>RTS 특징은 5개 분할 중 4개에서 유의하게 더 정확합니다. 속도·가속도 입력의 잡음을 줄이는 것이 신경망 정확도로 이어진다는 뜻입니다. RTS 평활기는 EKF 위에서 동작하므로, 이것도 칼만 필터의 정보를 신경망 입력으로 쓰는 결합 방식(Table 6의 전처리 역할)입니다. 고잡음 조건에서는 이 PINN 단독이 EKF + MC(629 m)보다 정확하고, ID 15%에서는 EKF 사후 상태를 받는 하이브리드(428 m)보다도 정확합니다. 관측이 5%로 아주 짧으면 평활할 구간 자체가 짧아 이득이 없습니다. 단일 seed 비교이므로 차이가 작은 분할은 §9.7의 seed 변동 범위와 함께 읽어야 합니다.</p>
   </div>
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table R8c</b>교전 판단 시점: 같은 500개 비행을 관측 5–30%에서 잘라, CEP<sub>50</sub> ≤ R이 처음 되는 시점에 판단. EKF → EKF + PINN β 사전</caption>
       <thead><tr><th>CEP</th><th class="n">R [m]</th><th class="n">판단 가능 비율</th><th class="n">판단 시 남은 시간 중앙값 [s]</th><th class="n">앞당긴 시간 중앙값 / 평균 [s]</th><th class="n">빨라진 / 늦어진 비율</th></tr></thead>
@@ -945,7 +948,7 @@ footer b{color:var(--ink); font-weight:600}
     <p><b>교전 판단 시점(REQ-P-03).</b> 계산이 빨라지는 것(0.23 s)과 별개로, 같은 측정으로 더 일찍 믿을 만한 탄착점을 얻으면 판단 시간이 늘어납니다. 보정 전 EKF CEP는 관측이 늘수록 보수적이어서(포함률 0.71–0.95, 관측 10–30%) β 사전이 줄인 오차가 CEP에 드러나지 않고, 앞당겨지는 시간도 1 s 미만입니다. 짝수 번째 트랙으로 포함률을 50%에 맞춘 CEP(배율 EKF 0.55, β 사전 0.50)로 판단하면 R = 300 m에서 트랙의 51%가 더 일찍 판단되고 늦어지는 트랙은 0%이며, 앞당긴 시간은 중앙값 3.5 s, 평균 9.8 s입니다(평균에는 EKF가 끝까지 판단하지 못한 트랙이 포함). 요구한 +25 s에는 못 미칩니다. β 사전의 이득은 β가 아직 관측되지 않은 짧은 관측 구간에 몰려 있고, 관측이 길어지면 EKF가 β를 스스로 추정해 차이가 사라지기 때문입니다. 시점의 해상도는 자르는 간격(관측 2.5–5%, 약 5–9 s)으로 제한됩니다.</p>
   </div>
   <h3 class="sub" id="sec-ensemble"><span class="no">9.7</span>Deep ensemble과 학습 seed 변동</h3>
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table R9</b>하이브리드 단일 모델(seed 0) → 앙상블(seed 0–2): IP 오차 중앙값 [m], CEP<sub>50</sub>·CEP<sub>90</sub> 포함률(보정 전, 목표 0.50 / 0.90), 예측 분산 중 모델 간 분산 비율</caption>
       <thead><tr><th>분할</th><th class="n">IP 오차</th><th class="n">50% 포함률</th><th class="n">90% 포함률</th><th class="n">모델 간 분산 비율</th></tr></thead>
@@ -962,7 +965,7 @@ footer b{color:var(--ink); font-weight:600}
   <div class="prose">
     <p>앙상블 예측 분산은 구성원 분산의 평균(관측 잡음에서 오는 불확실성)과 구성원 예측의 분산(모델 불확실성)의 합입니다. 학습 분포 안(ID)에서는 4/4개 분할에서 IP 오차가 줄고(ID 10% 578 → 514 m), 50% 포함률이 0.5 쪽으로 올라갑니다. 반면 OOD에서는 오차가 10,404 → 12,800 m로 오히려 늘고 90% 포함률도 0.46에 그칩니다. 모델 간 분산이 전체 예측 분산에서 차지하는 비율이 OOD에서도 0.10로 ID와 비슷해, 같은 데이터로 seed만 바꾼 3개 모델은 분포 밖 입력을 알아채지 못합니다. 분포 이동 탐지에는 입력 특징의 분포 거리나 데이터 다양화 같은 별도 장치가 필요합니다. 콘솔 모델 레지스트리에 앙상블(<code>ens_hybrid_v2</code>, ONNX 3개)을 등록했습니다.</p>
   </div>
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table R10</b>학습 seed에 따른 IP 오차 중앙값 [m], 평균 ± 표준편차</caption>
       <thead><tr><th>모델</th><th class="n">ID 10%</th><th class="n">ID 15%</th><th class="n">고잡음</th><th class="n">OOD</th></tr></thead>
@@ -974,7 +977,7 @@ footer b{color:var(--ink); font-weight:600}
     </table>
   </div>
   <div class="prose"><p>Table R5의 신뢰구간은 시험 표본 변동만 반영합니다. 학습 seed를 바꾼 반복으로 학습 변동을 따로 쟀습니다. seed 간 표준편차는 ID 10% 7–44 m, 고잡음 4–56 m로, ID 10%에서 EKF와 가장 가까운 신경망의 차이(96 m)보다 작지만 물리 손실 유무 같은 신경망끼리의 차이(수십 m)와는 비슷한 크기입니다. OOD는 seed에 따라 1.1–2.3 km 흔들리므로 OOD 수치는 단일 모델 값보다 이 범위로 읽어야 합니다. 물리 손실의 IP 오차 효과(PINN − data only)는 seed를 바꿔도 부호가 같은 분할이 ID 10%, OOD, 바뀌는 분할이 ID 5%, ID 15%, 고잡음입니다. 부호가 바뀌는 분할의 효과는 학습 무작위성 수준이므로 결론에서 뺍니다.</p></div>
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table R10b</b>물리 손실 가중치 λ: RTS 입력 PINN을 이어서 학습. 물리 잔차 RMS [g] / IP 오차 중앙값 [m]</caption>
       <thead><tr><th>모델</th><th class="n">ID 10%</th><th class="n">ID 15%</th><th class="n">고잡음</th></tr></thead>
@@ -990,7 +993,7 @@ footer b{color:var(--ink); font-weight:600}
   <div class="prose">
     <p>§9.2·§9.7에서 신경망은 학습 범위 밖(OOD)에서 10 km 이상 틀리면서도 그 사실을 알리지 못했습니다. 그래서 예측마다 "학습 데이터와 얼마나 다른가"를 재고, 기준을 넘으면 신경망 대신 EKF 결과를 쓰는 장치를 붙였습니다. 기준은 검증 분할 점수의 95번째 백분위수(정상 트랙의 약 5%가 넘는 값)이며 시험 자료는 쓰지 않았습니다.</p>
   </div>
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table R11</b>감지 점수별 AUROC(정상 ID 10·15% 트랙 대비)와 괄호 안의 감지율</caption>
       <thead><tr><th>점수</th><th class="n">OOD (고속·고β)</th><th class="n">Cd(M) 곡선 오차</th><th class="n">약한 양력</th></tr></thead>
@@ -1001,7 +1004,7 @@ footer b{color:var(--ink); font-weight:600}
       </tbody>
     </table>
   </div>
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table R12</b>RTS 입력 PINN 단독, EKF, 내부 표현 감지로 전환하는 전략: IP 오차 중앙값 / p90 [m], EKF로 넘긴 비율</caption>
       <thead><tr><th>분할</th><th class="n">신경망</th><th class="n">EKF</th><th class="n">감지 + 전환</th><th class="n">전환 비율</th></tr></thead>
@@ -1021,7 +1024,7 @@ footer b{color:var(--ink); font-weight:600}
   <div class="prose">
     <p>지금까지의 시험은 EKF와 데이터 생성기가 같은 동역학을 써서 필터에 유리했습니다(§9.10의 "inverse crime"). 실제 표적은 공칭 모델과 다르게 날기 때문에, 실제 비행에만 두 가지 오차를 넣은 시험 분할(각 1,000회, 관측 12%)을 만들었습니다. 추정기는 모두 공칭 모델을 그대로 씁니다. (1) Cd(M) 곡선 모양 오차: 천음속 정점과 초음속 꼬리를 궤적마다 ±25% 독립적으로 바꿉니다. Cd 전체에 같은 배율을 곱하는 오차는 β로 흡수되므로 불일치가 아닙니다. (2) 약한 양력 기동: 정점 이후 L/D 0.03–0.10의 횡방향 양력. 탄착점은 공칭 비행 대비 중앙값 약 4.2 km(Cd), 1.0 km(양력) 움직입니다.</p>
   </div>
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table R13</b>모델 불일치에서의 IP 오차 중앙값 [m], 괄호는 EKF 대비 배율, CEP 포함률 (Cd / 양력)</caption>
       <thead><tr><th>추정기</th><th class="n">불일치 없음 (ID 10%)</th><th class="n">Cd(M) 곡선 오차</th><th class="n">약한 양력</th><th class="n">포함률</th></tr></thead>
@@ -1041,7 +1044,7 @@ footer b{color:var(--ink); font-weight:600}
   <div class="prose">
     <p>불일치가 생기면 모든 추정기의 오차가 커지지만, 필터와 신경망의 격차는 줄어듭니다. RTS 입력 PINN은 불일치가 없을 때 EKF의 1.28배였으나 Cd 오차에서 1.24배, 양력에서 1.02배입니다. 여기의 신경망도 공칭 동역학으로만 학습했으므로 같은 불일치를 겪고 있다는 점에 유의해야 합니다. 더 심각한 문제는 불확실성입니다. 양력 기동에서는 공칭 모델만 아는 모든 추정기의 CEP 포함률이 0.07–0.19로 떨어져, 예측 반경이 실제 오차를 크게 과소평가합니다. 모르는 기동 앞에서 필터와 신경망 모두 과신한다는 뜻이며, §9.8의 감지 장치도 이를 잡지 못합니다. 불일치가 섞인 데이터(2만 개)로 다시 학습하면 PINN (RTS 입력) · 불일치 데이터 학습이 Cd 오차 586 m, 양력 1,142 m로, EKF·UKF보다는 여전히 부정확합니다. 대신 불확실성은 훨씬 정직해져 양력에서 CEP 포함률이 0.60까지 오릅니다(공칭 학습 0.11). 물리 손실(공칭 모델 기준)이 있는 모델과 없는 모델의 차이는 Cd 오차 -142 m, 양력 -63 m(PINN − data only)입니다. 학습 seed를 바꾼 두 번째 쌍에서도 -135 m, -43 m로 부호가 같습니다. seed 2쌍뿐이라 확정은 아니지만 학습 무작위성만으로 보기는 어렵습니다(두 번째 쌍의 PINN도 Cd 610 m, 양력 1,164 m로 필터보다 부정확). 공칭 물리가 실제와 조금 달라도 물리 손실은 해가 되지 않고 오히려 도움이 되었습니다(궤적 모양의 큰 틀은 여전히 맞기 때문으로 보입니다). 대가로 불일치가 없는 공칭 시험(ID 10%)에서는 437 → 480 m로 나빠집니다.</p>
   </div>
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table R14</b>정점 이후까지 추적(관측 55%, 최대 100 s, 정점 통과 트랙 87%): IP 오차 중앙값 [m]과 CEP 포함률, 혁신(NIS) 검정 감지율과 AUROC</caption>
       <thead><tr><th>실제 비행</th><th class="n">EKF</th><th class="n">IMM (탄도 + 기동 모드)</th><th class="n">감지율 (오경보 기준 5%)</th><th class="n">AUROC</th></tr></thead>
@@ -1052,7 +1055,7 @@ footer b{color:var(--ink); font-weight:600}
       </tbody>
     </table>
   </div>
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table R15</b>기동 가설 CEP: Monte Carlo 입자마다 L/D ~ U(0, 상한)의 양력을 무작위 부호로 넣어 전파. CEP 중앙값 [m] / 포함률, 관측 12%</caption>
       <thead><tr><th>가정한 기동</th><th class="n">공칭 (ID 10%)</th><th class="n">약한 양력</th><th class="n">Cd(M) 곡선 오차</th></tr></thead>
@@ -1069,7 +1072,7 @@ footer b{color:var(--ink); font-weight:600}
   </div>
 <!-- EXTRA:END -->
   <h3 class="sub" id="sec-validity"><span class="no">9.10</span>타당성 위협과 한계</h3>
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table R7</b>결론을 약하게 만들 수 있는 요인과 이 연구에서의 대응</caption>
       <thead><tr><th>구분</th><th>위협</th><th>영향</th><th>대응 / 남은 일</th></tr></thead>
@@ -1089,7 +1092,7 @@ footer b{color:var(--ink); font-weight:600}
 <!-- 10 IMPL -->
 <section id="sec-impl">
   <div class="sh"><span class="no">§10</span><h2>구현 현황</h2></div>
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table 12</b>저장소 구성 (<a href="https://github.com/ljw22112/TrajAI-Defense">github.com/ljw22112/TrajAI-Defense</a>)</caption>
       <thead><tr><th>경로</th><th>내용</th><th>상태</th></tr></thead>
@@ -1125,8 +1128,8 @@ python -m pytest -q tests server/tests</code></pre>
 <section id="sec-plan">
   <div class="sh"><span class="no">§11</span><h2>일정과 위험 관리</h2></div>
   <figure>
-    <div class="tw">
-      <div class="gantt" role="table" aria-label="7주 일정">
+    <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
+      <div class="gantt" role="img" aria-label="7주 일정: W1 기획(요구사항·구조), W2 분석(시뮬레이터·데이터), W3 설계(모델 구조), W4–W5 개발(학습·물리 손실·대시보드), W6 시험(지표·지연 최적화), W7 완성(보고·발표)">
         <div class="hd l">작업</div><div class="hd">W1</div><div class="hd">W2</div><div class="hd">W3</div><div class="hd">W4</div><div class="hd">W5</div><div class="hd">W6</div><div class="hd">W7</div>
         <div class="tk">기획</div><div class="bar" style="grid-column:2/3"><span>요구사항 · 구조</span></div><div style="grid-column:3/9"></div>
         <div class="tk">분석</div><div style="grid-column:2/3"></div><div class="bar" style="grid-column:3/4"><span>시뮬레이터 · 데이터</span></div><div style="grid-column:4/9"></div>
@@ -1138,7 +1141,7 @@ python -m pytest -q tests server/tests</code></pre>
     </div>
     <figcaption><b>Fig. 4</b>7주 마일스톤. 개발 단계(W4–W5)가 핵심 경로이며, PINN 수렴 위험(R-02)에 대비해 W4 초반에 data-only baseline을 먼저 확보합니다.</figcaption>
   </figure>
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table 13</b>위험 관리</caption>
       <thead><tr><th>ID</th><th>구분</th><th>위험</th><th>대응</th><th>대체안</th></tr></thead>
@@ -1161,7 +1164,7 @@ python -m pytest -q tests server/tests</code></pre>
     <p>연구 코드(<span class="mono">trajai/</span>)를 운용 시스템으로 감싼 웹 애플리케이션입니다. 분석관이 기상 일자를 골라 시나리오를 만들면 서버가 궤적을 적분하고 레이더 측정을 생성해 데이터베이스에 저장합니다. 이후 추정기(EKF·UKF·PINN)를 실행하면 결과와 위협 평가가 기록되고, WebSocket으로 추적을 실시간 재생할 수 있습니다. GitHub Pages에는 서버 없이 볼 수 있는 읽기 전용 데모를 올렸습니다. 이 데모는 실제 서버와 PostgreSQL에서 만든 스냅샷입니다.</p>
   </div>
   <div class="callout"><b>바로 가기.</b> <a href="app/">운용 콘솔 데모 (읽기 전용)</a> · <a href="https://github.com/ljw22112/TrajAI-Defense/blob/main/docs/architecture.md">아키텍처 문서 (ERD, 시퀀스, 보안, 테스트)</a> · 로컬 실행 시 API 문서는 <span class="mono">/api/docs</span></div>
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table 14</b>계층별 구현</caption>
       <thead><tr><th>계층</th><th>기술</th><th>구현 내용</th></tr></thead>
@@ -1182,7 +1185,7 @@ python -m pytest -q tests server/tests</code></pre>
     <p><b>범위 밖으로 둔 기능.</b> 목표 지점과 발사 후보지를 주고 기상 조건에 따라 발사 시각과 위치를 고르는 기능은 검토했으나 넣지 않았습니다. 들어오는 표적을 예측해 방어 판단을 돕는다는 이 시스템의 목적과 반대 방향(공격 측 계획)이기 때문입니다. 같은 기상 자료를 방어 쪽에서 쓰는 방식이 위의 기상 영향 분석입니다.</p>
   </div>
   <h3 class="sub" id="sec-console2"><span class="no">12.2</span>환경 직접 설정과 운용 기능</h3>
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table 14b</b>추가한 기능과 근거. 모두 방어 측 예측·판단을 돕는 범위입니다</caption>
       <thead><tr><th>기능</th><th>내용</th><th>모델·가정</th></tr></thead>
@@ -1205,7 +1208,7 @@ python -m pytest -q tests server/tests</code></pre>
     <figcaption><b>Fig. 9</b>운용 콘솔의 비행 재생 (시나리오 "10/15 00Z 제트기류", T+165 s 최대 동압 시점). 위: 대기층(대류권·성층권·희박 대기)과 제트기류 띠 위의 실제 궤적, 레이더 관측 구간(청록), 관측 종료 시점에 각 추정기가 낸 예측 경로(점선)와 같은 시각의 예측 위치. 가운데: 같은 비행을 바람만 끄고 다시 적분한 경로(파란 점선)와 비교한 표류, 이 날 바람은 탄착점을 하향거리로 약 2 km 밀었습니다. 오른쪽: 그 순간의 고도·마하·기온·밀도·바람과 예측–실제 차이. 아래: 환경이 바뀌는 시각 목록.</figcaption></figure>
   <figure><div class="sheet fig-img"><img src="figures/console_themes.png" alt="같은 화면의 라이트, 다크, 밀리터리 테마" loading="lazy"></div>
     <figcaption><b>Fig. 10</b>화면 테마 (왼쪽부터 라이트 · 다크 · 밀리터리). 색은 테마별 토큰으로만 정의하고, 모든 글자·배경 쌍이 WCAG 대비 4.5:1 이상인지 CI에서 검사합니다.</figcaption></figure>
-<div class="tw">
+<div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table 15</b>테스트</caption>
       <thead><tr><th>수준</th><th>범위</th><th>수</th></tr></thead>
@@ -1597,6 +1600,13 @@ if('IntersectionObserver' in window){
   secs.forEach(s=>s&&io.observe(s));
 }
 })();
+</script>
+<script>
+/* keyboard access for regions that scroll sideways on narrow screens (equations, diagrams) */
+(function(){function mark(){document.querySelectorAll('.eq,.arch,pre').forEach(function(el){
+  if(el.scrollWidth>el.clientWidth+1){el.tabIndex=0; el.setAttribute('role','region'); if(!el.getAttribute('aria-label')) el.setAttribute('aria-label','가로로 스크롤되는 영역')}
+  else if(el.getAttribute('role')==='region'){el.removeAttribute('tabindex'); el.removeAttribute('role'); el.removeAttribute('aria-label')}});}
+ addEventListener('load',mark); addEventListener('resize',function(){clearTimeout(mark.t); mark.t=setTimeout(mark,200)});})();
 </script>
 </body>
 </html>

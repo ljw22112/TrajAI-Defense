@@ -70,14 +70,14 @@ export function ComparePage() {
             <Legend items={both.map((s, i) => ({ label: `${"AB"[i]} · ${s.name}`, color: SIDE[i] }))} />
           </Card>
           <Card title="조건">
-            <div className="tw"><table>
+            <div className="tw" tabIndex={0} role="region" aria-label="표 (가로로 스크롤)"><table>
               <thead><tr><th>항목</th>{both.map((s, i) => <th key={s.id}><Link to={`/scenarios/${s.id}`}>{"AB"[i]} · {s.name}</Link></th>)}</tr></thead>
               <tbody>{rows.map(([l, f]) => <tr key={l}><td>{l}</td>{both.map(s => <td key={s.id} className="mono">{f(s)}</td>)}</tr>)}</tbody>
             </table></div>
           </Card>
           <Card title="추정 결과 (추정기별 최신)">
             {methods.length === 0 ? <Empty>두 시나리오 모두 추정이 없습니다.</Empty> : (
-              <div className="tw"><table>
+              <div className="tw" tabIndex={0} role="region" aria-label="표 (가로로 스크롤)"><table>
                 <thead><tr><th>추정기</th>{both.map((s, i) => <th key={s.id} className="n">{"AB"[i]} · <Term k="IP 오차" /></th>)}<th className="n">차이 (B − A)</th>{both.map((s, i) => <th key={`t${s.id}`}>{"AB"[i]} · 위협</th>)}</tr></thead>
                 <tbody>{methods.map(m => {
                   const ea = latestByMethod(both[0]).get(m), eb = latestByMethod(both[1]).get(m);

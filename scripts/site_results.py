@@ -87,7 +87,7 @@ def main():
                 f'<td class="n">{f0(med(m, t, "miss"))}</td>' for t in ["test_id_f10", "test_id_noise", "test_ood"]) +
                 f'<td class="n">{M[m]["test_id_f10"]["phys_rms_g"]["median"]:.3f}</td></tr>')
         pair = f"""
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table R3</b>학습 데이터 규모 ablation: IP 오차 중앙값 [m]과 물리 잔차 [g]</caption>
       <thead><tr><th>모델</th><th>ID 10%</th><th>ID 고잡음</th><th>OOD</th><th>잔차 (ID 10%)</th></tr></thead>
@@ -114,7 +114,7 @@ def main():
                 continue
             pv.append(f"<tr><td>{lab}</td>" + "".join(f'<td class="n">{f0(med(m0, t, "miss"))} → <b>{f0(med(m1, t, "miss"))}</b></td>' for t in TESTS) + "</tr>")
         prev = f"""
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table R4</b>v1 → {a.label}: IP 오차 중앙값 [m]. v1은 공칭 잡음 학습·1,500 step, {a.label}는 잡음 증강 학습·{a.steps} step</caption>
       <thead><tr><th>모델</th>{"".join(f"<th>{l}</th>" for l in TLAB)}</tr></thead>
@@ -139,7 +139,7 @@ def main():
   <div class="prose">
     <p>모든 수치는 각 시험 분할 1,000개 궤적의 중앙값입니다. 신경망은 CPU에서 {a.steps} step(batch 128) 학습했고 {a.train_note}했습니다. EKF/UKF는 데이터 생성기와 같은 동역학 모델을 쓰므로 모델 불일치가 없는, baseline에 유리한 조건입니다. 재현 방법은 저장소의 README에 있습니다.</p>
   </div>
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table R1</b>IP 오차 중앙값 [m]과 괄호 안의 CEP<sub>50</sub> 포함률 (보정된 추정기는 0.50)</caption>
       <thead><tr><th>모델</th>{"".join(f"<th>{l}</th>" for l in TLAB)}</tr></thead>
@@ -150,7 +150,7 @@ def main():
   </div>
   <figure><div class="sheet fig-img"><img src="figures/ip_miss.png" alt="시험 분할별 모델의 IP 오차 중앙값 막대그래프 (로그 축)"></div>
     <figcaption><b>Fig. 5</b>IP 오차 중앙값 (로그 축). 같은 색 순서는 Table R1의 행 순서와 같습니다.</figcaption></figure>
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table R2</b>세부 지표, ID 10% / OOD: ADE [m], ToT 오차 [s], CEP<sub>50</sub> [m], 물리 잔차 RMS [g]</caption>
       <thead><tr><th>모델</th><th>ADE</th><th>ToT</th><th>CEP</th><th>잔차</th></tr></thead>
