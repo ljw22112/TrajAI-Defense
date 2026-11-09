@@ -141,7 +141,7 @@ export function ScenarioDetailPage() {
         </Card>
         <Card title="추정 결과">
           {s.estimates.length === 0 ? <Empty>아직 추정이 없습니다.</Empty> : (
-            <div className="tw">
+            <div className="tw" tabIndex={0} role="region" aria-label="표 (가로로 스크롤)">
               <table>
                 <thead><tr><th>추정기</th><th className="n"><Term k="IP 오차" /></th><th className="n"><Term k="CEP" /></th><th><Term k="포함" /></th><th className="n"><Term k="ToT" /></th><th className="n"><Term k="β̂" /></th><th className="n"><Term k="지연" /></th><th>위협</th></tr></thead>
                 <tbody>
@@ -169,7 +169,7 @@ export function ScenarioDetailPage() {
               const t = e.threat!;
               const top = Object.entries(t.probabilities).sort((a, b) => b[1] - a[1]).slice(0, 3);
               return (
-                <div key={e.id} className="card" style={{ padding: 12 }}>
+                <div key={e.id} className="tcard">
                   <div className="card-h"><span>{METHOD_LABEL[e.method]}{modelShort(e.model_name) && <span className="chip model">{modelShort(e.model_name)}</span>}</span><ThreatBadge level={t.level} /></div>
                   <dl className="kv">
                     {top.map(([n, p]) => <Fragment key={n}><dt>{n}</dt><dd>{fmt(p * 100, 1)}%</dd></Fragment>)}
@@ -190,7 +190,7 @@ export function ScenarioDetailPage() {
         </div>
       }>
         {live.error && <div className="error">{live.error}</div>}
-        <div className="live-bar" aria-label="재생 진행률"><span style={{ width: `${(live.meas.length / s.measurements.length) * 100}%` }} /></div>
+        <div className="live-bar" role="progressbar" aria-label="재생 진행률" aria-valuemin={0} aria-valuemax={s.measurements.length} aria-valuenow={live.meas.length}><span style={{ width: `${(live.meas.length / s.measurements.length) * 100}%` }} /></div>
         {live.states.length > 1 ? (
           <div className="grid g2">
             <div>

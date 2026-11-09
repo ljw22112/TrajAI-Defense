@@ -24,7 +24,7 @@ export function AdminPage() {
       <div className="grid g2">
         <Card title="사용자">
           {users.isLoading ? <Spinner /> : (
-            <div className="tw">
+            <div className="tw" tabIndex={0} role="region" aria-label="표 (가로로 스크롤)">
               <table>
                 <thead><tr><th>이메일</th><th>이름</th><th>역할</th><th>상태</th></tr></thead>
                 <tbody>
@@ -57,7 +57,7 @@ export function AdminPage() {
       </div>
       <Card title="감사 로그 (최근 50건)">
         <ErrorBox error={audit.error} />
-        <div className="tw">
+        <div className="tw" tabIndex={0} role="region" aria-label="표 (가로로 스크롤)">
           <table>
             <thead><tr><th>시각</th><th className="n">사용자</th><th>동작</th><th>대상</th><th>상세</th></tr></thead>
             <tbody>

@@ -10,8 +10,8 @@ export function PageHead({ kicker, title, actions, children }: { kicker: string;
   return (
     <header className="page-head">
       <div className="ph-main">
-        <span className="label">{kicker}</span>
-        <h1>{title}</h1>
+        {/* only an identifier is worth a line above the title ("Scenario #3"); generic section names are dropped */}
+        <h1>{title}{kicker.includes("#") && <span className="ph-id">{kicker.replace(/^.*#/, "#")}</span>}</h1>
         {children && <p className="ph-sub">{children}</p>}
       </div>
       {actions && <div className="ph-actions">{actions}</div>}

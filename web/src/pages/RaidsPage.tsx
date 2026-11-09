@@ -37,7 +37,7 @@ export function RaidsPage() {
             <div className="field" style={{ maxWidth: 420 }}><label htmlFor="raid-name">이름</label>
               <input id="raid-name" value={name} maxLength={120} placeholder="예: 3발 동시 공격" onChange={e => setName(e.target.value)} /></div>
             {scn.isLoading ? <Spinner /> : (
-              <div className="tw">
+              <div className="tw" tabIndex={0} role="region" aria-label="표 (가로로 스크롤)">
                 <table>
                   <thead><tr><th>포함</th><th>시나리오</th><th className="n">사거리</th><th className="n">발사 지연 (s)</th></tr></thead>
                   <tbody>
@@ -63,7 +63,7 @@ export function RaidsPage() {
       <Card title="저장된 동시 공격">
         <ErrorBox error={list.error} />
         {list.isLoading ? <Spinner /> : !list.data?.length ? <Empty>아직 없습니다.</Empty> : (
-          <div className="tw"><table>
+          <div className="tw" tabIndex={0} role="region" aria-label="표 (가로로 스크롤)"><table>
             <thead><tr><th>이름</th><th className="n">표적 수</th><th>만든 시각</th></tr></thead>
             <tbody>{list.data.map(r => (
               <tr key={r.id} className="clickable" onClick={() => nav(`/raids/${r.id}`)}>
@@ -131,7 +131,7 @@ export function RaidDetailPage() {
         <small className="label">회색 = 비행 · 초록 = 레이더 관측 · 파랑 = 상층 교전 창 · 주황 = 하층 교전 창 · 빨강 막대 = 예측 탄착 · 세로선 = 동시 교전 최대 시점</small>
       </Card>
       <Card title="교전 순서 (위협 등급 → 탄착 시각)">
-        <div className="tw"><table>
+        <div className="tw" tabIndex={0} role="region" aria-label="표 (가로로 스크롤)"><table>
           <thead><tr><th>#</th><th>등급</th><th>표적</th><th>위협 자산</th><th className="n">발사</th><th className="n"><Term k="교전 창">첫 교전 창</Term></th><th className="n">예측 탄착</th><th>근거 추정기</th></tr></thead>
           <tbody>{order.map((t, i) => {
             const w = t.windows.length ? Math.min(...t.windows.map(x => x.open)) : null;

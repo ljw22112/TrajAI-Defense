@@ -172,7 +172,7 @@ export function AnalysesPage() {
       }>
         <ErrorBox error={list.error} />
         {list.isLoading ? <Spinner /> : !items.length ? <Empty>아직 분석이 없습니다.</Empty> : (
-          <div className="tw">
+          <div className="tw" tabIndex={0} role="region" aria-label="표 (가로로 스크롤)">
             <table>
               <thead><tr><th>종류</th><th>이름</th><th>핵심 결과</th><th>만든 시각</th></tr></thead>
               <tbody>

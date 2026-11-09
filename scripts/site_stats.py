@@ -238,7 +238,7 @@ def main():
   <div class="prose">
     <p>모든 비교는 같은 1,000개 시험 궤적에 대한 쌍대 비교입니다. 중앙값의 95% 신뢰구간은 percentile bootstrap(B = {B:,}), 중앙값 차이의 구간은 쌍대 bootstrap, p값은 Wilcoxon 부호순위 검정이며 표 전체 {len(rows)}개 비교에 Holm–Bonferroni 보정을 했습니다. 승률은 같은 궤적에서 A의 IP 오차가 B보다 작은 비율입니다.</p>
   </div>
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table R5</b>쌍대 비교, IP 오차 중앙값 [m]과 95% CI. Δ = A − B (음수면 A가 더 정확)</caption>
       <thead><tr><th>효과</th><th>A vs B</th><th>분할</th><th class="n">A / B 중앙값</th><th class="n">Δ 중앙값</th><th class="n">승률</th><th class="n">p (Holm)</th><th>판정</th></tr></thead>
@@ -254,7 +254,7 @@ def main():
   <div class="prose">
     <p>CEP 포함률이 0.5에서 벗어나면 위협 평가의 확률이 틀립니다. 각 추정기의 CEP<sub>50</sub> 반경을 스칼라 s 하나로 늘리거나 줄이되, s는 시험 분할의 절반(보정용)에서 IP 오차 / CEP 비의 중앙값으로 정하고 나머지 절반에서 포함률을 쟀습니다. 두 절반을 바꿔 가며 50번 무작위 분할한 평균입니다. 90% 열은 같은 s에 원형 Rayleigh 비 √(ln 10 / ln 2) ≈ {RAY90:.3f}를 곱한 반경으로, 따로 맞추지 않으므로 오차 분포 꼬리의 모양을 검사합니다. 마지막 열은 ID 10%에서 정한 s를 다시 맞추지 않고 분포가 바뀐 분할에 그대로 쓴 결과입니다.</p>
   </div>
-  <div class="tw">
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table R6</b>CEP 포함률, 보정 전 → 보정 후 (목표 0.50 / 0.90). 보정 후 값은 모두 보정에 쓰지 않은 절반에서 잰 것</caption>
       <thead><tr><th>추정기</th><th>분할</th><th class="n">50% 전</th><th class="n">50% 후</th><th class="n">90% 전</th><th class="n">90% · 같은 s</th><th class="n">90% · 별도 보정</th><th class="n">s</th><th class="n">CEP 중앙값 [m]</th><th class="n">ID 10% s 이전</th></tr></thead>

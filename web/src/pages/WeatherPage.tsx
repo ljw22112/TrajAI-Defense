@@ -44,7 +44,7 @@ export function WeatherPage() {
       <Card title="캐시된 프로파일">
         <ErrorBox error={cached.error} />
         {cached.isLoading ? <Spinner /> : !cached.data?.length ? <Empty>캐시된 프로파일이 없습니다.</Empty> : (
-          <div className="tw">
+          <div className="tw" tabIndex={0} role="region" aria-label="표 (가로로 스크롤)">
             <table>
               <thead><tr><th>유효 시각 (UTC)</th><th>위치</th><th>출처</th><th className="n">최대풍</th><th className="n">최대풍 고도</th><th className="n">최상층 고도</th><th /></tr></thead>
               <tbody>

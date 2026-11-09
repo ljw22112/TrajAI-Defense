@@ -49,7 +49,7 @@ export function DashboardPage() {
           <Card title="교전 우선순위 (시나리오별 최신·최정확 추정 기준)" aside={<small className="label">위협 등급 → 탄착 확률 → 남은 시간 순</small>}>
             <ErrorBox error={threats.error} />
             {!threats.data?.length ? <Empty>위협 평가가 있는 추정이 아직 없습니다.</Empty> : (
-              <div className="tw">
+              <div className="tw" tabIndex={0} role="region" aria-label="표 (가로로 스크롤)">
                 <table>
                   <thead><tr><th>등급</th><th>시나리오</th><th>위협 자산</th><th className="n">탄착 확률</th><th className="n">탄착까지</th><th className="n"><Term k="교전 창">교전 창 열림</Term></th><th>근거 추정기</th></tr></thead>
                   <tbody>
@@ -72,7 +72,7 @@ export function DashboardPage() {
           </Card>
           <div className="grid g2">
             <Card title="추정기별 성능 (전체 추정 실행 기준)">
-              <div className="tw">
+              <div className="tw" tabIndex={0} role="region" aria-label="표 (가로로 스크롤)">
                 <table>
                   <thead><tr><th>추정기</th><th className="n">실행</th><th><Term k="IP 오차">IP 오차 중앙값</Term></th><th className="n"><Term k="CEP 포함률" /></th><th className="n"><Term k="지연">지연 중앙값</Term></th></tr></thead>
                   <tbody>
@@ -123,7 +123,7 @@ export function DashboardPage() {
         {recent.isLoading ? <Spinner /> : recent.data && recent.data.items.length === 0 ? (
           <Empty>시나리오가 없습니다.{can("analyst") && <> <Link to="/scenarios/new">첫 시나리오를 만들어 보세요.</Link></>}</Empty>
         ) : (
-          <div className="tw">
+          <div className="tw" tabIndex={0} role="region" aria-label="표 (가로로 스크롤)">
             <table>
               <thead><tr><th>#</th><th>이름</th><th>대기</th><th className="n">β (kg/m²)</th><th className="n">관측</th><th className="n">사거리</th><th className="n">추정</th><th className="n">최선 IP 오차</th></tr></thead>
               <tbody>

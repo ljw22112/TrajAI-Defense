@@ -36,7 +36,7 @@ export function ScenariosPage() {
         </div>
         <ErrorBox error={error || csv.error} />
         {isLoading ? <Spinner /> : !items?.length ? <Empty>조건에 맞는 시나리오가 없습니다.</Empty> : (
-          <div className="tw">
+          <div className="tw" tabIndex={0} role="region" aria-label="표 (가로로 스크롤)">
             <table>
               <thead><tr><th>#</th><th>이름</th><th>생성</th><th>대기</th><th className="n">β</th><th className="n">관측 종료</th><th className="n">ToT</th><th className="n">사거리</th><th className="n">최고 고도</th><th className="n">추정</th><th className="n">최선 IP 오차</th></tr></thead>
               <tbody>

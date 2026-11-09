@@ -290,3 +290,16 @@ table.fixed th:first-child,table.fixed td:first-child{width:22%}
 .fr-now-dot{fill:var(--pred)}
 .fr-imp-x{font:700 16px var(--font-mono); fill:var(--danger)}
 .fr-top-all{fill:none; stroke:var(--truth); stroke-width:1.2; opacity:.8}
+/* ---- design audit (Impeccable / Hallmark): readable minimum sizes, no all-caps sentences, no card-in-card */
+.nav .sec{font-size:11.5px}
+.chip{font-size:11.5px} .chip.model{font-size:11.5px}
+small.label, p.label{font-family:var(--font-sans); text-transform:none; letter-spacing:0; font-size:12.5px; color:var(--ink-3); line-height:1.5}
+.ph-id{font:500 15px var(--font-mono); color:var(--ink-3); margin-left:10px; vertical-align:3px}
+.tcard{display:flex; flex-direction:column; gap:10px; padding:4px 0 4px 14px; border-left:3px solid var(--rule); min-width:0}
+.tcard .card-h{display:flex; justify-content:space-between; align-items:center; gap:8px}
+.fr-callout{background:transparent}
+.card p{max-width:80ch}
+.fr-lbl,.fr-tick{font-size:12.5px}
+.card .empty{border:0; padding:18px 8px}
+@media (max-width:860px){.stat-v small{white-space:normal}}
+.sr-only{position:absolute; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0}

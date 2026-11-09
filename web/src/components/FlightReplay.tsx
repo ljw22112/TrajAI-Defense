@@ -103,7 +103,7 @@ export function FlightReplay({ f, forecasts = [] }: { f: Flight; forecasts?: For
   return (
     <div className="fr">
       <div className="fr-main">
-        <div className="fr-pan"><svg viewBox={`0 0 ${W} ${H}`} className="fr-svg" role="img" aria-label={`비행 재생: T+${fmt(t, 0)} s, 고도 ${fmt(cur.z / 1000, 1)} km`}>
+        <div className="fr-pan" tabIndex={0} role="region" aria-label="비행 재생 화면 (가로로 스크롤)"><svg viewBox={`0 0 ${W} ${H}`} className="fr-svg" role="img" aria-label={`비행 재생: T+${fmt(t, 0)} s, 고도 ${fmt(cur.z / 1000, 1)} km`}>
           {/* atmosphere bands */}
           <rect x={PL} y={sz(zmax)} width={W - PL - PR} height={sz(0) - sz(zmax)} className="fr-sky-thin" />
           {L.thin_air !== null && <rect x={PL} y={sz(Math.min(L.thin_air, zmax))} width={W - PL - PR} height={sz(L.tropopause) - sz(Math.min(L.thin_air, zmax))} className="fr-sky-strat" />}

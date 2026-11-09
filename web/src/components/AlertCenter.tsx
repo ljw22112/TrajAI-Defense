@@ -53,8 +53,8 @@ export function AlertCenter() {
         </div>
       )}
       <div className="bell">
-        <button className="btn ghost sm" onClick={() => setOpen(o => !o)} aria-expanded={open} aria-label={`위협 알림 ${unseen.length}건`}>
-          위협 알림{unseen.length > 0 && <span className="badge">{unseen.length}</span>}
+        <button className="btn ghost sm" onClick={() => setOpen(o => !o)} aria-expanded={open}>
+          위협 알림{unseen.length > 0 && <span className="badge">{unseen.length}<span className="sr-only">건</span></span>}
         </button>
         {open && (
           <div className="bell-pop" role="dialog" aria-label="위협 알림 목록">

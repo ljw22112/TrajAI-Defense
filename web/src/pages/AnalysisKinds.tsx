@@ -58,7 +58,7 @@ function Latency({ a }: { a: Analysis }) {
           <Legend items={[{ label: "지연된 기상 반영 EKF", color: "--ekf" }, { label: "USSA-1976 (일자 자료 없음)", color: "--pred", dash: true }, { label: "지수 대기 (표준 모델)", color: "--truth", dash: true }]} />
         </Card>
         <Card title="지연별 결과">
-          <div className="tw"><table>
+          <div className="tw" tabIndex={0} role="region" aria-label="표 (가로로 스크롤)"><table>
             <thead><tr><th>지연</th><th className="n">IP 오차 중앙값</th><th className="n">p90</th><th className="n">CEP 포함률</th></tr></thead>
             <tbody>{s.curve.map((c: any) => (
               <tr key={String(c.lag_h ?? c.ref)}><td>{c.lag_h !== null ? `${c.lag_h} h` : c.ref === "ussa" ? "USSA-1976 (자료 없음)" : "지수 대기 (표준 모델)"}</td><td className="n">{fmt(c.median_miss)} m</td>
@@ -100,7 +100,7 @@ function Sensor({ a }: { a: Analysis }) {
       </Card>
       <div className="grid g2">
         <Card title="IP 오차 중앙값 [m] (행 = 레이더 잡음 배수, 열 = 관측 비율)">
-          <div className="tw"><table className="heat">
+          <div className="tw" tabIndex={0} role="region" aria-label="표 (가로로 스크롤)"><table className="heat">
             <thead><tr><th>잡음</th>{obs.map(f => <th key={f} className="n">{fmt(f * 100)}%</th>)}</tr></thead>
             <tbody>{noise.map(m => (
               <tr key={m}><td className="nowrap">×{m} <small className="muted">({fmt(cell(m, obs[0]).sigma_r)} m)</small></td>
@@ -166,7 +166,7 @@ function Sensitivity({ a }: { a: Analysis }) {
         </Card>
       </div>
       <Card title="값별 결과">
-        <div className="tw"><table>
+        <div className="tw" tabIndex={0} role="region" aria-label="표 (가로로 스크롤)"><table>
           <thead><tr><th>{s.label}</th><th className="n">지상 밀도</th><th className="n">레이더 잡음</th><th className="n">탄착 이동</th><th className="n">비행시간</th><th className="n">표준 EKF</th><th className="n">대기 반영 EKF</th><th className="n">CEP 포함률</th></tr></thead>
           <tbody>{items.map(i => (
             <tr key={String(i.value)}><td>{lbl(i.value)}</td><td className="n">{fmt(i.rho_sfc, 3)} kg/m³</td><td className="n">×{fmt(i.noise_factor, 2)}</td>
