@@ -304,7 +304,7 @@ footer b{color:var(--ink); font-weight:600}
   <p class="sub">물리 제약 신경망 기반 실시간 탄도 궤도 예측 및 위협 평가 시스템</p>
   <div class="abstract">
     <p>요격 체계의 교전 판단은 표적의 탄착점(IP)과 탄착 시각(ToT)을 얼마나 빨리, 얼마나 믿을 수 있게 아느냐에 달려 있습니다. 확장 칼만 필터(EKF)나 수치 적분 기반 예측은 대기 밀도 변화, 마하수에 따른 항력 변화, 기동이 있으면 연산 비용과 추정 오차가 함께 커집니다. 순수 데이터 기반 신경망은 빠르지만 관측이 적은 초기 구간에서 운동 방정식을 위반하는 궤적을 출력할 수 있습니다.</p>
-    <p>TrajAI-Defense는 비행 초기 10~15% 구간의 레이더 트랙을 시계열 인코더(Transformer / Bi-LSTM)로 요약하고, 운동 방정식 잔차를 손실에 포함한 물리 제약 신경망(PINN)으로 잔여 궤적, IP, ToT, CEP를 추론합니다. 목표는 단일 표적 추론 50 ms 이하, 기존 대비 CEP 추정 오차 40% 감소입니다. 이 문서는 운용 개념, 동역학 모델, 추정 문제 정식화, 학습 설계, 데이터셋, 검증 방법과 <a href="#sec-results">실험 결과</a>를 정리합니다. 현재 결과로는 지연 목표는 충족하지만, 신경망 단독의 정확도는 같은 물리 모델을 쓰는 EKF/UKF에 못 미칩니다. 대신 PINN의 탄도계수 예측을 EKF의 사전정보로 넣으면 모든 시험 조건에서 EKF보다 정확해집니다(<a href="#sec-feedback">§9.6</a>). 선택 일자의 실제 기온·바람을 대기 모델에 반영하면 IP 오차가 크게 줄어(<a href="#sec-weather">§9.3</a>) 이를 기본 설정으로 채택했습니다.</p>
+    <p>TrajAI-Defense는 비행 초기 10~15% 구간의 레이더 트랙을 시계열 인코더(Transformer / Bi-LSTM)로 요약하고, 운동 방정식 잔차를 손실에 포함한 물리 제약 신경망(PINN)으로 잔여 궤적, IP, ToT, CEP를 추론합니다. 평가 기준은 추론 지연 p99 50 ms 이하, ID 10%에서 탄착점 RMSE 1,000 m 이하이면서 EKF의 1.2배 이내, 보정 후 CEP<sub>50</sub> 포함률 0.50 ± 0.05, 같은 인코더에서 물리 손실이 잔차를 50% 이상 줄이는지, 분포 밖 입력을 감지해 EKF로 넘기는지입니다. 처음 세운 목표(CEP 오차 −40%, 판단 시간 +25 s)와 그 판정은 §3에 그대로 남겼습니다. 이 문서는 운용 개념, 동역학 모델, 추정 문제 정식화, 학습 설계, 데이터셋, 검증 방법과 <a href="#sec-results">실험 결과</a>를 정리합니다. 현재 결과로는 지연 목표는 충족하지만, 신경망 단독의 정확도는 같은 물리 모델을 쓰는 EKF/UKF에 못 미칩니다. 대신 PINN의 탄도계수 예측을 EKF의 사전정보로 넣으면 모든 시험 조건에서 EKF보다 정확해집니다(<a href="#sec-feedback">§9.6</a>). 선택 일자의 실제 기온·바람을 대기 모델에 반영하면 IP 오차가 크게 줄어(<a href="#sec-weather">§9.3</a>) 이를 기본 설정으로 채택했습니다.</p>
   </div>
 <!-- KEY:BEGIN -->
   <div class="keys" aria-label="핵심 결과">
@@ -324,7 +324,7 @@ footer b{color:var(--ink); font-weight:600}
       <thead><tr><th>질문</th><th>근거</th><th>현재 답</th></tr></thead>
       <tbody>
         <tr><td><b>RQ1</b> 짧은 관측(10–15%)만으로 PINN이 탄착점을 실시간으로 예측할 수 있는가</td><td><a href="#sec-results">§9.1</a>, Fig. 8, <a href="#sec-mismatch">§9.9</a></td><td>지연은 충족(0.87 ms, EKF + MC보다 약 262배 빠름). 정확도는 입력에 따라 다름: Savitzky–Golay 특징으로는 EKF/UKF보다 낮지만, RTS 평활 특징을 쓰면 고잡음에서 EKF보다 정확(607 m vs 629 m). 실제 비행이 공칭 모델과 다르면 격차는 줄지만(양력 기동에서 EKF의 1.02배) 불일치 데이터로 다시 학습해도 필터를 넘지 못함(양력 1,142 m vs EKF 1,125 m)</td></tr>
-        <tr><td><b>RQ2</b> 물리 손실이 데이터만 쓴 학습보다 나은가</td><td><a href="#sec-results">§9.2</a>, <a href="#sec-stats">§9.4</a>, <a href="#sec-ensemble">§9.7</a></td><td>궤적의 물리 일관성은 확실히 개선(잔차 0.40 → 0.10 g). 가중치를 더 키우면 잔차는 더 줄지만 IP 정확도를 내줌(Table R10b). IP 정확도 이득은 seed 2쌍 모두에서 ID 10%·OOD에만 일관되고, 나머지 조건은 학습 무작위성 수준</td></tr>
+        <tr><td><b>RQ2</b> 물리 손실이 데이터만 쓴 학습보다 나은가</td><td><a href="#sec-results">§9.2</a>, <a href="#sec-stats">§9.4</a>, <a href="#sec-ensemble">§9.7</a>, <a href="#sec-lstm">§9.11</a></td><td>궤적의 물리 일관성은 확실히 개선(잔차 0.40 → 0.10 g), Bi-LSTM 인코더에서도 같은 수준으로 재현(76% 감소). 가중치를 더 키우면 잔차는 더 줄지만 IP 정확도를 내줌(Table R10b). IP 정확도 이득은 seed 2쌍 모두에서 ID 10%·OOD에만 일관되고, 나머지 조건은 학습 무작위성 수준. Bi-LSTM에서는 ID 10·15%·고잡음 중앙값이 모두 유의하게 줄지만 RMSE(꼬리)는 거의 그대로</td></tr>
         <tr><td><b>RQ3</b> 칼만 필터와 PINN을 어떻게 결합해야 가장 좋은가</td><td><a href="#sec-est">§6.2</a>, <a href="#sec-feedback">§9.6</a>, Table R8b</td><td>필터를 신경망의 앞뒤에 두는 결합이 효과적: EKF-RTS 평활 특징을 입력으로(PINN 오차가 ID 10%·15%·고잡음에서 40–64% 감소, 관측 5%에서는 이득 없음), PINN의 β 예측을 EKF 사전정보로(5개 조건 모두 EKF보다 정확)</td></tr>
         <tr><td><b>RQ4</b> 실제 기상(기온·바람)이 예측 오차에 얼마나 영향을 주는가</td><td><a href="#sec-weather">§9.3</a>, <a href="#sec-wximpact">§12.1</a></td><td>가장 큰 오차 원인. 일자 기상 반영으로 EKF 오차 87% 감소, 신경망도 기상 학습으로 2.8 → 0.7 km</td></tr>
         <tr><td><b>RQ5</b> 예측 불확실성(CEP)을 믿을 수 있는가</td><td><a href="#sec-calib">§9.5</a>, <a href="#sec-ensemble">§9.7</a>, <a href="#sec-ood">§9.8</a>, <a href="#sec-mismatch">§9.9</a></td><td>계수 하나로 50% 포함률 보정 가능, 꼬리는 두꺼움. 분포 밖에서는 보정·앙상블 모두 실패하지만, 내부 표현 거리로 감지(AUROC 0.999)해 EKF로 넘기면 OOD 오차 11.7 → 0.44 km. 모르는 양력 기동 앞에서는 공칭 모델 추정기 모두 과신(포함률 0.07–0.19)하고, 정점 이후까지 추적해도 혁신 검정·IMM으로 감지되지 않음. 예측에 기동 가설을 넣으면 포함률 0.43까지 오르나 CEP가 약 2배로 넓어짐</td></tr>
@@ -447,7 +447,7 @@ footer b{color:var(--ink); font-weight:600}
       </tbody>
     </table>
   </div>
-  <div class="prose"><p>REQ-P-01은 기획서의 추론 시간 목표(약 3 s에서 0.05 s로, 95% 단축)에서 나왔습니다. REQ-F-03의 잔차 기준은 §7의 물리 손실과 같은 식으로 계산하며, 현재 측정값과 판정 근거는 §9.2에 있습니다.</p></div>
+  <div class="prose"><p>REQ-P-01은 기획서의 추론 시간 목표(약 3 s에서 0.05 s로, 95% 단축)에서 나왔습니다. REQ-P-02(−40%)와 REQ-P-03(+25 s)은 근거 없이 정한 목표였으므로, 개정 기획서(<code>docs/</code>)는 이를 측정 가능한 평가 기준으로 바꿨습니다: 탄착점 RMSE(ID 10%) 1,000 m 이하이면서 EKF(747 m)의 1.2배 이내(RTS 입력 PINN 822 m로 충족, Bi-LSTM PINN 1,035 m로 미충족, §9.11), 물리 잔차 50% 이상 감소(Bi-LSTM 76%, 충족), 보정 후 CEP<sub>50</sub> 포함률 0.50 ± 0.05(충족, §9.5), 분포 밖 감지 후 EKF 전환(AUROC 0.999, 충족, §9.8). 위 표의 원래 요구사항과 판정은 기록으로 남겨 둡니다. REQ-F-03의 잔차 기준은 §7의 물리 손실과 같은 식으로 계산하며, 현재 측정값과 판정 근거는 §9.2에 있습니다.</p></div>
 </section>
 
 <!-- 4 ARCH -->
@@ -707,7 +707,7 @@ footer b{color:var(--ink); font-weight:600}
         <tr><td>UKF + Monte Carlo</td><td>식 (5.5), 극좌표 측정</td><td>시그마 포인트</td><td>선형화 오차 비교</td></tr>
         <tr><td>IMM (CV / CA / 탄도)</td><td>다중 모델</td><td>모델 확률 혼합</td><td>기동 표적 대응 [3], 미구현</td></tr>
         <tr><td>Transformer (data only)</td><td>—</td><td>이분산 헤드</td><td>λ<sub>p</sub> = 0 ablation (v1, v2)</td></tr>
-        <tr class="prop"><td><b>PINN–Bi-LSTM</b></td><td>식 (7.2)</td><td>이분산 헤드</td><td>인코더 비교 (v1만, v2 미실행)</td></tr>
+        <tr class="prop"><td><b>PINN–Bi-LSTM</b></td><td>식 (7.2)</td><td>이분산 헤드</td><td>인코더 비교 (v1, v2: §9.11, Bi-LSTM data only와 쌍대 비교)</td></tr>
         <tr class="prop"><td><b>PINN–Transformer</b></td><td>식 (7.2)</td><td>이분산 헤드</td><td>제안 (v1, v2)</td></tr>
         <tr class="prop"><td><b>PINN–Transformer + EKF</b></td><td>식 (7.2)</td><td>이분산 헤드</td><td>제안 (하이브리드, Table 6)</td></tr>
       </tbody>
@@ -1087,6 +1087,40 @@ footer b{color:var(--ink); font-weight:600}
       </tbody>
     </table>
   </div>
+<!-- LSTM:BEGIN -->
+  <h3 class="sub" id="sec-lstm"><span class="no">9.11</span>인코더를 바꿔도 물리 손실의 효과가 유지되는가: Bi-LSTM 쌍</h3>
+  <div class="prose">
+    <p>§9.4의 물리 손실 비교는 Transformer 인코더 한 쌍뿐이었습니다. 효과가 인코더 구조에 묶인 것인지 확인하려고 Bi-LSTM 인코더를 같은 조건(잡음 증강 학습 분할, 4,500 step, λ<sub>p</sub> = 1.0, seed 0)으로 물리 손실 없이(data only)와 있이(PINN) 학습했습니다. 검정은 Table R5와 같습니다(쌍대 bootstrap 95% CI, Wilcoxon, 5개 분할에 Holm 보정). 학습·평가는 <code>.github/workflows/train-lstm.yml</code>, 집계는 <code>scripts/lstm_compare.py</code>로 재현합니다.</p>
+  </div>
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
+    <table>
+      <caption><b>Table R16</b>Bi-LSTM data only → PINN. IP 오차 중앙값·RMSE [m], 물리 잔차 RMS 중앙값 [g], CEP<sub>50</sub> 포함률(보정 전). Δ = PINN − data only</caption>
+      <thead><tr><th>분할</th><th class="n">IP 중앙값</th><th class="n">Δ 중앙값 [95% CI]</th><th class="n">p (Holm)</th><th>판정</th><th class="n">IP RMSE</th><th class="n">잔차</th><th class="n">포함률</th><th class="n">EKF 중앙값 / RMSE</th></tr></thead>
+      <tbody>
+        <tr><td>ID 5%</td><td class="n">6,343 → 6,982</td><td class="n">+639 <small class="muted">[+437, +825]</small></td><td class="n">&lt; 0.001</td><td>data only 우세</td><td class="n">8,059 → 9,713</td><td class="n">0.48 → 0.19</td><td class="n">0.04 → 0.03</td><td class="n">1,429 <small class="muted">/ 3,056</small></td></tr>
+        <tr><td>ID 10%</td><td class="n">668 → 584</td><td class="n">-84 <small class="muted">[-129, -40]</small></td><td class="n">&lt; 0.001</td><td>PINN 우세</td><td class="n">1,047 → 1,035</td><td class="n">0.40 → 0.10</td><td class="n">0.71 → 0.74</td><td class="n">340 <small class="muted">/ 747</small></td></tr>
+        <tr><td>ID 15%</td><td class="n">587 → 514</td><td class="n">-73 <small class="muted">[-107, -37]</small></td><td class="n">&lt; 0.001</td><td>PINN 우세</td><td class="n">938 → 848</td><td class="n">0.41 → 0.08</td><td class="n">0.69 → 0.71</td><td class="n">225 <small class="muted">/ 391</small></td></tr>
+        <tr><td>고잡음</td><td class="n">1,112 → 1,031</td><td class="n">-81 <small class="muted">[-158, -17]</small></td><td class="n">0.002</td><td>PINN 우세</td><td class="n">1,768 → 1,790</td><td class="n">0.41 → 0.09</td><td class="n">0.38 → 0.40</td><td class="n">629 <small class="muted">/ 1,358</small></td></tr>
+        <tr><td>OOD</td><td class="n">10,821 → 10,613</td><td class="n">-208 <small class="muted">[-857, +281]</small></td><td class="n">&lt; 0.001</td><td>혼재 (분포는 이동, 중앙값 차이는 불확실)</td><td class="n">33,988 → 27,638</td><td class="n">0.73 → 0.51</td><td class="n">0.19 → 0.10</td><td class="n">438 <small class="muted">/ 662</small></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
+    <table>
+      <caption><b>Table R16b</b>인코더별 물리 손실 효과 (ID 10%). 지연은 PINN의 PyTorch CPU 1스레드 p50 / p99 [ms]</caption>
+      <thead><tr><th>인코더</th><th class="n">IP 중앙값 data → PINN</th><th class="n">잔차 data → PINN</th><th>IP 중앙값이 유의하게 준 분할 (ID 10·15%·고잡음 중)</th><th class="n">지연</th></tr></thead>
+      <tbody>
+        <tr><td>Transformer</td><td class="n">794 → 733</td><td class="n">0.40 → 0.10 <small class="muted">(76% 감소)</small></td><td>ID 10%</td><td class="n">1.6 / 2.1</td></tr>
+        <tr><td>Bi-LSTM</td><td class="n">668 → 584</td><td class="n">0.40 → 0.10 <small class="muted">(76% 감소)</small></td><td>ID 10%, ID 15%, 고잡음</td><td class="n">2.3 / 3.1</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="prose">
+    <p><b>물리 일관성은 인코더와 무관하게 개선됩니다.</b> Bi-LSTM에서도 잔차가 0.40 → 0.10 g(76% 감소)로, Transformer 쌍과 거의 같은 수준까지 줄었습니다. RQ2의 "물리 손실은 물리 일관성을 확실히 개선한다"는 답이 한 구조에만 해당하는 결과가 아님을 뜻합니다.</p>
+    <p><b>IP 정확도 이득은 중앙값에서만 뚜렷합니다.</b> Bi-LSTM에서는 ID 10%·15%·고잡음 세 분할 모두 PINN의 IP 오차 중앙값이 유의하게 작아(Δ -84 m, ID 10%) Transformer 쌍보다 일관됩니다. 그러나 RMSE는 ID 15%에서만 줄고(938 → 848 m), ID 10%(1,047 → 1,035 m)와 고잡음(1,768 → 1,790 m)에서는 거의 같습니다. ID 10%의 RMSE는 개정 기획서의 평가 기준(1,000 m 이하, EKF 747 m의 1.2배 이내)을 충족하지 못합니다. 물리 손실이 전형적인 트랙의 오차는 줄이지만 드문 대형 오차(꼬리)는 대체로 줄이지 못합니다.</p>
+    <p><b>학습 범위 밖에서는 두 모델 모두 실패합니다.</b> 관측 5%는 학습 분할의 관측 비율(8–20%) 밖이라 두 모델 모두 IP 오차가 수 km이고, PINN이 오히려 큽니다(6,343 → 6,982 m, EKF 1,429 m). OOD도 같습니다. 인코더를 바꿔도 외삽은 해결되지 않으므로 §9.8의 분포 밖 감지·EKF 전환이 필요합니다.</p>
+  </div>
+<!-- LSTM:END -->
 </section>
 
 <!-- 10 IMPL -->

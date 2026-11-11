@@ -1,7 +1,7 @@
 """LSTM vs PINN comparison (same LSTM encoder, physics loss off / on).
 
 Reads results/metrics.json and results/pred_{data,pinn}_lstm_v2_*.npz, writes results/lstm_vs_pinn.json:
-per split, impact-point miss and physics residual for both models, plus a paired bootstrap / Wilcoxon test
+per split, impact-point miss (median and RMSE) and physics residual for both models, plus a paired bootstrap / Wilcoxon test
 on the miss distance (same procedure as site_stats.compare, Holm-corrected over the splits).
 """
 import json
@@ -15,6 +15,16 @@ from site_stats import compare, holm  # noqa: E402
 
 DATA, PINN = "data_lstm_v2", "pinn_lstm_v2"
 SPLITS = ["test_id_f05", "test_id_f10", "test_id_f15", "test_id_noise", "test_ood"]
+
+
+def rmse(s):
+    """Impact-point RMSE [m] from the per-track miss distances (needs results/pred_* and baseline_* files)."""
+    out = {}
+    for key, f in (("rmse_data_m", f"results/pred_{DATA}_{s}.npz"), ("rmse_pinn_m", f"results/pred_{PINN}_{s}.npz"),
+                   ("rmse_ekf_m", f"results/baseline_ekf_{s}.npz")):
+        if os.path.exists(f):
+            out[key] = float(np.sqrt(np.mean(np.load(f)["miss"] ** 2)))
+    return out
 
 
 def main():
@@ -32,7 +42,8 @@ def main():
             miss_data_m=d["miss"]["median"], miss_pinn_m=p["miss"]["median"],
             phys_data_g=rd, phys_pinn_g=rp, phys_reduction=1.0 - rp / rd if rd > 0 else None,
             cov_data=d["coverage"], cov_pinn=p["coverage"],
-            miss_ekf_m=m.get("ekf", {}).get(s, {}).get("miss", {}).get("median"))
+            miss_ekf_m=m.get("ekf", {}).get(s, {}).get("miss", {}).get("median"),
+            **rmse(s))
     out["latency"] = {k: m[k].get("latency") for k in (DATA, PINN) if k in m}
     json.dump(out, open("results/lstm_vs_pinn.json", "w"), indent=1, ensure_ascii=False)
     print(f"{'split':14s} {'miss data':>10s} {'miss pinn':>10s} {'phys data':>10s} {'phys pinn':>10s} {'-phys':>6s}  p_holm")
