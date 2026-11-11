@@ -1,0 +1,18 @@
+data_lstm_v2       test_id_f05    ADE    4057  miss    6343  ToT  2.57  CEP   1128  cov 0.04  res 0.476 g
+data_lstm_v2       test_id_f10    ADE     725  miss     668  ToT  1.48  CEP    941  cov 0.71  res 0.399 g
+data_lstm_v2       test_id_f15    ADE     684  miss     587  ToT  1.69  CEP    808  cov 0.69  res 0.406 g
+data_lstm_v2       test_id_noise  ADE    1016  miss    1112  ToT  1.78  CEP    915  cov 0.38  res 0.409 g
+data_lstm_v2       test_ood       ADE   19873  miss   10821  ToT 26.65  CEP   6092  cov 0.19  res 0.727 g
+data_lstm_v2 latency {'p50_ms': 2.3931030000028386, 'p99_ms': 4.431234320017835}
+pinn_lstm_v2       test_id_f05    ADE    4869  miss    6982  ToT  3.58  CEP   1080  cov 0.03  res 0.188 g
+pinn_lstm_v2       test_id_f10    ADE     731  miss     584  ToT  1.31  CEP    879  cov 0.74  res 0.095 g
+pinn_lstm_v2       test_id_f15    ADE     591  miss     514  ToT  1.07  CEP    786  cov 0.71  res 0.083 g
+pinn_lstm_v2       test_id_noise  ADE     976  miss    1031  ToT  1.56  CEP    860  cov 0.40  res 0.094 g
+pinn_lstm_v2       test_ood       ADE   21409  miss   10613  ToT 31.07  CEP   4397  cov 0.10  res 0.512 g
+pinn_lstm_v2 latency {'p50_ms': 2.336000500008595, 'p99_ms': 3.1094911900100897}
+split           miss data  miss pinn  phys data  phys pinn  -phys  p_holm
+test_id_f05          6343       6982      0.476      0.188    60%  4.23e-43
+test_id_f10           668        584      0.399      0.095    76%  0.000263
+test_id_f15           587        514      0.406      0.083    79%  6.74e-06
+test_id_noise        1112       1031      0.409      0.094    77%  0.00227
+test_ood            10821      10613      0.727      0.512    30%  2.58e-51
