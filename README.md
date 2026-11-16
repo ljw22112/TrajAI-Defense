@@ -1,8 +1,9 @@
 # TrajAI-Defense
 
-물리 제약 신경망(PINN) 기반 실시간 탄도 궤도 예측 및 위협 평가 시스템.
-레이더 초기 관측 구간(전체 비행의 5~15%)만으로 잔여 궤적, 탄착점(IP), 탄착 시각(ToT), CEP를 추론하고,
-같은 물리 모델을 쓰는 EKF/UKF + Monte Carlo baseline과 비교합니다.
+탄도 궤적·탄착점 예측 알고리즘 비교·평가 플랫폼 (칼만 필터 · 물리 제약 신경망).
+방공 M&S 분석가가 조건을 골라 레이더 트랙을 만들고, 같은 트랙에 EKF·UKF·LSTM/Transformer·PINN을 실행해
+탄착점(IP) 오차, CEP, 계산 시간, 위협 등급을 같은 지표와 통계 검정으로 비교합니다.
+신경망은 연소 종료 후 비행의 앞 5~15% 관측만으로 잔여 궤적, IP, 탄착 시각(ToT), CEP를 추론합니다.
 
 - **기술 문서 / 프로젝트 페이지:** https://ljw22112.github.io/TrajAI-Defense/
 - **3D 결과 뷰어:** https://ljw22112.github.io/TrajAI-Defense/prototype/viewer.html
@@ -70,6 +71,8 @@ python scripts/evaluate.py pinn_tf_hybrid      # results/metrics.json
 python scripts/export_onnx.py pinn_tf_hybrid   # export/*.onnx, results/latency.json
 python scripts/make_figures.py
 python -m pytest -q tests
+# LSTM vs PINN (§9.11): train-lstm 브랜치에 push하면 .github/workflows/train-lstm.yml이 학습·평가·커밋
+python scripts/lstm_compare.py && python scripts/site_lstm.py
 ```
 
 ## 결과 요약 (CPU, 시험 분할별 1,000개 궤적의 중앙값)

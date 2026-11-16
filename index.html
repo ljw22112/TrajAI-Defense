@@ -276,7 +276,7 @@ footer b{color:var(--ink); font-weight:600}
   <span class="label">Contents</span>
   <ol>
     <li><a href="#sec-demo"><span>1</span>궤도 추정 시연</a></li>
-    <li><a href="#sec-conops"><span>2</span>운용 개념과 문제 정의</a></li>
+    <li><a href="#sec-conops"><span>2</span>문제 정의와 서비스 기획</a></li>
     <li><a href="#sec-req"><span>3</span>요구 성능</a></li>
     <li><a href="#sec-arch"><span>4</span>시스템 아키텍처</a></li>
     <li><a href="#sec-dyn"><span>5</span>비행 동역학 모델</a></li>
@@ -304,7 +304,7 @@ footer b{color:var(--ink); font-weight:600}
   <p class="sub">탄도 궤적·탄착점 예측 알고리즘(칼만 필터 · 물리 제약 신경망) 비교·평가 플랫폼</p>
   <div class="abstract">
     <p>방공 체계의 모델링·시뮬레이션(M&amp;S) 분석가는 탄착점(IP) 예측 알고리즘을 고를 때 같은 트랙, 같은 지표로 비교한 근거가 필요합니다. 그런데 기준 방식인 EKF + Monte Carlo는 불확실성까지 내는 데 228 ms가 걸리고, 관측이 비행의 5%뿐이면 IP 오차가 1,429 m로 커지면서 CEP 포함률이 0.37로 떨어집니다(과신). 순수 데이터 기반 신경망은 빠르지만 물리 법칙을 덜 지킵니다(운동 방정식 잔차 0.40 g). 탄착점 예측에서 필터와 물리 기반 신경망을 같은 조건으로 비교하는 기능은 상용 도구(STK, MATLAB)나 오픈소스 프레임워크(Stone Soup)가 기본으로 제공하지 않습니다(§2.4).</p>
-    <p>TrajAI-Defense는 분석가가 고른 조건으로 레이더 트랙을 만들고, 같은 트랙에 칼만 필터(EKF·UKF)와 신경망을 실행해 결과를 비교하는 플랫폼입니다. 신경망은 연소 종료 후 비행의 앞 5~15% 구간 트랙을 시계열 인코더(Transformer / Bi-LSTM)로 요약하고, 운동 방정식 잔차를 손실에 포함한 물리 제약 신경망(PINN)으로 잔여 궤적, IP, ToT, CEP를 추론합니다. 평가 기준은 추론 지연 p99 50 ms 이하, ID 10%에서 탄착점 RMSE 1,000 m 이하이면서 EKF의 1.2배 이내, 보정 후 CEP<sub>50</sub> 포함률 0.50 ± 0.05, 같은 인코더에서 물리 손실이 잔차를 50% 이상 줄이는지, 분포 밖 입력을 감지해 EKF로 넘기는지입니다. 처음 세운 목표(CEP 오차 −40%, 판단 시간 +25 s)와 그 판정은 §3에 그대로 남겼습니다. 이 문서는 운용 개념, 동역학 모델, 추정 문제 정식화, 학습 설계, 데이터셋, 검증 방법과 <a href="#sec-results">실험 결과</a>를 정리합니다. 현재 결과로는 지연 목표는 충족하지만, 신경망 단독의 정확도는 같은 물리 모델을 쓰는 EKF/UKF에 못 미칩니다. 대신 PINN의 탄도계수 예측을 EKF의 사전정보로 넣으면 모든 시험 조건에서 EKF보다 정확해집니다(<a href="#sec-feedback">§9.6</a>). 선택 일자의 실제 기온·바람을 대기 모델에 반영하면 IP 오차가 크게 줄어(<a href="#sec-weather">§9.3</a>) 이를 기본 설정으로 채택했습니다.</p>
+    <p>TrajAI-Defense는 분석가가 고른 조건으로 레이더 트랙을 만들고, 같은 트랙에 칼만 필터(EKF·UKF)와 신경망을 실행해 결과를 비교하는 플랫폼입니다. 신경망은 연소 종료 후 비행의 앞 5~15% 구간 트랙을 시계열 인코더(Transformer / Bi-LSTM)로 요약하고, 운동 방정식 잔차를 손실에 포함한 물리 제약 신경망(PINN)으로 잔여 궤적, IP, ToT, CEP를 추론합니다. 평가 기준은 추론 지연 p99 50 ms 이하, ID 10%에서 탄착점 RMSE 1,000 m 이하이면서 EKF의 1.2배 이내, 보정 후 CEP<sub>50</sub> 포함률 0.50 ± 0.05, 같은 인코더에서 물리 손실이 잔차를 50% 이상 줄이는지, 분포 밖 입력을 감지해 EKF로 넘기는지입니다. 처음 세운 목표(CEP 오차 −40%, 판단 시간 +25 s)와 그 판정은 §3에 그대로 남겼습니다. 이 문서는 문제 정의와 서비스 기획, 동역학 모델, 추정 문제 정식화, 학습 설계, 데이터셋, 검증 방법과 <a href="#sec-results">실험 결과</a>를 정리합니다. 현재 결과로는 지연 목표는 충족하지만, 신경망 단독의 정확도는 같은 물리 모델을 쓰는 EKF/UKF에 못 미칩니다. 대신 PINN의 탄도계수 예측을 EKF의 사전정보로 넣으면 모든 시험 조건에서 EKF보다 정확해집니다(<a href="#sec-feedback">§9.6</a>). 선택 일자의 실제 기온·바람을 대기 모델에 반영하면 IP 오차가 크게 줄어(<a href="#sec-weather">§9.3</a>) 이를 기본 설정으로 채택했습니다.</p>
   </div>
 <!-- KEY:BEGIN -->
   <div class="keys" aria-label="핵심 결과">
@@ -318,6 +318,21 @@ footer b{color:var(--ink); font-weight:600}
     <a class="key no" href="#sec-validity"><span class="label">분포 밖 일반화 실패</span><b>10.4 km</b><span>OOD(고속·고β) 시험에서 하이브리드 IP 오차. 물리 손실만으로는 외삽이 보장되지 않음</span></a>
   </div>
 <!-- KEY:END -->
+<!-- GUIDE:BEGIN -->
+  <div class="tw rq">
+    <table>
+      <caption><b>읽는 순서</b>기획 평가 항목별로 근거가 있는 절입니다. 기획서·컨셉 정의서(<code>docs/</code>)와 같은 내용입니다.</caption>
+      <thead><tr><th>평가 항목</th><th>핵심 내용</th><th>바로가기</th></tr></thead>
+      <tbody>
+        <tr><td><b>A</b> 문제 정의·필요성</td><td>직접 측정한 문제 5가지, 1차·2차 사용자, 국내외 수요 근거와 출처 있는 시장 자료</td><td><a href="#sec-problem">§2.1</a>, <a href="#sec-users">§2.2</a></td></tr>
+        <tr><td><b>B</b> 서비스 기획</td><td>운용 콘솔에 구현된 5단계 활용 시나리오, 유사 서비스 3종과의 비교</td><td><a href="#sec-scenario">§2.3</a>, <a href="#sec-compare">§2.4</a>, <a href="#sec-stack">§12</a></td></tr>
+        <tr><td><b>C</b> 기술 난이도</td><td>autograd 물리 잔차 PINN, EKF·UKF·RTS와 하이브리드, 통계 검정, CEP 보정, 분포 밖 감지, 실제 기상, 풀스택 서빙</td><td><a href="#sec-dyn">§5</a>–<a href="#sec-vv">§9</a>, <a href="#sec-stack">§12</a></td></tr>
+        <tr><td><b>D</b> 범위 적정성</td><td>필수 4개·선택 3개 구분과 완료 상태, 평가 기준별 달성 여부, LSTM vs PINN 비교</td><td><a href="#sec-scope">§2.5</a>, <a href="#sec-req">§3</a>, <a href="#sec-lstm">§9.11</a></td></tr>
+        <tr><td><b>E</b> 수행 계획·위험 관리</td><td>중간 점검 M1–M3가 있는 7주 일정, 주차별 완료 기준, 징후·대응·실제 결과가 있는 위험 5개</td><td><a href="#sec-plan">§11</a></td></tr>
+      </tbody>
+    </table>
+  </div>
+<!-- GUIDE:END -->
 <!-- RQ:BEGIN -->
   <div class="tw rq">
     <table>
@@ -429,6 +444,7 @@ footer b{color:var(--ink); font-weight:600}
   <div class="prose">
     <p><b>1차 사용자</b>는 방공 체계 M&amp;S 분석가입니다. 탄착점 예측 알고리즘을 비교·평가해 체계에 넣을 방식을 고르는 사람입니다. <b>2차 사용자</b>는 궤적 추정(칼만 필터, 물리 기반 신경망)을 공부하는 대학·연구실입니다. 실전 운용 지원(작전 통제관용)은 실측 자료 검증이 필요하므로 향후 확장으로 둡니다.</p>
     <p><b>수요 근거.</b> 영국 국방과학기술연구소(Dstl)는 추적 알고리즘이 복잡해 서로 비교하기 어렵다는 문제를 풀려고, 같은 데이터에서 알고리즘을 나란히 비교하는 오픈소스 프레임워크 Stone Soup를 Five Eyes 5개국 국방연구기관과 함께 만들어 2019년에 공개했습니다[9]. 국방 연구기관이 직접 알고리즘 비교 도구를 필요로 한다는 뜻이며, 이 플랫폼은 Stone Soup에 없는 탄착점 예측과 물리 기반 신경망 비교를 다룹니다. 시장으로는 군사 AI 시장이 2025년 140억 달러에서 2035년 484억 달러(연평균 13.2%, 2026–2035)로[10], 군사 시뮬레이션·훈련 시장이 2024년 137억 달러에서 2034년 228억 달러(연평균 5.3%)로[11] 성장할 것으로 전망됩니다. 국내에서는 국방혁신 4.0 기본계획(국방부, 2023.3)이 AI 기반 과학기술강군을 목표로 제시했습니다[12].</p>
+    <p><b>국내 연구 근거.</b> 국내 방산 체계업체 연구진은 한국형 미사일 방어(KAMD)에서 탄도미사일의 사거리·기동 특성 예측이 중요하고 심층 신경망 적용 요구가 커지지만, 보안 때문에 궤적 자료가 제한되어 합성 궤적을 만들어 써야 한다고 보고했습니다[13]. 같은 연구진은 활공 기동 구간에서는 탄착점 예측 오차가 수십 km에 이르러 예측이 어렵다고 분석했고[14], 한국시뮬레이션학회에서는 시뮬레이션 궤적으로 학습한 두 생성형 AI 궤적 예측 모델의 성능을 비교한 연구가 나왔습니다[15]. 국내에서도 여러 예측 방법을 각자 만든 합성 자료로 비교하고 있다는 뜻입니다. 이 플랫폼은 그런 비교를 같은 트랙·같은 지표·통계 검정으로 재현할 수 있게 하는 것을 목표로 하며, 합성 데이터 사용(§8)과 기동 비행체 제외(§9.10)도 이 선행 연구들과 같은 판단입니다.</p>
   </div>
   <h3 class="sub" id="sec-scenario"><span class="no">2.3</span>활용 시나리오</h3>
   <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
@@ -516,12 +532,12 @@ footer b{color:var(--ink); font-weight:600}
         <text class="lane" x="24" y="38">ONLINE · 실시간 추론 경로</text>
         <text class="lane" x="24" y="238">OFFLINE · 학습 및 배포 경로</text>
 
-        <g class="bx"><rect x="24" y="66" width="150" height="76" rx="2"/><text class="t" x="99" y="96" text-anchor="middle">센서</text><text class="s" x="99" y="116" text-anchor="middle">Radar · EO/IR</text><text class="s" x="99" y="131" text-anchor="middle">R, Az, El</text></g>
-        <g class="bx"><rect x="198" y="66" width="150" height="76" rx="2"/><text class="t" x="273" y="96" text-anchor="middle">수집</text><text class="s" x="273" y="116" text-anchor="middle">gRPC stream</text><text class="s" x="273" y="131" text-anchor="middle">≥ 20 Hz</text></g>
+        <g class="bx"><rect x="24" y="66" width="150" height="76" rx="2"/><text class="t" x="99" y="96" text-anchor="middle">센서</text><text class="s" x="99" y="116" text-anchor="middle">모의 레이더 1대</text><text class="s" x="99" y="131" text-anchor="middle">R, Az, El</text></g>
+        <g class="bx"><rect x="198" y="66" width="150" height="76" rx="2"/><text class="t" x="273" y="96" text-anchor="middle">수집</text><text class="s" x="273" y="116" text-anchor="middle">WebSocket 재생</text><text class="s" x="273" y="131" text-anchor="middle">측정당 EKF 갱신</text></g>
         <g class="bx"><rect x="372" y="66" width="150" height="76" rx="2"/><text class="t" x="447" y="96" text-anchor="middle">전처리</text><text class="s" x="447" y="116" text-anchor="middle">polar → ENU</text><text class="s" x="447" y="131" text-anchor="middle">S-G 미분 · EKF 사후</text></g>
-        <g class="bx hl"><rect x="546" y="56" width="170" height="96" rx="2"/><text class="t" x="631" y="86" text-anchor="middle">추론 엔진</text><text class="s" x="631" y="106" text-anchor="middle">Transformer / Bi-LSTM</text><text class="s" x="631" y="121" text-anchor="middle">+ PINN decoder</text><text class="s" x="631" y="136" text-anchor="middle">ensemble M = 5</text></g>
+        <g class="bx hl"><rect x="546" y="56" width="170" height="96" rx="2"/><text class="t" x="631" y="86" text-anchor="middle">추론 엔진</text><text class="s" x="631" y="106" text-anchor="middle">Transformer / Bi-LSTM</text><text class="s" x="631" y="121" text-anchor="middle">+ PINN decoder</text><text class="s" x="631" y="136" text-anchor="middle">ensemble M = 3</text></g>
         <g class="bx"><rect x="740" y="66" width="140" height="76" rx="2"/><text class="t" x="810" y="96" text-anchor="middle">위협 평가</text><text class="s" x="810" y="116" text-anchor="middle">IP · CEP · ToT</text><text class="s" x="810" y="131" text-anchor="middle">PIP · 등급 1–5</text></g>
-        <g class="bx"><rect x="904" y="66" width="132" height="76" rx="2"/><text class="t" x="970" y="96" text-anchor="middle">C2 상황도</text><text class="s" x="970" y="116" text-anchor="middle">React 콘솔 · 3D</text><text class="s" x="970" y="131" text-anchor="middle">1-click 승인</text></g>
+        <g class="bx"><rect x="904" y="66" width="132" height="76" rx="2"/><text class="t" x="970" y="96" text-anchor="middle">분석 콘솔</text><text class="s" x="970" y="116" text-anchor="middle">React 콘솔 · 3D</text><text class="s" x="970" y="131" text-anchor="middle">비교 · 비행 재생</text></g>
         <path class="ln" d="M174 104 H196" marker-end="url(#a1)"/>
         <path class="ln" d="M348 104 H370" marker-end="url(#a1)"/>
         <path class="ln" d="M522 104 H544" marker-end="url(#a1)"/>
@@ -529,7 +545,7 @@ footer b{color:var(--ink); font-weight:600}
         <path class="ln" d="M880 104 H902" marker-end="url(#a1)"/>
 
         <g class="bx"><rect x="198" y="266" width="150" height="76" rx="2"/><text class="t" x="273" y="296" text-anchor="middle">비행 시뮬레이터</text><text class="s" x="273" y="316" text-anchor="middle">3-DOF 점질량 · RK4</text><text class="s" x="273" y="331" text-anchor="middle">Monte Carlo</text></g>
-        <g class="bx"><rect x="372" y="266" width="150" height="76" rx="2"/><text class="t" x="447" y="296" text-anchor="middle">합성 데이터셋</text><text class="s" x="447" y="316" text-anchor="middle">학습 2만 · 시험 5×1,000</text><text class="s" x="447" y="331" text-anchor="middle">ID / OOD split</text></g>
+        <g class="bx"><rect x="372" y="266" width="150" height="76" rx="2"/><text class="t" x="447" y="296" text-anchor="middle">합성 데이터셋</text><text class="s" x="447" y="316" text-anchor="middle">학습 2만 · 시험 5천</text><text class="s" x="447" y="331" text-anchor="middle">ID / OOD split</text></g>
         <g class="bx"><rect x="546" y="266" width="170" height="76" rx="2"/><text class="t" x="631" y="296" text-anchor="middle">학습</text><text class="s" x="631" y="316" text-anchor="middle">L_data + λ·L_phys</text><text class="s" x="631" y="331" text-anchor="middle">λ curriculum</text></g>
         <g class="bx"><rect x="740" y="266" width="140" height="76" rx="2"/><text class="t" x="810" y="296" text-anchor="middle">경량화</text><text class="s" x="810" y="316" text-anchor="middle">ONNX Runtime</text><text class="s" x="810" y="331" text-anchor="middle">CPU p99 5.3 ms</text></g>
         <g class="bx ghost"><rect x="24" y="266" width="150" height="76" rx="2"/><text class="t" x="99" y="296" text-anchor="middle">대기 · 중력 모델</text><text class="s" x="99" y="316" text-anchor="middle">USSA-1976</text><text class="s" x="99" y="331" text-anchor="middle">g(h), Cd(M)</text></g>
@@ -543,7 +559,7 @@ footer b{color:var(--ink); font-weight:600}
         <text class="s" x="300" y="226">물리 잔차 항 (같은 모델 공유)</text>
       </svg>
     </div>
-    <figcaption><b>Fig. 3</b>블록도. 학습과 추론이 같은 대기·중력·항력 모델을 공유하므로, 시뮬레이터로 만든 데이터와 PINN 물리 잔차가 서로 다른 물리를 가정하는 일이 생기지 않습니다. 괄호 안은 계획 단계 항목입니다.</figcaption>
+    <figcaption><b>Fig. 3</b>블록도. 학습과 추론이 같은 대기·중력·항력 모델을 공유하므로, 시뮬레이터로 만든 데이터와 PINN 물리 잔차가 서로 다른 물리를 가정하는 일이 생기지 않습니다.</figcaption>
   </figure>
   <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
@@ -1340,6 +1356,9 @@ python -m pytest -q tests server/tests</code></pre>
     <li>Global Market Insights, <i>Artificial Intelligence in Military Market Size</i>, 2026. <a href="https://www.gminsights.com/industry-analysis/artificial-intelligence-in-military-market">gminsights.com</a></li>
     <li>Global Market Insights, <i>Military Simulation and Training Market Size &amp; Share 2025–2034</i>, GMI13713, May 2025. <a href="https://www.gminsights.com/industry-analysis/military-simulation-and-training-market">gminsights.com</a></li>
     <li>국방부, 「국방혁신 4.0 기본계획」, 2023. 3.</li>
+    <li>이동규, 홍동욱, “변이형 오토인코더를 이용한 탄도미사일 궤적 증강기법 개발,” <i>한국시스템엔지니어링학회지</i>, vol. 19, no. 2, pp. 145–156, 2023. doi:10.14248/JKOSSE.2023.19.2.145</li>
+    <li>홍동욱, 김주현, “피치선회율을 이용한 저고도 활공기동형 미사일 비행궤적 시뮬레이션 및 탄착지점 예측 분석,” <i>한국산학기술학회논문지</i>, vol. 25, no. 1, pp. 714–724, 2024. doi:10.5762/KAIS.2024.25.1.714</li>
+    <li>김영민, “생성형 AI 모델 기반 기동형 탄도미사일 궤적예측 성능 비교,” <i>한국시뮬레이션학회 논문지</i>, vol. 34, no. 1, pp. 13–21, 2025. doi:10.9709/JKSS.2025.34.1.013</li>
   </ol>
 </section>
 
