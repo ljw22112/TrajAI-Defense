@@ -4,9 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>TrajAI-Defense</title>
-<meta name="description" content="레이더 초기 관측 구간만으로 비행체의 전 궤도·탄착점(IP)·탄착 시각(ToT)·CEP를 추론하는 물리 제약 신경망(PINN) 기반 궤도 예측 시스템 기술 문서.">
+<meta name="description" content="방공 M&amp;S 분석가가 같은 레이더 트랙에 EKF·UKF·LSTM·PINN을 실행해 탄착점 오차, CEP, 계산 시간, 위협 등급을 비교하는 플랫폼의 기술 문서.">
 <meta property="og:title" content="TrajAI-Defense">
-<meta property="og:description" content="Physics-Informed Neural Network 기반 실시간 탄도 궤도 예측 및 위협 평가 시스템">
+<meta property="og:description" content="칼만 필터와 물리 제약 신경망(PINN)의 탄착점 예측을 같은 조건에서 비교·평가하는 방공 M&amp;S 플랫폼">
 <meta property="og:type" content="website">
 <meta name="theme-color" content="#14233a">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='4' fill='%2314233a'/%3E%3Cpath d='M4 26 Q14 2 28 26' fill='none' stroke='%23f08a3e' stroke-width='2.5' stroke-dasharray='4 3'/%3E%3Ccircle cx='28' cy='26' r='2.5' fill='%23f08a3e'/%3E%3C/svg%3E">
@@ -301,19 +301,20 @@ footer b{color:var(--ink); font-weight:600}
     <span class="chip">Air &amp; Missile Defense M&amp;S</span>
   </div>
   <h1>TrajAI<i>-</i>Defense</h1>
-  <p class="sub">물리 제약 신경망 기반 실시간 탄도 궤도 예측 및 위협 평가 시스템</p>
+  <p class="sub">탄도 궤적·탄착점 예측 알고리즘(칼만 필터 · 물리 제약 신경망) 비교·평가 플랫폼</p>
   <div class="abstract">
-    <p>요격 체계의 교전 판단은 표적의 탄착점(IP)과 탄착 시각(ToT)을 얼마나 빨리, 얼마나 믿을 수 있게 아느냐에 달려 있습니다. 확장 칼만 필터(EKF)나 수치 적분 기반 예측은 대기 밀도 변화, 마하수에 따른 항력 변화, 기동이 있으면 연산 비용과 추정 오차가 함께 커집니다. 순수 데이터 기반 신경망은 빠르지만 관측이 적은 초기 구간에서 운동 방정식을 위반하는 궤적을 출력할 수 있습니다.</p>
-    <p>TrajAI-Defense는 비행 초기 10~15% 구간의 레이더 트랙을 시계열 인코더(Transformer / Bi-LSTM)로 요약하고, 운동 방정식 잔차를 손실에 포함한 물리 제약 신경망(PINN)으로 잔여 궤적, IP, ToT, CEP를 추론합니다. 평가 기준은 추론 지연 p99 50 ms 이하, ID 10%에서 탄착점 RMSE 1,000 m 이하이면서 EKF의 1.2배 이내, 보정 후 CEP<sub>50</sub> 포함률 0.50 ± 0.05, 같은 인코더에서 물리 손실이 잔차를 50% 이상 줄이는지, 분포 밖 입력을 감지해 EKF로 넘기는지입니다. 처음 세운 목표(CEP 오차 −40%, 판단 시간 +25 s)와 그 판정은 §3에 그대로 남겼습니다. 이 문서는 운용 개념, 동역학 모델, 추정 문제 정식화, 학습 설계, 데이터셋, 검증 방법과 <a href="#sec-results">실험 결과</a>를 정리합니다. 현재 결과로는 지연 목표는 충족하지만, 신경망 단독의 정확도는 같은 물리 모델을 쓰는 EKF/UKF에 못 미칩니다. 대신 PINN의 탄도계수 예측을 EKF의 사전정보로 넣으면 모든 시험 조건에서 EKF보다 정확해집니다(<a href="#sec-feedback">§9.6</a>). 선택 일자의 실제 기온·바람을 대기 모델에 반영하면 IP 오차가 크게 줄어(<a href="#sec-weather">§9.3</a>) 이를 기본 설정으로 채택했습니다.</p>
+    <p>방공 체계의 모델링·시뮬레이션(M&amp;S) 분석가는 탄착점(IP) 예측 알고리즘을 고를 때 같은 트랙, 같은 지표로 비교한 근거가 필요합니다. 그런데 기준 방식인 EKF + Monte Carlo는 불확실성까지 내는 데 228 ms가 걸리고, 관측이 비행의 5%뿐이면 IP 오차가 1,429 m로 커지면서 CEP 포함률이 0.37로 떨어집니다(과신). 순수 데이터 기반 신경망은 빠르지만 물리 법칙을 덜 지킵니다(운동 방정식 잔차 0.40 g). 탄착점 예측에서 필터와 물리 기반 신경망을 같은 조건으로 비교하는 기능은 상용 도구(STK, MATLAB)나 오픈소스 프레임워크(Stone Soup)가 기본으로 제공하지 않습니다(§2.4).</p>
+    <p>TrajAI-Defense는 분석가가 고른 조건으로 레이더 트랙을 만들고, 같은 트랙에 칼만 필터(EKF·UKF)와 신경망을 실행해 결과를 비교하는 플랫폼입니다. 신경망은 연소 종료 후 비행의 앞 5~15% 구간 트랙을 시계열 인코더(Transformer / Bi-LSTM)로 요약하고, 운동 방정식 잔차를 손실에 포함한 물리 제약 신경망(PINN)으로 잔여 궤적, IP, ToT, CEP를 추론합니다. 평가 기준은 추론 지연 p99 50 ms 이하, ID 10%에서 탄착점 RMSE 1,000 m 이하이면서 EKF의 1.2배 이내, 보정 후 CEP<sub>50</sub> 포함률 0.50 ± 0.05, 같은 인코더에서 물리 손실이 잔차를 50% 이상 줄이는지, 분포 밖 입력을 감지해 EKF로 넘기는지입니다. 처음 세운 목표(CEP 오차 −40%, 판단 시간 +25 s)와 그 판정은 §3에 그대로 남겼습니다. 이 문서는 운용 개념, 동역학 모델, 추정 문제 정식화, 학습 설계, 데이터셋, 검증 방법과 <a href="#sec-results">실험 결과</a>를 정리합니다. 현재 결과로는 지연 목표는 충족하지만, 신경망 단독의 정확도는 같은 물리 모델을 쓰는 EKF/UKF에 못 미칩니다. 대신 PINN의 탄도계수 예측을 EKF의 사전정보로 넣으면 모든 시험 조건에서 EKF보다 정확해집니다(<a href="#sec-feedback">§9.6</a>). 선택 일자의 실제 기온·바람을 대기 모델에 반영하면 IP 오차가 크게 줄어(<a href="#sec-weather">§9.3</a>) 이를 기본 설정으로 채택했습니다.</p>
   </div>
 <!-- KEY:BEGIN -->
   <div class="keys" aria-label="핵심 결과">
     <a class="key ok" href="#sec-results"><span class="label">지연 목표 충족</span><b>0.87 ms</b><span>ONNX Runtime p50, CPU 1스레드. EKF + Monte Carlo 228 ms보다 약 262배 빠름</span></a>
-    <a class="key no" href="#sec-stats"><span class="label">신경망 단독은 필터보다 부정확</span><b>317 m vs 212 m</b><span>최선 신경망(RTS 입력 PINN) 대 UKF, ID 15% IP 오차 중앙값. 고잡음에서만 신경망이 EKF보다 정확</span></a>
-    <a class="key ok" href="#sec-feedback"><span class="label">필터의 사전정보로 쓰면 최선</span><b>−33%</b><span>PINN의 β 예측을 EKF 사전으로 넣으면 ID 5% IP 오차 1,429 → 956 m, 시험 분할 5개 중 5개에서 유의하게 개선</span></a>
     <a class="key ok" href="#sec-weather"><span class="label">실제 기상 반영이 가장 큰 개선</span><b>−87%</b><span>EKF IP 오차 2,633 → 339 m (표준 대기 → 선택 일자 기상). 기본 설정으로 채택</span></a>
+    <a class="key ok" href="#sec-feedback"><span class="label">필터의 사전정보로 쓰면 최선</span><b>−33%</b><span>PINN의 β 예측을 EKF 사전으로 넣으면 ID 5% IP 오차 1,429 → 956 m, 시험 분할 5개 중 5개에서 유의하게 개선</span></a>
+    <a class="key ok" href="#sec-lstm"><span class="label">물리 손실 효과는 인코더와 무관</span><b>0.40 → 0.10 g</b><span>운동 방정식 잔차. Transformer와 Bi-LSTM 두 인코더에서 같은 수준으로 재현(Bi-LSTM 76% 감소)</span></a>
     <a class="key ok" href="#sec-stats"><span class="label">신경망도 기상으로 학습하면 개선</span><b>2,779 → 720 m</b><span>직전 1년 실제 기상 속 발사 2만 회로 학습. 일자 기상 입력의 추가 효과(Δ -36 m)는 불확실</span></a>
     <a class="key part" href="#sec-calib"><span class="label">불확실성은 보정 필요</span><b>CEP50 → 0.50</b><span>계수 하나로 50% 포함률은 맞지만, 같은 계수의 90% 포함률은 22개 중 15개가 0.85 미만(0.76–0.84). 오차 꼬리가 두꺼움</span></a>
+    <a class="key no" href="#sec-stats"><span class="label">신경망 단독은 필터보다 부정확</span><b>317 m vs 212 m</b><span>최선 신경망(RTS 입력 PINN) 대 UKF, ID 15% IP 오차 중앙값. 고잡음에서만 신경망이 EKF보다 정확</span></a>
     <a class="key no" href="#sec-validity"><span class="label">분포 밖 일반화 실패</span><b>10.4 km</b><span>OOD(고속·고β) 시험에서 하이브리드 IP 오차. 물리 손실만으로는 외삽이 보장되지 않음</span></a>
   </div>
 <!-- KEY:END -->
@@ -401,28 +402,78 @@ footer b{color:var(--ink); font-weight:600}
 
 <!-- 2 CONOPS -->
 <section id="sec-conops">
-  <div class="sh"><span class="no">§2</span><h2>운용 개념과 문제 정의</h2></div>
+  <div class="sh"><span class="no">§2</span><h2>문제 정의와 서비스 기획</h2></div>
   <figure>
     <div class="phase">
-      <div><span class="label">Phase I</span><h3>추진 · 상승</h3><div class="bar o"></div><p>탐지와 초기 추적. 시스템 입력은 이 구간과 중간 비행 초입까지의 트랙(전체의 10~15%)입니다.</p></div>
-      <div><span class="label">Phase II</span><h3>중간 비행</h3><div class="bar p"></div><p>고고도에서는 항력이 작아 <span class="m">β</span>를 관측하기 어렵습니다. 변칙 활공 비행체(HGV)는 이 구간에서 양력 기동으로 탄도 궤적을 벗어납니다.</p></div>
+      <div><span class="label">Phase I</span><h3>추진 · 상승</h3><div class="bar o"></div><p>탐지와 초기 추적. 이 연구는 연소 종료 이후의 탄도 비행만 다루며 추진 구간은 범위 밖입니다. 입력은 연소 종료 후 비행의 앞 5~15% 트랙입니다.</p></div>
+      <div><span class="label">Phase II</span><h3>중간 비행</h3><div class="bar p"></div><p>고고도에서는 항력이 작아 <span class="m">β</span>를 관측하기 어렵습니다. 변칙 활공 비행체(HGV)는 이 구간에서 양력 기동으로 탄도 궤적을 벗어납니다(범위 밖, 약한 양력 기동만 §9.9에서 시험).</p></div>
       <div><span class="label">Phase III</span><h3>종말 · 재진입</h3><div class="bar p"></div><p>항력이 지배적이 되어 <span class="m">β</span> 오차가 하향거리 IP 오차로 크게 증폭됩니다.</p></div>
     </div>
     <figcaption><b>Fig. 2</b>비행 단계별 관측 가능성. 실선은 관측 입력 구간, 점선은 예측 대상 구간입니다.</figcaption>
   </figure>
+  <h3 class="sub" id="sec-problem"><span class="no">2.1</span>문제: 직접 측정한 근거</h3>
   <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
-      <caption><b>Table 1</b>기존 접근의 한계와 본 시스템의 대응</caption>
-      <thead><tr><th>접근</th><th>한계</th><th>TrajAI-Defense의 대응</th></tr></thead>
+      <caption><b>Table 1</b>직접 측정한 문제와 이 플랫폼의 대응</caption>
+      <thead><tr><th>문제</th><th>측정값</th><th>대응</th><th>근거</th></tr></thead>
       <tbody>
-        <tr><td>EKF / 수치 적분 예측</td><td>비선형 동역학을 반복 선형화·적분하므로 연산이 초 단위로 늘어남. 모델 불일치(대기 외란, 질량 변화)가 있으면 필터가 발산</td><td>추론을 단일 순전파로 대체해 지연을 상수 시간으로 묶음</td></tr>
-        <tr><td>순수 데이터 기반 시계열 모델</td><td>짧은 관측에서 음의 가속도나 비물리적 급선회 같은 궤적을 출력. 학습 분포 밖에서 일반화가 약함</td><td>운동 방정식 잔차를 손실에 넣어 해 공간을 물리적으로 허용되는 궤적으로 제한</td></tr>
-        <tr><td>단일 점 예측</td><td>교전 판단에 필요한 불확실성(CEP, ToT 분산)을 제공하지 않음</td><td>앙상블과 <span class="m">β</span> 사후 표본으로 IP 분포를 추정하고 CEP를 함께 출력</td></tr>
+        <tr><td>불확실성 계산이 느림</td><td>EKF + Monte Carlo(100회) 228 ms (p50)</td><td>학습된 신경망 1회 순전파로 IP·ToT·CEP 동시 출력: 0.87 ms (약 262배)</td><td><a href="#sec-results">§9.1</a></td></tr>
+        <tr><td>짧은 관측에서 필터가 과신</td><td>관측 5%: EKF IP 오차 1,429 m, CEP 포함률 0.37</td><td>PINN의 탄도계수 예측을 EKF 사전정보로 사용, CEP를 split-conformal로 보정</td><td><a href="#sec-feedback">§9.6</a>, <a href="#sec-calib">§9.5</a></td></tr>
+        <tr><td>대기 모델 오차가 가장 큼</td><td>EKF IP 오차: 표준 대기 2,633 m → 실제 기상 339 m (−87%)</td><td>Open-Meteo 실제 기상을 시뮬레이션·추정·학습에 반영</td><td><a href="#sec-weather">§9.3</a></td></tr>
+        <tr><td>순수 데이터 모델은 물리 법칙을 덜 지킴</td><td>운동 방정식 잔차 0.40 g (PINN 0.10 g)</td><td>운동 방정식 잔차를 손실에 넣는 PINN, 두 인코더로 재현 확인</td><td><a href="#sec-lstm">§9.11</a></td></tr>
+        <tr><td>같은 조건에서 비교한 근거가 없음</td><td>상용·오픈소스 도구에 탄착점 예측의 필터 대 신경망 비교 기능 없음 (Table 1b)</td><td>같은 트랙에 4개 추정기를 실행하고 통계 검정으로 비교</td><td><a href="#sec-stats">§9.4</a></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <h3 class="sub" id="sec-users"><span class="no">2.2</span>대상 사용자와 수요</h3>
+  <div class="prose">
+    <p><b>1차 사용자</b>는 방공 체계 M&amp;S 분석가입니다. 탄착점 예측 알고리즘을 비교·평가해 체계에 넣을 방식을 고르는 사람입니다. <b>2차 사용자</b>는 궤적 추정(칼만 필터, 물리 기반 신경망)을 공부하는 대학·연구실입니다. 실전 운용 지원(작전 통제관용)은 실측 자료 검증이 필요하므로 향후 확장으로 둡니다.</p>
+    <p><b>수요 근거.</b> 영국 국방과학기술연구소(Dstl)는 추적 알고리즘이 복잡해 서로 비교하기 어렵다는 문제를 풀려고, 같은 데이터에서 알고리즘을 나란히 비교하는 오픈소스 프레임워크 Stone Soup를 Five Eyes 5개국 국방연구기관과 함께 만들어 2019년에 공개했습니다[9]. 국방 연구기관이 직접 알고리즘 비교 도구를 필요로 한다는 뜻이며, 이 플랫폼은 Stone Soup에 없는 탄착점 예측과 물리 기반 신경망 비교를 다룹니다. 시장으로는 군사 AI 시장이 2025년 140억 달러에서 2035년 484억 달러(연평균 13.2%, 2026–2035)로[10], 군사 시뮬레이션·훈련 시장이 2024년 137억 달러에서 2034년 228억 달러(연평균 5.3%)로[11] 성장할 것으로 전망됩니다. 국내에서는 국방혁신 4.0 기본계획(국방부, 2023.3)이 AI 기반 과학기술강군을 목표로 제시했습니다[12].</p>
+  </div>
+  <h3 class="sub" id="sec-scenario"><span class="no">2.3</span>활용 시나리오</h3>
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
+    <table>
+      <caption><b>Table 1a</b>활용 시나리오. 모든 단계는 §12의 운용 콘솔에 구현되어 있습니다</caption>
+      <thead><tr><th>단계</th><th>분석가</th><th>플랫폼</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>날짜·지역·발사체 유형(5종)을 고르거나 기상을 직접 설정</td><td>실제 기상 속에서 궤적을 적분하고 레이더 1대의 잡음 측정을 생성해 저장</td></tr>
+        <tr><td>2</td><td>같은 트랙에 추정기를 실행</td><td>EKF·UKF·PINN(β 사전 EKF 포함)을 실행해 IP, ToT, CEP, 위협 등급, 계산 시간을 기록</td></tr>
+        <tr><td>3</td><td>결과를 비교</td><td>추정기별 IP 오차·CEP 포함률·지연 비교, 모델 레지스트리의 시험 지표</td></tr>
+        <tr><td>4</td><td>비행 재생으로 원인 확인</td><td>제트기류 진입, 대류권계면, 최대 동압, 레이더 관측 종료 같은 환경 변화를 타임라인으로 보여 주고, 관측 종료 뒤 각 추정기의 예측 경로가 어디서 갈라지는지 겹쳐 표시</td></tr>
+        <tr><td>5</td><td>기간 단위로 영향 분석</td><td>같은 비행 조건을 최대 7일 × 하루 4회 실제 기상에 날려 기상 반영 여부에 따른 오차 변화를 저장</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <h3 class="sub" id="sec-compare"><span class="no">2.4</span>유사 서비스 비교</h3>
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
+    <table>
+      <caption><b>Table 1b</b>유사 서비스 비교</caption>
+      <thead><tr><th>구분</th><th>방식</th><th>한계</th><th>이 플랫폼과의 차이</th></tr></thead>
+      <tbody>
+        <tr><td>Ansys STK</td><td>상용, 물리 기반 궤도·임무 분석</td><td>고가, 학습 기반 예측 없음</td><td>학습 모델과 필터를 같은 조건에서 비교</td></tr>
+        <tr><td>MATLAB Sensor Fusion and Tracking Toolbox</td><td>상용, EKF·UKF·IMM 등 추적 필터</td><td>상용 라이선스, 신경망 비교 없음</td><td>PINN과 신경망 불확실성 보정 포함</td></tr>
+        <tr><td>Stone Soup (Dstl, 오픈소스)[9]</td><td>추적 알고리즘 시험·비교 프레임워크</td><td>탄착점 예측·기상 반영·운용 화면 없음</td><td>실제 기상, 위협 평가, 웹 콘솔</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <h3 class="sub" id="sec-scope"><span class="no">2.5</span>개발 범위: 필수와 선택</h3>
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
+    <table>
+      <caption><b>Table 1c</b>개발 범위. 필수 항목이 평가의 핵심 결과물이고, 선택 항목은 필수 항목 일정에 지장이 없을 때만 진행하는 범위입니다</caption>
+      <thead><tr><th>구분</th><th>항목</th><th>상태</th></tr></thead>
+      <tbody>
+        <tr><td>필수</td><td>합성 데이터 생성기 (3-DOF 점질량, Cd(M), USSA-1976, 학습 2만 · 시험 5종 × 1,000)</td><td><span class="st ok">완료</span> §8</td></tr>
+        <tr><td>필수</td><td>EKF·UKF 기준선과 Monte Carlo 불확실성</td><td><span class="st ok">완료</span> §6</td></tr>
+        <tr><td>필수</td><td>LSTM vs PINN 비교 (같은 인코더에서 물리 손실 유무)</td><td><span class="st ok">완료</span> §9.11</td></tr>
+        <tr><td>필수</td><td>평가 지표와 통계 검정 (bootstrap CI, Wilcoxon, Holm)</td><td><span class="st ok">완료</span> §9.4</td></tr>
+        <tr><td>선택</td><td>웹 콘솔·3D 결과 뷰어</td><td><span class="st ok">완료</span> §12</td></tr>
+        <tr><td>선택</td><td>실제 기상 반영</td><td><span class="st ok">완료</span> §9.3</td></tr>
+        <tr><td>선택</td><td>분포 밖 입력 감지와 EKF 전환, PINN–EKF 하이브리드</td><td><span class="st ok">완료</span> §9.6, §9.8</td></tr>
       </tbody>
     </table>
   </div>
   <div class="prose">
-    <p>주 사용자는 국방 연구기관의 M&amp;S 연구원, 공군·해군 탄도탄 작전 통제관, 방산업체 시뮬레이션 분석관입니다. 표적 탐지 후 시스템이 트랙 스트림을 받아 50 ms 안에 IP, ToT, CEP, 위협 등급을 산출하고, 통제관은 3D 상황도에서 예측 궤적과 최적 요격점(PIP)을 확인한 뒤 요격 포대 배정을 승인합니다.</p>
+    <p>평가 기준과 원래 요구사항의 대응은 §3, 범위 밖 항목(추진 구간, 기동 비행체, 다중 레이더, 실측 검증)과 그 대응은 §9.10에 있습니다.</p>
   </div>
 </section>
 
@@ -477,10 +528,10 @@ footer b{color:var(--ink); font-weight:600}
         <path class="ln" d="M716 104 H738" marker-end="url(#a1)"/>
         <path class="ln" d="M880 104 H902" marker-end="url(#a1)"/>
 
-        <g class="bx"><rect x="198" y="266" width="150" height="76" rx="2"/><text class="t" x="273" y="296" text-anchor="middle">비행 시뮬레이터</text><text class="s" x="273" y="316" text-anchor="middle">3-DOF → 6-DOF</text><text class="s" x="273" y="331" text-anchor="middle">Monte Carlo</text></g>
-        <g class="bx"><rect x="372" y="266" width="150" height="76" rx="2"/><text class="t" x="447" y="296" text-anchor="middle">합성 데이터셋</text><text class="s" x="447" y="316" text-anchor="middle">목표 10⁶ 궤적</text><text class="s" x="447" y="331" text-anchor="middle">ID / OOD split</text></g>
+        <g class="bx"><rect x="198" y="266" width="150" height="76" rx="2"/><text class="t" x="273" y="296" text-anchor="middle">비행 시뮬레이터</text><text class="s" x="273" y="316" text-anchor="middle">3-DOF 점질량 · RK4</text><text class="s" x="273" y="331" text-anchor="middle">Monte Carlo</text></g>
+        <g class="bx"><rect x="372" y="266" width="150" height="76" rx="2"/><text class="t" x="447" y="296" text-anchor="middle">합성 데이터셋</text><text class="s" x="447" y="316" text-anchor="middle">학습 2만 · 시험 5×1,000</text><text class="s" x="447" y="331" text-anchor="middle">ID / OOD split</text></g>
         <g class="bx"><rect x="546" y="266" width="170" height="76" rx="2"/><text class="t" x="631" y="296" text-anchor="middle">학습</text><text class="s" x="631" y="316" text-anchor="middle">L_data + λ·L_phys</text><text class="s" x="631" y="331" text-anchor="middle">λ curriculum</text></g>
-        <g class="bx"><rect x="740" y="266" width="140" height="76" rx="2"/><text class="t" x="810" y="296" text-anchor="middle">경량화</text><text class="s" x="810" y="316" text-anchor="middle">ONNX Runtime</text><text class="s" x="810" y="331" text-anchor="middle">(TensorRT 계획)</text></g>
+        <g class="bx"><rect x="740" y="266" width="140" height="76" rx="2"/><text class="t" x="810" y="296" text-anchor="middle">경량화</text><text class="s" x="810" y="316" text-anchor="middle">ONNX Runtime</text><text class="s" x="810" y="331" text-anchor="middle">CPU p99 5.3 ms</text></g>
         <g class="bx ghost"><rect x="24" y="266" width="150" height="76" rx="2"/><text class="t" x="99" y="296" text-anchor="middle">대기 · 중력 모델</text><text class="s" x="99" y="316" text-anchor="middle">USSA-1976</text><text class="s" x="99" y="331" text-anchor="middle">g(h), Cd(M)</text></g>
         <path class="ln" d="M174 304 H196" marker-end="url(#a1)"/>
         <path class="ln" d="M348 304 H370" marker-end="url(#a1)"/>
@@ -1163,31 +1214,48 @@ python -m pytest -q tests server/tests</code></pre>
   <div class="sh"><span class="no">§11</span><h2>일정과 위험 관리</h2></div>
   <figure>
     <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
-      <div class="gantt" role="img" aria-label="7주 일정: W1 기획(요구사항·구조), W2 분석(시뮬레이터·데이터), W3 설계(모델 구조), W4–W5 개발(학습·물리 손실·대시보드), W6 시험(지표·지연 최적화), W7 완성(보고·발표)">
+      <div class="gantt" role="img" aria-label="7주 일정: W1 기획, W2 데이터(M1 데이터 검증), W3 기준선, W4 LSTM vs PINN(M2), W5 선택 기능, W6 평가(M3), W7 완성">
         <div class="hd l">작업</div><div class="hd">W1</div><div class="hd">W2</div><div class="hd">W3</div><div class="hd">W4</div><div class="hd">W5</div><div class="hd">W6</div><div class="hd">W7</div>
-        <div class="tk">기획</div><div class="bar" style="grid-column:2/3"><span>요구사항 · 구조</span></div><div style="grid-column:3/9"></div>
-        <div class="tk">분석</div><div style="grid-column:2/3"></div><div class="bar" style="grid-column:3/4"><span>시뮬레이터 · 데이터</span></div><div style="grid-column:4/9"></div>
-        <div class="tk">설계</div><div style="grid-column:2/4"></div><div class="bar" style="grid-column:4/5"><span>모델 구조</span></div><div style="grid-column:5/9"></div>
-        <div class="tk">개발</div><div style="grid-column:2/5"></div><div class="bar acc" style="grid-column:5/7"><span>학습 · 물리 손실 · 대시보드</span></div><div style="grid-column:7/9"></div>
-        <div class="tk">시험</div><div style="grid-column:2/7"></div><div class="bar" style="grid-column:7/8"><span>지표 · 지연 최적화</span></div><div style="grid-column:8/9"></div>
+        <div class="tk">기획</div><div class="bar" style="grid-column:2/3"><span>컨셉 · 요구사항</span></div><div style="grid-column:3/9"></div>
+        <div class="tk">데이터 · M1</div><div style="grid-column:2/3"></div><div class="bar" style="grid-column:3/4"><span>데이터 검증</span></div><div style="grid-column:4/9"></div>
+        <div class="tk">기준선</div><div style="grid-column:2/4"></div><div class="bar" style="grid-column:4/5"><span>EKF · UKF · 지표</span></div><div style="grid-column:5/9"></div>
+        <div class="tk">모델 · M2</div><div style="grid-column:2/5"></div><div class="bar acc" style="grid-column:5/6"><span>LSTM vs PINN</span></div><div style="grid-column:6/9"></div>
+        <div class="tk">선택 기능</div><div style="grid-column:2/6"></div><div class="bar" style="grid-column:6/7"><span>콘솔 · 기상 · OOD</span></div><div style="grid-column:7/9"></div>
+        <div class="tk">평가 · M3</div><div style="grid-column:2/7"></div><div class="bar" style="grid-column:7/8"><span>검정 · 보정 · 지연</span></div><div style="grid-column:8/9"></div>
         <div class="tk last">완성</div><div class="last" style="grid-column:2/8"></div><div class="bar last" style="grid-column:8/9"><span>보고 · 발표</span></div>
       </div>
     </div>
-    <figcaption><b>Fig. 4</b>7주 마일스톤. 개발 단계(W4–W5)가 핵심 경로이며, PINN 수렴 위험(R-02)에 대비해 W4 초반에 data-only baseline을 먼저 확보합니다.</figcaption>
+    <figcaption><b>Fig. 4</b>7주 일정과 중간 점검(M1–M3). 핵심 경로는 W4의 LSTM vs PINN 비교이며, M2 결과를 보고 W5 선택 기능의 진행 여부를 정합니다.</figcaption>
   </figure>
   <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
-      <caption><b>Table 13</b>위험 관리</caption>
-      <thead><tr><th>ID</th><th>구분</th><th>위험</th><th>대응</th><th>대체안</th></tr></thead>
+      <caption><b>Table 13a</b>주차별 산출물과 완료 기준</caption>
+      <thead><tr><th>주차</th><th>산출물</th><th>완료 기준</th><th>점검</th></tr></thead>
       <tbody>
-        <tr><td class="id">R-01</td><td>개발</td><td>실측 비행 데이터 확보 불가</td><td>물리 시뮬레이터 파라미터 무작위화로 합성 데이터 구축, OOD 분할로 일반화 점검</td><td>공개 궤적 데이터로 정성 검증</td></tr>
-        <tr><td class="id">R-02</td><td>관리</td><td>PINN 학습 수렴 불안정</td><td>data-only baseline 선확보, λ<sub>p</sub> 커리큘럼, 무차원화, 적응 가중</td><td>물리 손실을 정규화 항으로 축소 적용</td></tr>
-        <tr><td class="id">R-03</td><td>상용화</td><td>실시간 추론 지연 초과</td><td>ONNX → TensorRT 변환, FP16 / INT8 양자화, 앙상블 병렬 배치</td><td>앙상블 수 M 축소</td></tr>
-        <tr><td class="id">R-04</td><td>기술</td><td>중간 비행 구간 β 관측 불가로 IP 분산 증가</td><td>β를 확률 변수로 다루고 CEP 보정도로 과신 여부 점검</td><td>관측 비율 하한 상향</td></tr>
+        <tr><td>W1</td><td>컨셉 정의서, 기획서, 시스템 구조</td><td>평가 기준(§3)과 필수/선택 범위(Table 1c) 확정</td><td></td></tr>
+        <tr><td>W2</td><td>3-DOF 시뮬레이터, 레이더 관측 모델, 데이터셋</td><td>물리 단위 테스트 통과(에너지·궤적), 학습 2만 · 시험 5종 생성</td><td><b>M1</b> 데이터 검증</td></tr>
+        <tr><td>W3</td><td>EKF·UKF 기준선, 평가 지표</td><td>시험 5종에서 기준선 IP 오차·CEP 포함률 산출</td><td></td></tr>
+        <tr><td>W4</td><td>LSTM data only · LSTM PINN (같은 설정의 Transformer 쌍 포함)</td><td>같은 시험 분할에서 IP 오차·물리 잔차 비교표</td><td><b>M2</b> 1차 비교. 선택 기능 진행 여부 결정</td></tr>
+        <tr><td>W5</td><td>(선택) 웹 콘솔, 실제 기상, 분포 밖 감지</td><td>콘솔에서 시나리오 생성 → 추정 → 비교가 끝까지 동작</td><td></td></tr>
+        <tr><td>W6</td><td>통계 검정, CEP 보정, 지연 측정</td><td>§3 평가 기준 전 항목 측정</td><td><b>M3</b> 평가 결과 확정</td></tr>
+        <tr><td>W7</td><td>기술 문서, 데모, 발표</td><td>CI(단위·API·웹 테스트, 문서 수치 검사) 통과 후 배포</td><td></td></tr>
       </tbody>
     </table>
   </div>
-  <div class="prose"><p>확장 방향은 UAM·드론 군집 경로 추적, 우주 재진입체와 수명 말기 위성의 낙하 궤적 예측, 민간 항공기 비상 착륙 궤적 유도와 UAM 충돌 방지입니다. 모두 "짧은 관측에서 물리적으로 유효한 장기 궤적과 그 불확실성을 빠르게 추론한다"는 같은 문제 구조를 가집니다.</p></div>
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
+    <table>
+      <caption><b>Table 13</b>위험 관리. 징후가 보이면 대응을 시작합니다</caption>
+      <thead><tr><th>ID</th><th>위험</th><th>징후</th><th>대응</th><th>이 프로젝트에서</th></tr></thead>
+      <tbody>
+        <tr><td class="id" style="white-space:nowrap">R-01</td><td>실측 비행 데이터 부재</td><td>— (처음부터 확정)</td><td>합성 데이터 + 실제 기상 + 모델 불일치 시험</td><td>실제 기상 실험(§9.3), 양력·항력 불일치 시험(§9.9)</td></tr>
+        <tr><td class="id" style="white-space:nowrap">R-02</td><td>PINN 학습 수렴 불안정</td><td>검증 오차가 정체·발산</td><td>data only 기준선을 먼저 확보, 물리 손실 가중치를 점진적으로 높임(curriculum)</td><td>물리 손실 0 → 1 선형 증가(처음 40%). Transformer·Bi-LSTM 4개 모델 모두 마지막 평가 시점에 검증 오차가 최저(발산 없음)</td></tr>
+        <tr><td class="id" style="white-space:nowrap">R-03</td><td>범위 과다</td><td>W4에 필수 항목 미완</td><td>선택 기능(Table 1c)을 뺌</td><td>필수·선택 모두 완료(Table 1c). LSTM vs PINN은 Transformer 쌍으로 먼저 수행하고 Bi-LSTM 쌍을 마지막에 보완(§9.11)</td></tr>
+        <tr><td class="id" style="white-space:nowrap">R-04</td><td>계산 자원 부족 (CPU만)</td><td>1회 학습이 6시간 초과</td><td>학습 step 고정, 중간 저장 후 재개, 학습을 CI 러너에 병렬 분산</td><td>Bi-LSTM 2개를 GitHub Actions에서 병렬 학습 (모델당 30–41분)</td></tr>
+        <tr><td class="id" style="white-space:nowrap">R-05</td><td>합성과 실제의 차이로 인한 과신</td><td>CEP 포함률 저하</td><td>분포 밖 감지 후 EKF 전환, CEP 보정</td><td>AUROC 0.999, OOD 오차 11.7 → 0.44 km (§9.8), 보정 후 포함률 0.50 (§9.5)</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="prose"><p>실측 자료로 검증한 뒤에는 작전 통제관용 의사결정 지원으로 넓힐 수 있습니다. 같은 문제 구조를 가진 다른 확장 방향은 UAM·드론 군집 경로 추적, 우주 재진입체와 수명 말기 위성의 낙하 궤적 예측, 민간 항공기 비상 착륙 궤적 유도와 UAM 충돌 방지입니다. 모두 "짧은 관측에서 물리적으로 유효한 장기 궤적과 그 불확실성을 빠르게 추론한다"는 같은 문제 구조를 가집니다.</p></div>
 </section>
 
 <!-- 12 STACK -->
@@ -1268,6 +1336,10 @@ python -m pytest -q tests server/tests</code></pre>
     <li>B. Lakshminarayanan, A. Pritzel, C. Blundell, “Simple and scalable predictive uncertainty estimation using deep ensembles,” <i>NeurIPS</i>, 2017.</li>
     <li>A. Vaswani et al., “Attention is all you need,” <i>NeurIPS</i>, 2017.</li>
     <li>NOAA, NASA, USAF, <i>U.S. Standard Atmosphere, 1976</i>, NOAA-S/T 76-1562, 1976.</li>
+    <li>Defence Science and Technology Laboratory, “Dstl shares new open-source framework initiative,” GOV.UK, May 2019. <a href="https://www.gov.uk/government/news/dstl-shares-new-open-source-framework-initiative">gov.uk</a>; Stone Soup: <a href="https://github.com/dstl/Stone-Soup">github.com/dstl/Stone-Soup</a>.</li>
+    <li>Global Market Insights, <i>Artificial Intelligence in Military Market Size</i>, 2026. <a href="https://www.gminsights.com/industry-analysis/artificial-intelligence-in-military-market">gminsights.com</a></li>
+    <li>Global Market Insights, <i>Military Simulation and Training Market Size &amp; Share 2025–2034</i>, GMI13713, May 2025. <a href="https://www.gminsights.com/industry-analysis/military-simulation-and-training-market">gminsights.com</a></li>
+    <li>국방부, 「국방혁신 4.0 기본계획」, 2023. 3.</li>
   </ol>
 </section>
 

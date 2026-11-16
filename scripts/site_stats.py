@@ -134,14 +134,22 @@ def key_findings(html, rows, cal):
     dd = pick("wx_hybrid_date", "wx_hybrid_clim")
     ood = med("pinn_tf_hybrid_v2", "test_ood")
     c90 = [c["cal90"] for c in cal]
+    lstm = []
+    if "pinn_lstm_v2" in M and os.path.exists(f"{R}/lstm_vs_pinn.json"):
+        red = json.load(open(f"{R}/lstm_vs_pinn.json"))["splits"]["test_id_f10"]["phys_reduction"] * 100
+        rd, rp = med("data_tf_v2", "test_id_f10", "phys_rms_g"), med("pinn_tf_v2", "test_id_f10", "phys_rms_g")
+        lstm = [("ok", "물리 손실 효과는 인코더와 무관", f"{rd:.2f} → {rp:.2f} g",
+                 f"운동 방정식 잔차. Transformer와 Bi-LSTM 두 인코더에서 같은 수준으로 재현(Bi-LSTM {red:.0f}% 감소)", "#sec-lstm")]
+    # service value first (speed, weather, PINN→EKF, physics), then limits
     cards = [
         ("ok", "지연 목표 충족", f"{onnx:.2f} ms", f"ONNX Runtime p50, CPU 1스레드. EKF + Monte Carlo {ekfmc:.0f} ms보다 약 {ekfmc / onnx:,.0f}배 빠름", "#sec-results"),
-        ("no", "신경망 단독은 필터보다 부정확", f"{f0(h15)} m vs {f0(u15)} m", f"최선 신경망({'RTS 입력 PINN' if best_nn.endswith('_rts') else '하이브리드'}) 대 UKF, ID 15% IP 오차 중앙값. 고잡음에서만 신경망이 EKF보다 정확", "#sec-stats"),
-        *_feedback_card(),
         ("ok", "실제 기상 반영이 가장 큰 개선", f"−{(1 - wd / we) * 100:.0f}%", f"EKF IP 오차 {f0(we)} → {f0(wd)} m (표준 대기 → 선택 일자 기상). 기본 설정으로 채택", "#sec-weather"),
+        *_feedback_card(),
+        *lstm,
         ("ok", "신경망도 기상으로 학습하면 개선", f"{f0(n0)} → {f0(n1)} m", "직전 1년 실제 기상 속 발사 2만 회로 학습. 일자 기상 입력의 추가 효과"
          + (f"(Δ {dd['diff']:+.0f} m)는 불확실" if dd else "") , "#sec-stats"),
         ("part", "불확실성은 보정 필요", "CEP50 → 0.50", f"계수 하나로 50% 포함률은 맞지만, 같은 계수의 90% 포함률은 {len(c90)}개 중 {sum(c < 0.85 for c in c90)}개가 0.85 미만({min(c for c in c90 if c < 0.85):.2f}–{max(c for c in c90 if c < 0.85):.2f}). 오차 꼬리가 두꺼움", "#sec-calib"),
+        ("no", "신경망 단독은 필터보다 부정확", f"{f0(h15)} m vs {f0(u15)} m", f"최선 신경망({'RTS 입력 PINN' if best_nn.endswith('_rts') else '하이브리드'}) 대 UKF, ID 15% IP 오차 중앙값. 고잡음에서만 신경망이 EKF보다 정확", "#sec-stats"),
         ("no", "분포 밖 일반화 실패", f"{ood / 1000:,.1f} km", "OOD(고속·고β) 시험에서 하이브리드 IP 오차. 물리 손실만으로는 외삽이 보장되지 않음", "#sec-validity"),
     ]
     body = "\n".join(f'    <a class="key {t}" href="{href}"><span class="label">{h}</span><b>{v}</b><span>{d}</span></a>'
