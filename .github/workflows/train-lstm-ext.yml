@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with: {python-version: "3.11"}
       - run: pip install numpy scipy
@@ -51,7 +51,7 @@ jobs:
           - {name: data_lstm_wide,    lambda: "0",   seed: 0, extra: "--train-split train_wide_aug --val-split val_wide_aug"}
           - {name: pinn_lstm_wide,    lambda: "1.0", seed: 0, extra: "--train-split train_wide_aug --val-split val_wide_aug"}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with: {python-version: "3.11"}
       - run: pip install numpy scipy && pip install torch --index-url https://download.pytorch.org/whl/cpu
@@ -80,7 +80,7 @@ jobs:
     timeout-minutes: 90
     permissions: {contents: write}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: actions/setup-python@v5
         with: {python-version: "3.11"}
       - run: pip install numpy scipy && pip install torch --index-url https://download.pytorch.org/whl/cpu
