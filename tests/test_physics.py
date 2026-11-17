@@ -85,3 +85,20 @@ def test_glide_extends_range_and_ballistic_reference_unchanged():
     assert np.allclose(a["impact"], b["impact"], atol=1.0)
     c = dataset.generate(50, seed=5, frac=0.12, truth=lambda m, r: hgv.sample(m, r))
     assert np.median(c["T"]) > np.median(a["T"]) + 30
+
+
+def test_sixdof_reduces_to_3dof_and_trim_moves_impact():
+    """trajai.sixdof: zero angle of attack reproduces the 3-DOF simulator; a trim angle moves the impact point."""
+    import numpy as np
+    from trajai import physics, sixdof
+    from trajai.dataset import ID_RANGES, initial_state, sample_params
+    rng = np.random.default_rng(2)
+    p = sample_params(20, rng, ID_RANGES)
+    s0 = initial_state(p)
+    prm = sixdof.sample(20, rng)
+    zero = {**prm, "alpha0": np.zeros(20), "trim": np.zeros(20)}
+    _, _, T0, r0 = sixdof.simulate(s0, p[:, 4], zero, dt=0.02, out_dt=1.0)
+    _, _, _, T, r = physics.simulate_ballistic(s0, p[:, 4], dt=0.1, out_dt=0.5)
+    assert np.abs(r[:, :2] - r0[:, :2]).max() < 0.5 and np.abs(T - T0).max() < 0.01
+    _, _, _, r1 = sixdof.simulate(s0, p[:, 4], prm, dt=0.02, out_dt=1.0)
+    assert np.median(np.linalg.norm(r1[:, :2] - r0[:, :2], axis=1)) > 5.0
