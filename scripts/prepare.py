@@ -19,7 +19,7 @@ def noise_of(split):
 
 def main():
     os.makedirs("results", exist_ok=True)
-    for split in ["train", "val", "train_aug", "val_aug"] + TESTS:
+    for split in ["train", "val", "train_aug", "val_aug", "train_wide_aug", "val_wide_aug"] + TESTS:
         if not os.path.exists(f"{DATA}/{split}.npz"):
             continue
         nz = noise_of(split)

@@ -1,9 +1,12 @@
-"""LSTM vs PINN comparison (same LSTM encoder, physics loss off / on).
+"""Paired comparison of two models on the test splits (default: Bi-LSTM data only vs PINN).
 
-Reads results/metrics.json and results/pred_{data,pinn}_lstm_v2_*.npz, writes results/lstm_vs_pinn.json:
-per split, impact-point miss (median and RMSE) and physics residual for both models, plus a paired bootstrap / Wilcoxon test
-on the miss distance (same procedure as site_stats.compare, Holm-corrected over the splits).
+Reads results/metrics.json and results/pred_<model>_<split>.npz, writes a JSON summary: per split, impact-point
+miss (median and RMSE), physics residual, CEP coverage, plus a paired bootstrap / Wilcoxon test on the miss
+distance (same procedure as site_stats.compare, Holm-corrected over the splits).
+Usage: python scripts/lstm_compare.py [--a pinn_lstm_v2] [--b data_lstm_v2] [--out results/lstm_vs_pinn.json]
+       (the summary keys stay "data" = b and "pinn" = a for compatibility)
 """
+import argparse
 import json
 import os
 import sys
@@ -13,14 +16,13 @@ import numpy as np
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from site_stats import compare, holm  # noqa: E402
 
-DATA, PINN = "data_lstm_v2", "pinn_lstm_v2"
 SPLITS = ["test_id_f05", "test_id_f10", "test_id_f15", "test_id_noise", "test_ood"]
 
 
-def rmse(s):
+def rmse(s, data, pinn):
     """Impact-point RMSE [m] from the per-track miss distances (needs results/pred_* and baseline_* files)."""
     out = {}
-    for key, f in (("rmse_data_m", f"results/pred_{DATA}_{s}.npz"), ("rmse_pinn_m", f"results/pred_{PINN}_{s}.npz"),
+    for key, f in (("rmse_data_m", f"results/pred_{data}_{s}.npz"), ("rmse_pinn_m", f"results/pred_{pinn}_{s}.npz"),
                    ("rmse_ekf_m", f"results/baseline_ekf_{s}.npz")):
         if os.path.exists(f):
             out[key] = float(np.sqrt(np.mean(np.load(f)["miss"] ** 2)))
@@ -28,6 +30,12 @@ def rmse(s):
 
 
 def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--a", default="pinn_lstm_v2")
+    ap.add_argument("--b", default="data_lstm_v2")
+    ap.add_argument("--out", default="results/lstm_vs_pinn.json")
+    a = ap.parse_args()
+    PINN, DATA = a.a, a.b
     m = json.load(open("results/metrics.json"))
     rng = np.random.default_rng(7)
     rows = [r for r in (compare(PINN, DATA, s, rng) for s in SPLITS) if r]
@@ -43,14 +51,15 @@ def main():
             phys_data_g=rd, phys_pinn_g=rp, phys_reduction=1.0 - rp / rd if rd > 0 else None,
             cov_data=d["coverage"], cov_pinn=p["coverage"],
             miss_ekf_m=m.get("ekf", {}).get(s, {}).get("miss", {}).get("median"),
-            **rmse(s))
+            **rmse(s, DATA, PINN))
     out["latency"] = {k: m[k].get("latency") for k in (DATA, PINN) if k in m}
-    json.dump(out, open("results/lstm_vs_pinn.json", "w"), indent=1, ensure_ascii=False)
-    print(f"{'split':14s} {'miss data':>10s} {'miss pinn':>10s} {'phys data':>10s} {'phys pinn':>10s} {'-phys':>6s}  p_holm")
+    json.dump(out, open(a.out, "w"), indent=1, ensure_ascii=False)
+    print(f"{PINN} vs {DATA}")
+    print(f"{'split':14s} {'miss b':>8s} {'miss a':>8s} {'rmse b':>8s} {'rmse a':>8s} {'phys b':>7s} {'phys a':>7s}  p_holm")
     ph = {r["split"]: r["p_holm"] for r in rows}
     for s, v in out["splits"].items():
-        print(f"{s:14s} {v['miss_data_m']:10.0f} {v['miss_pinn_m']:10.0f} {v['phys_data_g']:10.3f} {v['phys_pinn_g']:10.3f} "
-              f"{(v['phys_reduction'] or 0) * 100:5.0f}%  {ph.get(s, float('nan')):.3g}")
+        print(f"{s:14s} {v['miss_data_m']:8.0f} {v['miss_pinn_m']:8.0f} {v.get('rmse_data_m', float('nan')):8.0f} "
+              f"{v.get('rmse_pinn_m', float('nan')):8.0f} {v['phys_data_g']:7.3f} {v['phys_pinn_g']:7.3f}  {ph.get(s, float('nan')):.3g}")
 
 
 if __name__ == "__main__":

@@ -123,6 +123,9 @@ def make_all(out_dir, n_train=20_000, n_val=2_000, seed=2026, only=None):
         "val": dict(n=n_val, seed=seed + 1, ranges=ID_RANGES, frac=(0.08, 0.20)),
         "train_aug": dict(n=n_train, seed=seed + 10, ranges=ID_RANGES, frac=(0.08, 0.20), noise="mixed"),
         "val_aug": dict(n=n_val, seed=seed + 11, ranges=ID_RANGES, frac=(0.08, 0.20), noise="mixed"),
+        # wider observation window (5–20 %) to test whether the ID 5 % failure is a training-range artefact
+        "train_wide_aug": dict(n=n_train, seed=seed + 12, ranges=ID_RANGES, frac=(0.05, 0.20), noise="mixed"),
+        "val_wide_aug": dict(n=n_val, seed=seed + 13, ranges=ID_RANGES, frac=(0.05, 0.20), noise="mixed"),
         "test_id_f10": dict(n=1000, seed=seed + 2, ranges=ID_RANGES, frac=0.10),
         "test_id_f15": dict(n=1000, seed=seed + 3, ranges=ID_RANGES, frac=0.15),
         "test_id_f05": dict(n=1000, seed=seed + 6, ranges=ID_RANGES, frac=0.05),
