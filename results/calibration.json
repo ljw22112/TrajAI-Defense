@@ -48,5 +48,10 @@
   "cep_scale": 0.6692,
   "cep90_scale": 0.8219,
   "fitted_on": "test_id_f10"
+ },
+ "pinn_lstm_rts_9k": {
+  "cep_scale": 0.7224245119162951,
+  "cep90_scale": 0.8456015239908867,
+  "fitted_on": "test_id_f10"
  }
 }

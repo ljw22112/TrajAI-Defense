@@ -92,7 +92,7 @@ def run_pinn(scn, bank, model_version) -> dict:
     t0 = time.perf_counter()
     pol, car, n = _arrays(scn)
     feats, pad, origin = features.track_features(car.astype(np.float32), n)
-    if model_version.kind.startswith("pinn-rts"):          # trained on EKF-RTS smoothed track features (§9.6)
+    if "pinn-rts" in model_version.kind:                  # trained on EKF-RTS smoothed track features (§9.6, §9.11)
         feats, _ = features.track_features_rts(pol, car, n, scn.sigma_r, scn.sigma_ang)
     use_wx = model_version.uses_weather and bank is not None
     atm = bank[np.zeros(1, int)] if use_wx else None

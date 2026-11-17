@@ -74,7 +74,10 @@ def main():
     ekf_rmse = sp[t10]["rmse_ekf_m"]
     var = [("Savitzky–Golay 입력, 관측 8–20% 학습 (기본)", "pinn_lstm_v2", "results/lstm_vs_pinn.json", "pinn"),
            ("RTS 평활 입력", "pinn_lstm_v2_rts", "results/lstm_vs_pinn_rts.json", "pinn"),
-           ("관측 5–20%로 넓혀 학습", "pinn_lstm_wide", "results/lstm_vs_pinn_wide.json", "pinn")]
+           ("관측 5–20%로 넓혀 학습", "pinn_lstm_wide", "results/lstm_vs_pinn_wide.json", "pinn"),
+           ("RTS + EKF 사후 특징(하이브리드)", "pinn_lstm_rts_hyb", "results/lstm_pinn_lstm_rts_hyb_vs_rts.json", "pinn"),
+           ("RTS + 관측 5–20% 학습", "pinn_lstm_rts_wide", "results/lstm_pinn_lstm_rts_wide_vs_rts.json", "pinn"),
+           ("RTS + 학습 2배 (9,000 step)", "pinn_lstm_rts_9k", "results/lstm_pinn_lstm_rts_9k_vs_rts.json", "pinn")]
     vrows, VV = [], {}
     for label, key, f, role in var:
         if not os.path.exists(f):
@@ -92,7 +95,7 @@ def main():
                  f'<td class="n">{f0(ekf_rmse)}</td><td class="n">{f0(sp["test_id_noise"]["miss_ekf_m"])}</td><td class="n">{f0(sp["test_ood"]["miss_ekf_m"])}</td>'
                  f'<td class="n">{M["ekf"][t10]["coverage"]:.2f}</td></tr>')
     v10, v05 = sp[t10], sp["test_id_f05"]
-    rts, wide = VV.get("pinn_lstm_v2_rts"), VV.get("pinn_lstm_wide")
+    rts, wide, long_ = VV.get("pinn_lstm_v2_rts"), VV.get("pinn_lstm_wide"), VV.get("pinn_lstm_rts_9k")
     base = VV["pinn_lstm_v2"]
     ext_html = ""
     if len(seeds) == 3 and rts and wide:
@@ -118,7 +121,8 @@ def main():
   <div class="prose">
     <p><b>seed 3개로 확인한 결론.</b> 물리 잔차 감소는 세 seed 모두 같은 크기입니다({min(reds):.0f}–{max(reds):.0f}%). IP 오차 중앙값 이득은 ID 15%에서 {sig_count["test_id_f15"]}/3, ID 10%에서 {sig_count["test_id_f10"]}/3, 고잡음에서 {sig_count["test_id_noise"]}/3 seed만 유의합니다. "물리 손실은 궤적의 물리 일관성을 확실히 높이고, 정확도 이득은 작고 조건에 따라 다르다"는 Transformer 쌍(§9.7)의 결론이 Bi-LSTM에서도 그대로 재현됩니다.</p>
     <p><b>RTS 입력은 구조와 무관하게 통합니다.</b> Transformer에서 효과가 컸던 RTS 평활 특징(§9.6)을 Bi-LSTM에 넣으면 ID 10% RMSE가 {f0(base[t10]["rmse_pinn_m"])} → {f0(rts[t10]["rmse_pinn_m"])} m로 1,000 m 기준 안에 들어오고, 고잡음 중앙값은 {f0(base["test_id_noise"]["miss_pinn_m"])} → {f0(rts["test_id_noise"]["miss_pinn_m"])} m로 줄어듭니다. 다만 EKF RMSE({f0(ekf_rmse)} m)의 1.2배 이내라는 두 번째 기준은 {rts[t10]["rmse_pinn_m"] / ekf_rmse:.2f}배라 아직 충족하지 못합니다.</p>
-    <p><b>관측 5% 붕괴는 학습 범위의 문제였습니다.</b> 학습 분할의 관측 비율을 8–20%에서 5–20%로 넓히면 ID 5% 중앙값이 {f0(base["test_id_f05"]["miss_pinn_m"])} → {f0(wide["test_id_f05"]["miss_pinn_m"])} m(EKF {f0(sp["test_id_f05"]["miss_ekf_m"])} m), 포함률이 {base["test_id_f05"]["cov_pinn"]:.2f} → {wide["test_id_f05"]["cov_pinn"]:.2f}로 회복되고 다른 ID 분할은 유의하게 나빠지지 않습니다. 대신 OOD 중앙값은 커져({f0(base["test_ood"]["miss_pinn_m"])} → {f0(wide["test_ood"]["miss_pinn_m"])} m) 학습 범위 밖 외삽 문제는 여전히 §9.8의 감지·EKF 전환으로 다뤄야 합니다.</p>
+    <p><b>관측 5% 붕괴는 학습 범위의 문제였습니다.</b> 학습 분할의 관측 비율을 8–20%에서 5–20%로 넓히면 ID 5% 중앙값이 {f0(base["test_id_f05"]["miss_pinn_m"])} → {f0(wide["test_id_f05"]["miss_pinn_m"])} m(EKF {f0(sp["test_id_f05"]["miss_ekf_m"])} m), 포함률이 {base["test_id_f05"]["cov_pinn"]:.2f} → {wide["test_id_f05"]["cov_pinn"]:.2f}로 회복되고 다른 ID 분할은 유의하게 나빠지지 않습니다. 대신 OOD 중앙값은 커져({f0(base["test_ood"]["miss_pinn_m"])} → {f0(wide["test_ood"]["miss_pinn_m"])} m) 학습 범위 밖 외삽 문제는 여전히 §9.8의 감지·EKF 전환으로 다뤄야 합니다.</p>""" + (f"""
+    <p><b>남은 기준은 학습량으로 넘었습니다.</b> RTS 입력 모델에 EKF 사후 특징을 더하거나(하이브리드) 관측 범위를 넓히는 것으로는 ID 10% RMSE가 줄지 않았지만, 같은 설정으로 학습을 9,000 step으로 두 배 늘리면 RMSE가 {f0(rts[t10]["rmse_pinn_m"])} → {f0(long_[t10]["rmse_pinn_m"])} m(EKF의 {long_[t10]["rmse_pinn_m"] / ekf_rmse:.2f}배)로 두 평가 기준을 모두 충족합니다. 중앙값도 {f0(rts[t10]["miss_pinn_m"])} → {f0(long_[t10]["miss_pinn_m"])} m, 고잡음은 {f0(long_["test_id_noise"]["miss_pinn_m"])} m(EKF {f0(sp["test_id_noise"]["miss_ekf_m"])} m)로 줄고 물리 잔차는 {long_[t10]["phys_pinn_g"]:.3f} g입니다. 중앙값은 아직 EKF({f0(sp[t10]["miss_ekf_m"])} m)보다 크지만 큰 오차가 줄어 RMSE는 EKF보다 작습니다. §9.10에서 한계로 둔 "CPU 학습을 4,500 step에서 멈춤"이 실제로 정확도를 묶고 있었다는 뜻입니다. 이 모델은 운용 콘솔에서 'LSTM-PINN (RTS)'로 실행할 수 있습니다.</p>""" if long_ else "") + """
   </div>"""
     red10 = v10["phys_reduction"] * 100
     ekf_rmse10 = v10["rmse_ekf_m"]

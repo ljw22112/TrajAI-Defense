@@ -12,7 +12,7 @@ import { Card, Empty, ErrorBox, PageHead, Spinner, Stat, Term, ThreatBadge, fmt,
 import { useLiveTrack } from "../hooks/useLiveTrack";
 
 const METHOD_COLOR: Record<Method, string> = { ekf_std: "--truth", ekf_wx: "--ekf", ukf_wx: "--ukf", pinn: "--pred", ekf_pinn: "--obs" };
-const LSTM_COLOR: Record<string, string> = { pinn_lstm_v2: "--ok", data_lstm_v2: "--ink-3" };
+const LSTM_COLOR: Record<string, string> = { pinn_lstm_v2: "--ok", data_lstm_v2: "--ink-3", pinn_lstm_rts_9k: "--lv2" };
 const isLstm = (e: Estimate) => !!e.model_name && e.model_name in LSTM_COLOR;
 const colorOf = (e: Estimate) => (isLstm(e) ? LSTM_COLOR[e.model_name!] : METHOD_COLOR[e.method]);
 const labelOf = (e: Estimate) => (isLstm(e) ? LSTM_RUNS.find(r => r.model === e.model_name)!.label : METHOD_LABEL[e.method]);

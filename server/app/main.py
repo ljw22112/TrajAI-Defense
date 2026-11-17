@@ -38,6 +38,7 @@ MODELS = [  # registry seed: (name, kind, onnx file, uses weather, metrics key)
     # Bi-LSTM pair for the LSTM vs PINN comparison (§9.11): same encoder, physics loss on / off
     ("pinn_lstm_v2", "lstm-pinn · Bi-LSTM, physics loss", "pinn_lstm_v2.onnx", False, "pinn_lstm_v2"),
     ("data_lstm_v2", "lstm-data · Bi-LSTM, data only", "data_lstm_v2.onnx", False, "data_lstm_v2"),
+    ("pinn_lstm_rts_9k", "lstm-pinn-rts · Bi-LSTM, RTS input", "pinn_lstm_rts_9k.onnx", False, "pinn_lstm_rts_9k"),
 ]
 
 

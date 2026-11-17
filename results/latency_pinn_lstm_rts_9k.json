@@ -1,0 +1,22 @@
+{
+ "model": "pinn_lstm_rts_9k",
+ "onnx_file": "export/pinn_lstm_rts_9k.onnx",
+ "onnx_size_kb": 120.0419921875,
+ "onnx_vs_torch_max_diff_m": 0.035762786865234375,
+ "torch_cpu": {
+  "p50_ms": 1.8385739995210315,
+  "p99_ms": 3.818936979077986
+ },
+ "onnxruntime_cpu": {
+  "p50_ms": 0.8232090003730264,
+  "p99_ms": 1.284294539564143
+ },
+ "ekf_filter_only": {
+  "p50_ms": 48.71271199954208,
+  "p99_ms": 60.14976880056565
+ },
+ "ekf_plus_mc100": {
+  "p50_ms": 189.41616399933991,
+  "p99_ms": 330.5335610605471
+ }
+}

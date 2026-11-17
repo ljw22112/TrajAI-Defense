@@ -521,7 +521,7 @@ footer b{color:var(--ink); font-weight:600}
       </tbody>
     </table>
   </div>
-  <div class="prose"><p>REQ-P-01은 기획서의 추론 시간 목표(약 3 s에서 0.05 s로, 95% 단축)에서 나왔습니다. REQ-P-02(−40%)와 REQ-P-03(+25 s)은 근거 없이 정한 목표였으므로, 개정 기획서(<code>docs/</code>)는 이를 측정 가능한 평가 기준으로 바꿨습니다: 탄착점 RMSE(ID 10%) 1,000 m 이하이면서 EKF(747 m)의 1.2배 이내(Transformer RTS 입력 PINN 822 m로 충족. Bi-LSTM PINN은 기본 1,035 m, RTS 입력 933 m로 1,000 m 이하는 맞지만 EKF의 1.25배라 미충족, §9.11), 물리 잔차 50% 이상 감소(Bi-LSTM 76%, seed 3개 모두 73% 이상, 충족), 보정 후 CEP<sub>50</sub> 포함률 0.50 ± 0.05(충족, §9.5), 분포 밖 감지 후 EKF 전환(AUROC 0.999, 충족, §9.8). 위 표의 원래 요구사항과 판정은 기록으로 남겨 둡니다. REQ-F-03의 잔차 기준은 §7의 물리 손실과 같은 식으로 계산하며, 현재 측정값과 판정 근거는 §9.2에 있습니다.</p></div>
+  <div class="prose"><p>REQ-P-01은 기획서의 추론 시간 목표(약 3 s에서 0.05 s로, 95% 단축)에서 나왔습니다. REQ-P-02(−40%)와 REQ-P-03(+25 s)은 근거 없이 정한 목표였으므로, 개정 기획서(<code>docs/</code>)는 이를 측정 가능한 평가 기준으로 바꿨습니다: 탄착점 RMSE(ID 10%) 1,000 m 이하이면서 EKF(747 m)의 1.2배 이내(Transformer RTS 입력 PINN 822 m로 충족. Bi-LSTM PINN은 기본 1,035 m, RTS 입력 933 m로 1,000 m 이하는 맞지만 EKF의 1.25배라 미충족이었고, 학습을 9,000 step으로 늘린 RTS 입력 모델이 686 m(EKF의 0.92배)로 충족, §9.11), 물리 잔차 50% 이상 감소(Bi-LSTM 76%, seed 3개 모두 73% 이상, 충족), 보정 후 CEP<sub>50</sub> 포함률 0.50 ± 0.05(충족, §9.5), 분포 밖 감지 후 EKF 전환(AUROC 0.999, 충족, §9.8). 위 표의 원래 요구사항과 판정은 기록으로 남겨 둡니다. REQ-F-03의 잔차 기준은 §7의 물리 손실과 같은 식으로 계산하며, 현재 측정값과 판정 근거는 §9.2에 있습니다.</p></div>
 </section>
 
 <!-- 4 ARCH -->
@@ -1152,7 +1152,7 @@ footer b{color:var(--ink); font-weight:600}
       <thead><tr><th>구분</th><th>위협</th><th>영향</th><th>대응 / 남은 일</th></tr></thead>
       <tbody>
         <tr><td style="white-space:nowrap">내적</td><td>학습 seed 수가 적음</td><td>Table R5의 신뢰구간은 시험 표본의 변동만 반영하고 학습 무작위성은 반영하지 않음</td><td>하이브리드는 seed 3개, PINN·data-only는 seed 2개로 변동을 측정(§9.7, ID에서는 작고 OOD에서는 큼). 물리 손실의 정확도 이득은 두 seed 쌍 모두에서 ID 10%·OOD에만 일관. 불일치 학습 모델은 seed 2쌍으로 물리 손실 효과의 부호를 확인(§9.9). 기상 모델·RTS 입력 모델은 seed 1개라 차이가 작은 비교(일자 기상 입력 −36 m 등)는 결론을 유보</td></tr>
-        <tr><td style="white-space:nowrap">내적</td><td>CPU 학습 4,500 step에서 중단</td><td>검증 ADE가 마지막 구간까지 감소(하이브리드 v2: 703 → 580 m), 신경망 성능이 과소평가되었을 수 있음</td><td>GPU 장기 학습으로 상한 재측정</td></tr>
+        <tr><td style="white-space:nowrap">내적</td><td>CPU 학습 4,500 step에서 중단</td><td>검증 ADE가 마지막 구간까지 감소(하이브리드 v2: 703 → 580 m), 신경망 성능이 과소평가되었을 수 있음</td><td>확인됨: Bi-LSTM을 9,000 step으로 늘리자 ID 10% RMSE 933 → 686 m (§9.11). Transformer도 GPU 장기 학습으로 상한 재측정 필요</td></tr>
         <tr><td style="white-space:nowrap">내적</td><td>"inverse crime": 필터와 데이터 생성기가 같은 동역학</td><td>EKF/UKF에 유리한 조건 (§9.1)</td><td>기상 실험은 분석장 오차 섭동으로, 동역학은 Cd(M) 곡선 오차·약한 양력을 넣은 불일치 시험(§9.9)으로 점검</td></tr>
         <tr><td style="white-space:nowrap">내적</td><td>보정 계수를 시험 분할 안에서 교차 적합</td><td>보고한 포함률은 out-of-fold지만, 같은 분포의 자료를 재사용</td><td>운용에는 별도 보정 세트와 주기적 재보정 필요</td></tr>
         <tr><td style="white-space:nowrap">외적</td><td>합성 데이터, 3-DOF 점질량, 기동은 약한 양력만, 단일 레이더</td><td>실제 표적·센서로의 일반화는 검증되지 않음</td><td>공개 재진입 관측으로 물리 모델 정성 검증(§9.16), 축소 6-DOF 진값으로 3-DOF 가정의 비용 측정(§9.15), 활공 기동 표적 시험(§9.14). IMM과 혁신 검정은 시험했으나 관측 창 안의 기동이 너무 약해 효과 없음(§9.9)</td></tr>
@@ -1213,6 +1213,9 @@ footer b{color:var(--ink); font-weight:600}
         <tr><td>Savitzky–Golay 입력, 관측 8–20% 학습 (기본)</td><td class="n">6,982</td><td class="n">584</td><td class="n">1,035 <small class="muted">✗ ≤ 1,000 · 1.39× EKF ✗</small></td><td class="n">1,031</td><td class="n">10,613</td><td class="n">0.74</td></tr>
         <tr><td>RTS 평활 입력</td><td class="n">1,858</td><td class="n">565</td><td class="n">933 <small class="muted">✓ ≤ 1,000 · 1.25× EKF ✗</small></td><td class="n">726</td><td class="n">10,968</td><td class="n">0.65</td></tr>
         <tr><td>관측 5–20%로 넓혀 학습</td><td class="n">1,569</td><td class="n">575</td><td class="n">949 <small class="muted">✓ ≤ 1,000 · 1.27× EKF ✗</small></td><td class="n">1,048</td><td class="n">11,668</td><td class="n">0.82</td></tr>
+        <tr><td>RTS + EKF 사후 특징(하이브리드)</td><td class="n">2,215</td><td class="n">556</td><td class="n">981 <small class="muted">✓ ≤ 1,000 · 1.31× EKF ✗</small></td><td class="n">699</td><td class="n">11,926</td><td class="n">0.64</td></tr>
+        <tr><td>RTS + 관측 5–20% 학습</td><td class="n">1,348</td><td class="n">590</td><td class="n">968 <small class="muted">✓ ≤ 1,000 · 1.30× EKF ✗</small></td><td class="n">729</td><td class="n">10,533</td><td class="n">0.73</td></tr>
+        <tr><td>RTS + 학습 2배 (9,000 step)</td><td class="n">1,634</td><td class="n">396</td><td class="n">686 <small class="muted">✓ ≤ 1,000 · 0.92× EKF ✓</small></td><td class="n">605</td><td class="n">6,096</td><td class="n">0.68</td></tr>
         <tr><td>EKF + Monte Carlo (기준)</td><td class="n">1,429</td><td class="n">340</td><td class="n">747</td><td class="n">629</td><td class="n">438</td><td class="n">0.70</td></tr>
       </tbody>
     </table>
@@ -1221,6 +1224,7 @@ footer b{color:var(--ink); font-weight:600}
     <p><b>seed 3개로 확인한 결론.</b> 물리 잔차 감소는 세 seed 모두 같은 크기입니다(73–76%). IP 오차 중앙값 이득은 ID 15%에서 3/3, ID 10%에서 2/3, 고잡음에서 1/3 seed만 유의합니다. "물리 손실은 궤적의 물리 일관성을 확실히 높이고, 정확도 이득은 작고 조건에 따라 다르다"는 Transformer 쌍(§9.7)의 결론이 Bi-LSTM에서도 그대로 재현됩니다.</p>
     <p><b>RTS 입력은 구조와 무관하게 통합니다.</b> Transformer에서 효과가 컸던 RTS 평활 특징(§9.6)을 Bi-LSTM에 넣으면 ID 10% RMSE가 1,035 → 933 m로 1,000 m 기준 안에 들어오고, 고잡음 중앙값은 1,031 → 726 m로 줄어듭니다. 다만 EKF RMSE(747 m)의 1.2배 이내라는 두 번째 기준은 1.25배라 아직 충족하지 못합니다.</p>
     <p><b>관측 5% 붕괴는 학습 범위의 문제였습니다.</b> 학습 분할의 관측 비율을 8–20%에서 5–20%로 넓히면 ID 5% 중앙값이 6,982 → 1,569 m(EKF 1,429 m), 포함률이 0.03 → 0.46로 회복되고 다른 ID 분할은 유의하게 나빠지지 않습니다. 대신 OOD 중앙값은 커져(10,613 → 11,668 m) 학습 범위 밖 외삽 문제는 여전히 §9.8의 감지·EKF 전환으로 다뤄야 합니다.</p>
+    <p><b>남은 기준은 학습량으로 넘었습니다.</b> RTS 입력 모델에 EKF 사후 특징을 더하거나(하이브리드) 관측 범위를 넓히는 것으로는 ID 10% RMSE가 줄지 않았지만, 같은 설정으로 학습을 9,000 step으로 두 배 늘리면 RMSE가 933 → 686 m(EKF의 0.92배)로 두 평가 기준을 모두 충족합니다. 중앙값도 565 → 396 m, 고잡음은 605 m(EKF 629 m)로 줄고 물리 잔차는 0.062 g입니다. 중앙값은 아직 EKF(340 m)보다 크지만 큰 오차가 줄어 RMSE는 EKF보다 작습니다. §9.10에서 한계로 둔 "CPU 학습을 4,500 step에서 멈춤"이 실제로 정확도를 묶고 있었다는 뜻입니다. 이 모델은 운용 콘솔에서 'LSTM-PINN (RTS)'로 실행할 수 있습니다.</p>
   </div>
 <!-- LSTM:END -->
 <!-- EXT:BEGIN -->

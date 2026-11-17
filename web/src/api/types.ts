@@ -85,11 +85,13 @@ export const MODEL_SHORT: Record<string, string> = {
   pinn_tf_hybrid: "v1 (구버전)",
   pinn_lstm_v2: "LSTM · 물리 손실",
   data_lstm_v2: "LSTM · 데이터만",
+  pinn_lstm_rts_9k: "LSTM · RTS 입력",
 };
 /** Bi-LSTM pair run from the scenario page for the LSTM vs PINN comparison (§9.11 of the report). */
 export const LSTM_RUNS = [
   { model: "pinn_lstm_v2", label: "LSTM-PINN" },
   { model: "data_lstm_v2", label: "LSTM 데이터만" },
+  { model: "pinn_lstm_rts_9k", label: "LSTM-PINN (RTS)" },
 ] as const;
 export const modelShort = (m: string | null | undefined) => (m ? MODEL_SHORT[m] ?? m : null);
 

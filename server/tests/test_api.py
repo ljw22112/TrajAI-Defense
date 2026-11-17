@@ -326,7 +326,7 @@ def test_lstm_pair_selectable(scenarios, client, users):
     std, _ = scenarios
     h = users["analyst"]
     out = {}
-    for name in ("pinn_lstm_v2", "data_lstm_v2"):
+    for name in ("pinn_lstm_v2", "data_lstm_v2", "pinn_lstm_rts_9k"):
         r = client.post(f"/api/scenarios/{std['id']}/estimates", json={"method": "pinn", "model": name}, headers=h)
         assert r.status_code == 201, r.text
         out[name] = r.json()
