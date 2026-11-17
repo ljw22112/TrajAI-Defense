@@ -1355,7 +1355,7 @@ python -m pytest -q tests server/tests</code></pre>
 <!-- BENCH:BEGIN -->
   <h3 class="sub" id="sec-bench"><span class="no">10.2</span>공개 벤치마크 TrajAI-Bench</h3>
   <div class="prose">
-    <p>이 플랫폼의 비교를 다른 사람도 같은 조건으로 재현할 수 있도록 시험 분할 5종(각 1,000 트랙)을 벤치마크로 묶었습니다. 입력(레이더 측정)과 정답(탄착점·탄착 시각·실제 잔여 궤적)을 나눈 numpy 파일, Stone Soup의 CSV 판독기로 바로 읽히는 검출·실제 궤적 파일, numpy만 쓰는 채점기(<code>evaluate.py</code>), 이 문서의 결과로 만든 리더보드가 들어 있습니다. 채점기는 예시 제출(EKF 기준선)로 리더보드의 EKF 값을 정확히 재현하는지 CI에서 확인하고, GitHub 릴리스로 배포합니다(<code>.github/workflows/benchmark.yml</code>). 내려받기: <a href="https://github.com/ljw22112/TrajAI-Defense/releases/tag/benchmark-v1">TrajAI-Bench v1</a>. 모든 자료는 합성이며 실제 체계 정보가 없어 공개해도 안전합니다(§12.3).</p>
+    <p>이 플랫폼의 비교를 다른 사람도 같은 조건으로 재현할 수 있도록 시험 분할 5종(각 1,000 트랙)을 벤치마크로 묶었습니다. 입력(레이더 측정)과 정답(탄착점·탄착 시각·실제 잔여 궤적)을 나눈 numpy 파일, Stone Soup의 CSV 판독기로 바로 읽히는 검출·실제 궤적 파일, numpy만 쓰는 채점기(<code>evaluate.py</code>), 이 문서의 결과로 만든 리더보드가 들어 있습니다. 채점기는 예시 제출(EKF 기준선)로 리더보드의 EKF 값을 정확히 재현하는지 CI에서 확인하고, GitHub 릴리스로 배포합니다(<code>.github/workflows/benchmark.yml</code>). 내려받기: <a href="https://github.com/ljw22112/TrajAI-Defense/releases/tag/benchmark-v2">TrajAI-Bench v2</a>. 모든 자료는 합성이며 실제 체계 정보가 없어 공개해도 안전합니다(§12.3).</p>
   </div>
   <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>

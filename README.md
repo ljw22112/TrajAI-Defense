@@ -7,7 +7,7 @@
 
 - **기술 문서 / 프로젝트 페이지:** https://ljw22112.github.io/TrajAI-Defense/
 - **3D 결과 뷰어:** https://ljw22112.github.io/TrajAI-Defense/prototype/viewer.html
-- **공개 벤치마크:** https://github.com/ljw22112/TrajAI-Defense/releases/tag/benchmark-v1
+- **공개 벤치마크:** https://github.com/ljw22112/TrajAI-Defense/releases/tag/benchmark-v2
 
 ## 풀스택 운용 콘솔
 
@@ -61,7 +61,7 @@ E2E_BASE=http://127.0.0.1:8000 python -m pytest e2e   # Playwright 13 (서버 �
 | `prototype/viewer.html` | 시험 케이스의 궤적·예측·CEP·위협 평가 Three.js 뷰어 |
 | `legacy/` | 초기 프로토타입 코드 (Euler 생성기, 1-step PINN) |
 | `docs/` | AI 서비스 컨셉 정의서, 프로젝트 기획서, 사용자 검증 키트(`user-study.md`), 아키텍처 |
-| `benchmark_src/`, `scripts/export_benchmark.py` | 공개 벤치마크 TrajAI-Bench (시험 분할 5종, Stone Soup CSV, 채점기, 리더보드). 내려받기: [릴리스 benchmark-v1](https://github.com/ljw22112/TrajAI-Defense/releases/tag/benchmark-v1) |
+| `benchmark_src/`, `scripts/export_benchmark.py` | 공개 벤치마크 TrajAI-Bench (시험 분할 5종, Stone Soup CSV, 채점기, 리더보드). 내려받기: [릴리스 benchmark-v1](https://github.com/ljw22112/TrajAI-Defense/releases/tag/benchmark-v2) |
 | `server/tests/test_security.py`, `.github/workflows/codeql.yml` | 보안 테스트 12개, CodeQL·pip-audit·npm audit·bandit·gitleaks (기술 문서 §12.3) |
 
 ## 재현

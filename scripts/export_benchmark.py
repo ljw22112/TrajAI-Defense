@@ -29,7 +29,8 @@ TIME0 = 1_767_225_600          # 2026-01-01T00:00:00Z, arbitrary epoch for the S
 TRACK_GAP_S = 1000             # longer than any flight (< 600 s)
 BOARD = [("ekf", "EKF + Monte Carlo"), ("ukf", "UKF + Monte Carlo"), ("data_tf_v2", "Transformer, 데이터만"),
          ("pinn_tf_v2", "PINN-Transformer"), ("pinn_tf_v2_rts", "PINN-Transformer, RTS 입력"),
-         ("pinn_tf_hybrid_v2", "PINN-Transformer + EKF"), ("data_lstm_v2", "Bi-LSTM, 데이터만"), ("pinn_lstm_v2", "PINN-Bi-LSTM")]
+         ("pinn_tf_hybrid_v2", "PINN-Transformer + EKF"), ("data_lstm_v2", "Bi-LSTM, 데이터만"), ("pinn_lstm_v2", "PINN-Bi-LSTM"),
+         ("pinn_lstm_v2_rts", "PINN-Bi-LSTM, RTS 입력"), ("pinn_lstm_rts_9k", "PINN-Bi-LSTM, RTS 입력·학습 2배")]
 
 
 def main():
