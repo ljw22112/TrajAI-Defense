@@ -326,7 +326,7 @@ footer b{color:var(--ink); font-weight:600}
       <tbody>
         <tr><td><b>A</b> 문제 정의·필요성</td><td>직접 측정한 문제 5가지, 1차·2차 사용자, 국내외 수요 근거와 출처 있는 시장 자료</td><td><a href="#sec-problem">§2.1</a>, <a href="#sec-users">§2.2</a></td></tr>
         <tr><td><b>B</b> 서비스 기획</td><td>운용 콘솔에 구현된 5단계 활용 시나리오, 유사 서비스 3종과의 비교</td><td><a href="#sec-scenario">§2.3</a>, <a href="#sec-compare">§2.4</a>, <a href="#sec-stack">§12</a></td></tr>
-        <tr><td><b>C</b> 기술 난이도</td><td>autograd 물리 잔차 PINN, EKF·UKF·RTS와 하이브리드, 통계 검정, CEP 보정, 분포 밖 감지, 실제 기상, 풀스택 서빙</td><td><a href="#sec-dyn">§5</a>–<a href="#sec-vv">§9</a>, <a href="#sec-stack">§12</a></td></tr>
+        <tr><td><b>C</b> 기술 난이도</td><td>autograd 물리 잔차 PINN, EKF·UKF·RTS와 하이브리드, 통계 검정, CEP 보정, 분포 밖 감지, 실제 기상, 풀스택 서빙, 위협 모델 기반 보안 설계</td><td><a href="#sec-dyn">§5</a>–<a href="#sec-vv">§9</a>, <a href="#sec-stack">§12</a>, <a href="#sec-security">§12.3</a></td></tr>
         <tr><td><b>D</b> 범위 적정성</td><td>필수 4개·선택 3개 구분과 완료 상태, 평가 기준별 달성 여부, LSTM vs PINN 비교</td><td><a href="#sec-scope">§2.5</a>, <a href="#sec-req">§3</a>, <a href="#sec-lstm">§9.11</a></td></tr>
         <tr><td><b>E</b> 수행 계획·위험 관리</td><td>중간 점검 M1–M3가 있는 7주 일정, 주차별 완료 기준, 징후·대응·실제 결과가 있는 위험 5개</td><td><a href="#sec-plan">§11</a></td></tr>
       </tbody>
@@ -1326,15 +1326,50 @@ python -m pytest -q tests server/tests</code></pre>
     <figcaption><b>Fig. 9</b>운용 콘솔의 비행 재생 (시나리오 "10/15 00Z 제트기류", T+165 s 최대 동압 시점). 위: 대기층(대류권·성층권·희박 대기)과 제트기류 띠 위의 실제 궤적, 레이더 관측 구간(청록), 관측 종료 시점에 각 추정기가 낸 예측 경로(점선)와 같은 시각의 예측 위치. 가운데: 같은 비행을 바람만 끄고 다시 적분한 경로(파란 점선)와 비교한 표류, 이 날 바람은 탄착점을 하향거리로 약 2 km 밀었습니다. 오른쪽: 그 순간의 고도·마하·기온·밀도·바람과 예측–실제 차이. 아래: 환경이 바뀌는 시각 목록.</figcaption></figure>
   <figure><div class="sheet fig-img"><img src="figures/console_themes.png" alt="같은 화면의 라이트, 다크, 밀리터리 테마" loading="lazy"></div>
     <figcaption><b>Fig. 10</b>화면 테마 (왼쪽부터 라이트 · 다크 · 밀리터리). 색은 테마별 토큰으로만 정의하고, 모든 글자·배경 쌍이 WCAG 대비 4.5:1 이상인지 CI에서 검사합니다.</figcaption></figure>
+  <h3 class="sub" id="sec-security"><span class="no">12.3</span>보안 설계와 국방 적용</h3>
+  <div class="prose">
+    <p><b>공개 사이트가 뚫리면 국방 정보가 새는가?</b> 새지 않도록 설계했습니다. 이 사이트와 저장소, 정적 데모에 있는 자료는 모두 합성 궤적, 가상 보호 자산(ASSET-A–E, 지역 좌표), 공개 기상 자료(Open-Meteo), 공개 문헌의 물리 모델입니다. 실제 체계 제원, 레이더 성능, 방어 자산 위치는 어디에도 없습니다. 정적 데모는 서버 없이 읽기 전용 JSON을 보여 주므로 로그인이나 데이터베이스 같은 공격 대상도 없습니다. 실제 자료를 다루게 되면 위험은 운용 콘솔(서버)로 옮겨 가므로, 콘솔은 아래 위협을 기준으로 설계하고 각 통제를 자동 테스트(Table 15의 보안 12개)와 CI 검사로 확인합니다.</p>
+  </div>
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
+    <table>
+      <caption><b>Table 14c</b>위협 모델과 구현한 통제</caption>
+      <thead><tr><th>위협</th><th>예</th><th>구현한 통제</th></tr></thead>
+      <tbody>
+        <tr><td>계정 탈취</td><td>무차별 대입, 여러 계정에 같은 비밀번호를 시도(스프레이)</td><td>bcrypt(cost 12), 계정별 5회·주소별 20회/5분 실패 제한, 없는 계정도 같은 검증 시간(계정 존재 노출 방지), 비밀번호 10자 이상·문자+숫자·흔한 값 거부, 실패 감사 로그</td></tr>
+        <tr><td>토큰 탈취·위조</td><td>로그나 주소창에 남은 토큰 재사용, 서명 없는 토큰</td><td>JWT 발급자·대상·만료·발급 시각 검증, alg=none 거부, 2시간 만료, 매 요청마다 DB에서 계정 활성·역할 재확인, WebSocket 토큰은 URL이 아니라 첫 메시지로 전달(운영 모드는 쿼리 토큰 거부)</td></tr>
+        <tr><td>권한 상승</td><td>viewer가 시나리오·자산을 바꾸거나 관리자 기능 호출</td><td>3단계 역할(viewer·analyst·admin)을 서버에서 검사, 소유권 검사, 관리자 자기 강등·비활성 금지, 모든 변경을 감사 로그에 기록</td></tr>
+        <tr><td>웹 공격</td><td>XSS, 클릭재킹, CSRF, 정보 누출</td><td>CSP(script-src 'self', object-src 'none', frame-ancestors 'none'), X-Frame-Options DENY, nosniff, Referrer-Policy no-referrer, API 응답 no-store. 쿠키 대신 Bearer 토큰이라 CSRF 경로 없음. React 기본 이스케이프, innerHTML 미사용</td></tr>
+        <tr><td>설정 실수</td><td>개발용 기본 비밀값 그대로 배포</td><td>TRAJAI_ENV=prod이면 기본 JWT 비밀값·관리자 비밀번호·SQLite·와일드카드 CORS로는 시작하지 않음. API 문서 숨김, HSTS</td></tr>
+        <tr><td>공급망</td><td>취약한 라이브러리, 커밋된 비밀값</td><td>CI에서 pip-audit·npm audit(브라우저로 가는 의존성)·bandit·gitleaks(전체 git 기록)·CodeQL, 주간 Dependabot. 이번 감사에서 react-router의 오픈 리다이렉트 계열 취약점(high 3건)을 찾아 6.27 → 7.18.5로 수정, 배포 의존성 취약점 0건</td></tr>
+        <tr><td>침해 확산</td><td>API 컨테이너가 뚫린 뒤 DB·호스트로 확산</td><td>비루트 사용자, 읽기 전용 루트 파일시스템, 모든 커널 권한 제거(cap_drop ALL), no-new-privileges, DB 포트 외부 비공개, API는 루프백에만 바인딩(외부는 TLS 프록시 경유)</td></tr>
+        <tr><td>모델·데이터 유출</td><td>공개된 모델·데이터에서 체계 정보 추출</td><td>공개 모델은 합성 데이터로만 학습. 가중치를 빼내도 실제 체계 제원이나 레이더 성능은 들어 있지 않음. 실제 자료로 학습한 모델은 공개 저장소에 올리지 않는 것을 원칙으로 함</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
+    <table>
+      <caption><b>Table 14d</b>실제 국방 환경에 배치할 때 추가로 필요한 통제</caption>
+      <thead><tr><th>영역</th><th>현재 (연구·교육용)</th><th>국방 내부망 배치 시</th></tr></thead>
+      <tbody>
+        <tr><td>네트워크</td><td>인터넷 공개 데모(GitHub Pages), 로컬 컨테이너</td><td>인터넷과 분리된 내부망에만 배치. 외부 기상 API(Open-Meteo) 대신 내부 기상 자료 서버 연동</td></tr>
+        <tr><td>암호</td><td>TLS는 리버스 프록시에 맡김, JWT HS256</td><td>국가·공공기관 정보보호제품에 요구되는 KCMVP 검증필 암호모듈로 통신·저장 암호화[16]</td></tr>
+        <tr><td>인증</td><td>이메일 + 비밀번호</td><td>인증서(PKI) 또는 다중 인증, 짧은 세션, 동시 접속 제한</td></tr>
+        <tr><td>감사</td><td>DB 감사 로그(추가 전용 테이블)</td><td>해시 체인 등 위변조 방지, 별도 로그 서버로 실시간 전송</td></tr>
+        <tr><td>코드·모델 저장</td><td>공개 GitHub 저장소</td><td>내부 형상관리 서버. 실데이터 학습 모델은 비밀 등급에 맞는 저장소에서만 관리</td></tr>
+        <tr><td>검증</td><td>자동 검사(CI)</td><td>정기 취약점 진단·모의 해킹, 기관 보안성 검토를 거친 뒤 운용</td></tr>
+      </tbody>
+    </table>
+  </div>
 <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
       <caption><b>Table 15</b>테스트</caption>
       <thead><tr><th>수준</th><th>범위</th><th>수</th></tr></thead>
       <tbody>
-        <tr><td>코어 단위</td><td>대기, RK4 수렴 차수, 레이더 야코비안, EKF/UKF 일관성, 기상 격자, 사용자 대기, RTS 평활, β 사전, 위협 평가</td><td class="n">21</td></tr>
-        <tr><td>API 통합</td><td>인증·RBAC·CRUD·검증·기상 캐시·시뮬레이션·추정·통계·WebSocket·감사 · 로그인 제한·CSV (SQLite와 PostgreSQL 각각) · 분포 밖 감지</td><td class="n">24</td></tr>
+        <tr><td>코어 단위</td><td>대기, RK4 수렴 차수, 레이더 야코비안, EKF/UKF 일관성, 기상 격자, 사용자 대기, RTS 평활, β 사전, 위협 평가</td><td class="n">22</td></tr>
+        <tr><td>API 통합</td><td>인증·RBAC·CRUD·검증·기상 캐시·시뮬레이션·추정·통계·WebSocket·감사 · 로그인 제한·CSV (SQLite와 PostgreSQL 각각) · 분포 밖 감지</td><td class="n">25</td></tr>
+        <tr><td>보안</td><td>보안 헤더·CSP, CORS 제한, 운영 모드의 기본 비밀값 거부, JWT 발급자·대상 검증과 alg=none 거부, WebSocket 첫 메시지 인증, 비밀번호 정책, 주소별 로그인 실패 제한, 실패 감사 로그</td><td class="n">12</td></tr>
         <tr><td>프론트엔드</td><td>API 클라이언트 오류 처리, CSV 다운로드, UI 컴포넌트</td><td class="n">11</td></tr>
-        <tr><td>E2E (Playwright)</td><td>로그인, 대시보드, 실시간 재생, 폼 검증, viewer 읽기 전용, CSV, 사용자 대기, 환경 민감도, 다표적·비교, 위협 알림</td><td class="n">12</td></tr>
+        <tr><td>E2E (Playwright)</td><td>로그인, 대시보드, 실시간 재생, 폼 검증, viewer 읽기 전용, CSV, 사용자 대기, 환경 민감도, 다표적·비교, 위협 알림</td><td class="n">13</td></tr>
       </tbody>
     </table>
   </div>
@@ -1359,6 +1394,7 @@ python -m pytest -q tests server/tests</code></pre>
     <li>이동규, 홍동욱, “변이형 오토인코더를 이용한 탄도미사일 궤적 증강기법 개발,” <i>한국시스템엔지니어링학회지</i>, vol. 19, no. 2, pp. 145–156, 2023. doi:10.14248/JKOSSE.2023.19.2.145</li>
     <li>홍동욱, 김주현, “피치선회율을 이용한 저고도 활공기동형 미사일 비행궤적 시뮬레이션 및 탄착지점 예측 분석,” <i>한국산학기술학회논문지</i>, vol. 25, no. 1, pp. 714–724, 2024. doi:10.5762/KAIS.2024.25.1.714</li>
     <li>김영민, “생성형 AI 모델 기반 기동형 탄도미사일 궤적예측 성능 비교,” <i>한국시뮬레이션학회 논문지</i>, vol. 34, no. 1, pp. 13–21, 2025. doi:10.9709/JKSS.2025.34.1.013</li>
+    <li>국가정보원, 「암호모듈 시험 및 검증 지침」(KCMVP). 2009년부터 국가·공공기관에 도입되는 정보보호제품에 검증필 암호모듈 탑재 의무화. 개요: 법무법인 법승, “KCMVP: 수립 시점과 보급 확산 과정에 대한 심층 분석,” 2025. <a href="https://www.lawwin.co.kr/knowledge/7272">lawwin.co.kr</a></li>
   </ol>
 </section>
 

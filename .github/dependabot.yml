@@ -1,15 +1,18 @@
-# Weekly pull requests for vulnerable or outdated dependencies.
+# Weekly dependency updates, grouped into one pull request per ecosystem (security fixes still come individually).
 version: 2
 updates:
   - package-ecosystem: pip
-    directory: /server
+    directories: ["/", "/server"]
     schedule: {interval: weekly}
-  - package-ecosystem: pip
-    directory: /
-    schedule: {interval: weekly}
+    open-pull-requests-limit: 2
+    groups: {python: {patterns: ["*"]}}
   - package-ecosystem: npm
     directory: /web
     schedule: {interval: weekly}
+    open-pull-requests-limit: 2
+    groups: {web: {patterns: ["*"]}}
   - package-ecosystem: github-actions
     directory: /
     schedule: {interval: weekly}
+    open-pull-requests-limit: 1
+    groups: {actions: {patterns: ["*"]}}
