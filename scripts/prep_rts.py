@@ -11,7 +11,7 @@ sys.path.insert(0, ".")
 from trajai import radar  # noqa: E402
 from trajai.features import track_features_rts  # noqa: E402
 
-SPLITS = ["val_aug", "test_id_f05", "test_id_f10", "test_id_f15", "test_id_noise", "test_ood", "train_aug"]
+SPLITS = ["val_aug", "test_id_f05", "test_id_f10", "test_id_f15", "test_id_noise", "test_ood", "train_aug", "val_wide_aug", "train_wide_aug"]
 
 for s in sys.argv[1:] or SPLITS:
     t0 = time.time()
