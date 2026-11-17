@@ -81,3 +81,29 @@ def test_imm_on_ballistic_tracks_stays_in_ballistic_mode():
     assert np.all(np.linalg.eigvalsh(P) > 0)                    # mixed covariance positive definite
     xe, *_ = filters.ekf(d["meas_pol"].astype(float), d["meas"].astype(float), d["n_meas"], 0.5, nz["sigma_r"], nz["sigma_ang"])
     assert np.median(np.linalg.norm(x[:, :3] - xe[:, :3], axis=1)) < 100.0
+
+
+def test_multiradar_fusion_reduces_uncertainty():
+    """A second radar fused by sequential updates (filters.ekf extra=) must not change the single-radar result and
+    must shrink the position covariance."""
+    import numpy as np
+    from trajai import filters, physics, radar
+    from trajai.dataset import DT_MEAS, ID_RANGES, initial_state, sample_params
+    rng = np.random.default_rng(3)
+    p = sample_params(20, rng, ID_RANGES)
+    _, pos, _, _, _ = physics.simulate_ballistic(initial_state(p), p[:, 4], dt=0.1, out_dt=DT_MEAS)
+    K = 30
+    zA, cA = radar.measure(pos[:, :K], rng, 15.0, 4e-4)
+    site_b = np.array([90_000.0, -60_000.0, 0.0])
+    zB, _ = radar.measure(pos[:, :K], rng, 15.0, 4e-4, site=site_b)
+    n = np.full(20, K)
+    x1, P1, _, _ = filters.ekf(zA, cA, n, DT_MEAS, 15.0, 4e-4)
+    x0, P0, _, _ = filters.ekf(zA, cA, n, DT_MEAS, 15.0, 4e-4, extra=[])
+    assert np.allclose(x0, x1) and np.allclose(P0, P1)
+    x2, P2, _, _ = filters.ekf(zA, cA, n, DT_MEAS, 15.0, 4e-4, extra=[(zB, site_b, 15.0, 4e-4)])
+    tr1 = np.trace(P1[:, :3, :3], axis1=1, axis2=2)
+    tr2 = np.trace(P2[:, :3, :3], axis1=1, axis2=2)
+    assert (tr2 < tr1).all()
+    err1 = np.linalg.norm(x1[:, :3] - pos[:, K - 1], axis=1)
+    err2 = np.linalg.norm(x2[:, :3] - pos[:, K - 1], axis=1)
+    assert np.median(err2) < np.median(err1)

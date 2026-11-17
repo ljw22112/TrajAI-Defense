@@ -75,11 +75,14 @@ def _R(n, sigma_r, sigma_ang):
     return R
 
 
-def ekf(meas_pol, meas_c, n_meas, dt, sigma_r, sigma_ang, atm=None, lb_prior=None, slb_prior=None, store=None):
+def ekf(meas_pol, meas_c, n_meas, dt, sigma_r, sigma_ang, atm=None, lb_prior=None, slb_prior=None, store=None, extra=None):
     """Run the EKF on a batch. Returns x (N,7), P (N,7,7), mean NIS (N,), ln-beta history (N, K, 2).
     sigma_r / sigma_ang may be scalars or per-track arrays (N,).
     lb_prior / slb_prior: per-track prior on ln beta (e.g. from a learned model) instead of the broad default.
-    store: optional dict that receives filtered/predicted moments and Jacobians for the RTS smoother."""
+    store: optional dict that receives filtered/predicted moments and Jacobians for the RTS smoother.
+    extra: optional list of additional radars observing the same tracks at the same instants, each a tuple
+           (meas_pol (N, K, 3), site (3,), sigma_r, sigma_ang); their measurements are fused by sequential updates
+           after the primary radar's update (multi-radar fusion, §9.12)."""
     x, P = _init(meas_c, dt, sigma_r, sigma_ang, lb_prior, slb_prior)
     n = x.shape[0]
     Rall = _R(n, sigma_r, sigma_ang)
@@ -119,6 +122,19 @@ def ekf(meas_pol, meas_c, n_meas, dt, sigma_r, sigma_ang, atm=None, lb_prior=Non
         late = k >= 6
         nis_sum[idx] += e * late
         nis_cnt[idx] += late
+        for mp2, site2, sr2, sa2 in (extra or []):
+            R2 = _R(n, sr2, sa2)[act]
+            J2 = radar.polar_jacobian(xu[:, :3], site2)
+            H2 = np.concatenate([J2, np.zeros((xu.shape[0], 3, 4))], 2)
+            nu2 = mp2[act, k] - radar.to_polar(xu[:, :3], site2)
+            nu2[:, 1:] = _wrap(nu2[:, 1:])
+            S2 = H2 @ Pu @ np.transpose(H2, (0, 2, 1)) + R2
+            K2 = Pu @ np.transpose(H2, (0, 2, 1)) @ np.linalg.inv(S2)
+            xu = xu + np.einsum("nij,nj->ni", K2, nu2)
+            xu[:, 6] = np.clip(xu[:, 6], LB_MIN, LB_MAX)
+            IKH2 = I - K2 @ H2
+            Pu = IKH2 @ Pu @ np.transpose(IKH2, (0, 2, 1)) + K2 @ R2 @ np.transpose(K2, (0, 2, 1))
+            Pu = 0.5 * (Pu + np.transpose(Pu, (0, 2, 1)))
         x[act], P[act] = xu, Pu
         if store is not None:
             store["xf"][idx, k], store["Pf"][idx, k] = xu, Pu
