@@ -5,7 +5,7 @@ import pytest
 from pydantic import ValidationError
 
 from app import ratelimit
-from app.config import Settings
+from app.config import DEV_JWT_SECRET, Settings
 
 
 def test_security_headers(client):
@@ -28,9 +28,9 @@ def test_cors_is_restricted(client):
 
 
 @pytest.mark.parametrize("override, message", [
-    ({}, "TRAJAI_JWT_SECRET"),
-    ({"jwt_secret": "x" * 40}, "TRAJAI_ADMIN_PASSWORD"),
-    ({"jwt_secret": "x" * 40, "admin_password": "a-long-admin-pass-1"}, "PostgreSQL"),
+    ({"jwt_secret": DEV_JWT_SECRET}, "TRAJAI_JWT_SECRET"),
+    ({"jwt_secret": "x" * 40, "admin_password": "admin1234"}, "TRAJAI_ADMIN_PASSWORD"),
+    ({"jwt_secret": "x" * 40, "admin_password": "a-long-admin-pass-1", "database_url": "sqlite:///x.db"}, "PostgreSQL"),
     ({"jwt_secret": "short", "admin_password": "a-long-admin-pass-1", "database_url": "postgresql+psycopg2://u:p@h/db"}, "32"),
 ])
 def test_production_refuses_insecure_defaults(override, message):
