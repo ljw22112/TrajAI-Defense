@@ -53,3 +53,25 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run build
+
+  security:
+    name: security (dependencies, static analysis, secrets)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11"}
+      - uses: actions/setup-node@v4
+        with: {node-version: "20"}
+      - run: pip install pip-audit bandit
+      - name: Python dependencies (known CVEs)
+        run: pip-audit -r server/requirements.txt -r requirements.txt
+      - name: Python static analysis (medium and above)
+        run: bandit -q -r server/app trajai -ll
+      - name: Web dependencies shipped to the browser (known CVEs)
+        working-directory: web
+        run: npm ci --no-audit --no-fund && npm audit --omit=dev --audit-level=moderate
+      - name: Secret scan (git history)
+        uses: gitleaks/gitleaks-action@v2
+        env: {GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"}

@@ -5,6 +5,7 @@ Run:  uvicorn app.main:app --reload            (from server/, SQLite by default)
 Docs: /api/docs (Swagger UI), /api/redoc, /api/openapi.json
 """
 import json
+import logging
 import sys
 import time
 from contextlib import asynccontextmanager
@@ -20,7 +21,7 @@ if str(ROOT) not in sys.path:                       # make the trajai package im
     sys.path.insert(0, str(ROOT))
 
 from . import __version__  # noqa: E402
-from .config import get_settings  # noqa: E402
+from .config import DEV_JWT_SECRET, get_settings  # noqa: E402
 from .db import Base, SessionLocal, engine  # noqa: E402
 from .models import Asset, ModelVersion, Role, User  # noqa: E402
 from .routers import analysis, assets, auth, insights, raids, scenarios, stream, weather  # noqa: E402
@@ -77,6 +78,8 @@ def seed(db) -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    if get_settings().jwt_secret == DEV_JWT_SECRET:
+        logging.getLogger("trajai").warning("development JWT secret in use: set TRAJAI_ENV=prod and TRAJAI_JWT_SECRET before deploying")
     if get_settings().database_url.startswith("sqlite"):
         Base.metadata.create_all(engine)            # dev convenience; PostgreSQL uses Alembic migrations
     with SessionLocal() as db:
@@ -84,18 +87,39 @@ async def lifespan(app: FastAPI):
     yield
 
 
+# the SPA loads only its own bundle plus Google Fonts; API and WebSocket calls stay on the same origin
+CSP = ("default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+       "font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' ws: wss:; "
+       "object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'")
+
+
 def create_app() -> FastAPI:
     s = get_settings()
+    docs = not s.is_prod                            # interactive API docs only outside production
     app = FastAPI(title="TrajAI-Defense API", version=__version__, lifespan=lifespan,
-                  docs_url="/api/docs", redoc_url="/api/redoc", openapi_url="/api/openapi.json",
+                  docs_url="/api/docs" if docs else None, redoc_url="/api/redoc" if docs else None,
+                  openapi_url="/api/openapi.json" if docs else None,
                   description="Weather-aware ballistic trajectory estimation: simulation, EKF/UKF, PINN (ONNX), threat assessment.")
-    app.add_middleware(CORSMiddleware, allow_origins=s.cors_origins, allow_credentials=True, allow_methods=["*"], allow_headers=["*"])
+    app.add_middleware(CORSMiddleware, allow_origins=s.cors_origins, allow_credentials=False,
+                       allow_methods=["GET", "POST", "PATCH", "DELETE"], allow_headers=["Authorization", "Content-Type"])
 
     @app.middleware("http")
-    async def timing(request: Request, call_next):
+    async def security_headers(request: Request, call_next):
         t0 = time.perf_counter()
         resp = await call_next(request)
-        resp.headers["X-Process-Time-ms"] = f"{(time.perf_counter() - t0) * 1000:.1f}"
+        h = resp.headers
+        h["X-Process-Time-ms"] = f"{(time.perf_counter() - t0) * 1000:.1f}"
+        h["X-Content-Type-Options"] = "nosniff"
+        h["X-Frame-Options"] = "DENY"
+        h["Referrer-Policy"] = "no-referrer"
+        h["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(), payment=()"
+        h["Cross-Origin-Opener-Policy"] = "same-origin"
+        if request.url.path.startswith("/api/"):
+            h["Cache-Control"] = "no-store"                   # estimates and user data are never cached
+        if not request.url.path.startswith(("/api/docs", "/api/redoc")):   # Swagger UI loads its own CDN assets
+            h["Content-Security-Policy"] = CSP
+        if s.is_prod:
+            h["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
         return resp
 
     @app.exception_handler(ValueError)

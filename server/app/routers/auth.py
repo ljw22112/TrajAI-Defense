@@ -8,21 +8,26 @@ from ..audit import log
 from ..db import get_db
 from ..models import Role, User
 from ..schemas import Page, Token, UserCreate, UserOut, UserUpdate
-from ..security import create_token, current_user, hash_password, require, verify_password
+from ..security import burn_password_check, create_token, current_user, hash_password, require, verify_password
 
 router = APIRouter(prefix="/api", tags=["auth & users"])
 
 
 @router.post("/auth/login", response_model=Token, summary="OAuth2 password login (username = email)")
 def login(request: Request, form: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
-    key = (form.username.lower(), request.client.host if request.client else "?")
-    wait = ratelimit.retry_after(key)
+    addr = request.client.host if request.client else "?"
+    key, addr_key = (form.username.lower(), addr), ("*", addr)
+    wait = max(ratelimit.retry_after(key), ratelimit.retry_after(addr_key))
     if wait:
         raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, f"too many failed logins; retry in {wait} s",
                             headers={"Retry-After": str(wait)})
     user = db.scalar(select(User).where(User.email == form.username.lower()))
+    if user is None:
+        burn_password_check(form.password)
     if not user or not verify_password(form.password, user.hashed_password):
         ratelimit.failure(key)
+        ratelimit.failure(addr_key)
+        log(db, None, "login_failed", "user", user.id if user else None, {"address": addr})
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "incorrect email or password")
     ratelimit.success(key)
     if not user.is_active:

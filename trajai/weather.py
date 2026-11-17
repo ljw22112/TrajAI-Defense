@@ -39,7 +39,9 @@ def _download(start, end, lat, lon, cache_dir):
         last = None
         for attempt in range(6):
             try:
-                with urllib.request.urlopen(_url(start, end, lat, lon), timeout=180) as r:
+                url = _url(start, end, float(lat), float(lon))
+                assert url.startswith("https://")             # fixed HTTPS endpoint; only numeric query values vary
+                with urllib.request.urlopen(url, timeout=180) as r:  # nosec B310
                     raw = json.load(r)
                 break
             except Exception as e:      # rate limit (429) or transient network error: back off and retry

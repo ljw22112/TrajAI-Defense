@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { DEMO, demoFile, liveUrl } from "../api/client";
+import { DEMO, demoFile, liveUrl, openAuthedSocket } from "../api/client";
 import type { LiveMsg } from "../api/types";
 
 type LiveState = Extract<LiveMsg, { type: "state" }>;
@@ -57,7 +57,7 @@ export function useLiveTrack(scenarioId: number): LiveTrack {
         .catch(e => { setStatus("error"); setError(String(e.message ?? e)); });
       return;
     }
-    const sock = new WebSocket(liveUrl(scenarioId, speed, weather));
+    const sock = openAuthedSocket(liveUrl(scenarioId, speed, weather));
     ws.current = sock;
     sock.onmessage = ev => handle(JSON.parse(ev.data) as LiveMsg);
     sock.onerror = () => { setStatus("error"); setError("WebSocket 연결 오류"); };

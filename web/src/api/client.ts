@@ -130,7 +130,6 @@ export function liveUrl(id: number, speed: number, weather: boolean): string {
   const base = BASE || window.location.origin;
   const u = new URL(`${base}/api/ws/scenarios/${id}/live`);
   u.protocol = u.protocol === "https:" ? "wss:" : "ws:";
-  u.searchParams.set("token", tokenStore.get() ?? "");
   u.searchParams.set("speed", String(speed));
   u.searchParams.set("weather", weather ? "1" : "0");
   return u.toString();
@@ -140,6 +139,12 @@ export function alertsUrl(): string {
   const base = BASE || window.location.origin;
   const u = new URL(`${base}/api/ws/alerts`);
   u.protocol = u.protocol === "https:" ? "wss:" : "ws:";
-  u.searchParams.set("token", tokenStore.get() ?? "");
   return u.toString();
+}
+
+/** Opens a WebSocket and sends the access token as the first message (never in the URL, which gets logged). */
+export function openAuthedSocket(url: string): WebSocket {
+  const ws = new WebSocket(url);
+  ws.addEventListener("open", () => ws.send(JSON.stringify({ type: "auth", token: tokenStore.get() ?? "" })));
+  return ws;
 }

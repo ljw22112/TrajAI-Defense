@@ -43,8 +43,17 @@ class UserOut(ORM):
 class UserCreate(BaseModel):
     email: EmailStr
     full_name: str = Field("", max_length=120)
-    password: str = Field(min_length=8, max_length=128)
+    password: str = Field(min_length=10, max_length=128)
     role: Role = Role.viewer
+
+    @field_validator("password")
+    @classmethod
+    def _strong_enough(cls, v: str) -> str:
+        if not (any(c.isalpha() for c in v) and any(c.isdigit() for c in v)):
+            raise ValueError("password must contain both letters and digits")
+        if v.lower() in {"password123", "admin12345", "trajai1234", "qwerty12345"}:
+            raise ValueError("password is too common")
+        return v
 
 
 class UserUpdate(BaseModel):

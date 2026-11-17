@@ -1,7 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { alertsUrl, api, DEMO } from "../api/client";
+import { alertsUrl, api, DEMO, openAuthedSocket } from "../api/client";
 import type { Alert } from "../api/types";
 import { METHOD_LABEL } from "../api/types";
 import { fmt } from "./ui";
@@ -21,7 +21,7 @@ export function AlertCenter() {
     if (DEMO) return;
     let ws: WebSocket | null = null, retry: number | undefined, closed = false;
     const connect = () => {
-      ws = new WebSocket(alertsUrl());
+      ws = openAuthedSocket(alertsUrl());
       ws.onmessage = ev => {
         const m = JSON.parse(ev.data);
         if (m.type === "alert") {

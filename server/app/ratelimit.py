@@ -9,7 +9,8 @@ import threading
 import time
 from collections import defaultdict, deque
 
-MAX_FAILURES = 5
+MAX_FAILURES = 5          # per (email, address)
+MAX_ADDR_FAILURES = 20    # per address across all e-mails (password spraying)
 WINDOW_S = 300.0
 
 _lock = threading.Lock()
@@ -29,7 +30,8 @@ def retry_after(key: tuple[str, str], now: float | None = None) -> int:
         if not q:
             return 0
         _prune(q, now)
-        return int(WINDOW_S - (now - q[0])) + 1 if len(q) >= MAX_FAILURES else 0
+        limit = MAX_ADDR_FAILURES if key[0] == "*" else MAX_FAILURES
+        return int(WINDOW_S - (now - q[0])) + 1 if len(q) >= limit else 0
 
 
 def failure(key: tuple[str, str], now: float | None = None) -> None:

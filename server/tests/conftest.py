@@ -12,7 +12,7 @@ sys.path[:0] = [str(ROOT), str(ROOT / "server")]
 _tmp = tempfile.mkdtemp()
 os.environ["TRAJAI_DATABASE_URL"] = os.environ.get("TRAJAI_TEST_DATABASE_URL", f"sqlite:///{_tmp}/test.db")
 os.environ["TRAJAI_WEATHER_OFFLINE"] = "1"
-os.environ["TRAJAI_JWT_SECRET"] = "test-secret"
+os.environ["TRAJAI_JWT_SECRET"] = "test-secret-" + "0" * 40   # >= 32 bytes, like production
 
 from fastapi.testclient import TestClient  # noqa: E402
 
@@ -59,7 +59,7 @@ def users(client, admin):
     out = {}
     for role in ("analyst", "viewer"):
         email = f"{role}@trajai.dev"
-        r = client.post("/api/users", json={"email": email, "password": "password123", "role": role, "full_name": role}, headers=admin)
+        r = client.post("/api/users", json={"email": email, "password": "Trajai-demo-2026", "role": role, "full_name": role}, headers=admin)
         assert r.status_code in (201, 409), r.text
-        out[role] = {"Authorization": f"Bearer {token(client, email, 'password123')}"}
+        out[role] = {"Authorization": f"Bearer {token(client, email, 'Trajai-demo-2026')}"}
     return out

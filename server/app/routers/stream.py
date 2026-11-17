@@ -1,6 +1,8 @@
 """Live track replay over WebSocket: measurements arrive at (scaled) real time and a streaming EKF updates per step.
 
-ws://host/api/ws/scenarios/{id}/live?token=<JWT>&speed=4&weather=1
+ws://host/api/ws/scenarios/{id}/live?speed=4&weather=1, then send {"type": "auth", "token": "<JWT>"} as the first message.
+The token is not put in the URL, so it does not end up in server, proxy or browser-history logs. Outside production a
+?token= query parameter is still accepted for old clients and tests.
 messages:  {"type":"meas", ...}  {"type":"state", ...}  {"type":"done", "n": ...}  {"type":"error", "detail": ...}
 """
 import asyncio
@@ -20,6 +22,28 @@ from ..security import decode_token
 from ..services import weather as wsvc
 
 router = APIRouter(tags=["live stream"])
+AUTH_TIMEOUT_S = 5.0
+
+
+async def _ws_user(ws: WebSocket, db, token: str = ""):
+    """Authenticate an accepted WebSocket: first-message token (preferred) or, outside production, ?token=."""
+    if token and get_settings().is_prod:
+        token = ""                                          # URLs are logged; production accepts only the message
+    if not token:
+        try:
+            msg = await asyncio.wait_for(ws.receive_json(), AUTH_TIMEOUT_S)
+            token = msg.get("token", "") if isinstance(msg, dict) and msg.get("type") == "auth" else ""
+        except Exception:
+            token = ""
+    try:
+        user = db.get(User, decode_token(token))
+    except Exception:
+        user = None
+    if user is None or not user.is_active:
+        await ws.send_json({"type": "error", "detail": "invalid token"})
+        await ws.close(code=4401)
+        return None
+    return user
 
 
 PRED_MIN, PRED_EVERY = 12, 4
@@ -56,13 +80,11 @@ async def alert_feed(ws: WebSocket, token: str = ""):
     await ws.accept()
     db = SessionLocal()
     try:
-        uid = decode_token(token)
-        user = db.get(User, uid)
-        if not user or not user.is_active:
-            raise ValueError
-    except Exception:
-        await ws.send_json({"type": "error", "detail": "invalid token"}); await ws.close(code=4401); db.close(); return
-    db.close()
+        user = await _ws_user(ws, db, token)
+    finally:
+        db.close()
+    if user is None:
+        return
     q = alerts.subscribe()
     try:
         await ws.send_json({"type": "ready"})
@@ -79,13 +101,9 @@ async def live(ws: WebSocket, sid: int, token: str = "", speed: float = 0.0, wea
     await ws.accept()
     db = SessionLocal()
     try:
-        try:
-            uid = decode_token(token)
-        except Exception:
-            await ws.send_json({"type": "error", "detail": "invalid token"}); await ws.close(code=4401); return
-        user = db.get(User, uid)
-        if not user or not user.is_active:
-            await ws.send_json({"type": "error", "detail": "user inactive"}); await ws.close(code=4401); return
+        user = await _ws_user(ws, db, token)
+        if user is None:
+            return
         s = db.scalar(select(Scenario).where(Scenario.id == sid).options(selectinload(Scenario.measurements), selectinload(Scenario.weather)))
         if not s:
             await ws.send_json({"type": "error", "detail": "scenario not found"}); await ws.close(code=4404); return

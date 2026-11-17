@@ -113,7 +113,7 @@ def test_new_scenario_form_validation(page):
 
 def test_viewer_is_read_only(page):
     page.get_by_role("button", name="로그아웃").click()
-    login(page, "viewer@trajai.dev", "password123")
+    login(page, "viewer@trajai.dev", "Trajai-demo-2026")
     pw.expect(page.get_by_role("heading", name="대시보드")).to_be_visible()
     assert page.get_by_role("link", name="새 시나리오").count() == 0
     page.goto(f"{BASE}/#/admin")
@@ -132,7 +132,7 @@ def test_viewer_can_export_csv(page):
 
 def test_threat_board_and_weather_analysis(page):
     page.get_by_role("button", name="로그아웃").click()
-    login(page, "analyst@trajai.dev", "password123")
+    login(page, "analyst@trajai.dev", "Trajai-demo-2026")
     pw.expect(page.get_by_text("교전 우선순위")).to_be_visible()
     page.goto(f"{BASE}/#/analyses")
     pw.expect(page.get_by_role("heading", name="환경 · 센서 분석")).to_be_visible()

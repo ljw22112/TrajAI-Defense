@@ -32,7 +32,7 @@ def main():
     tok = c.post("/api/auth/login", data={"username": "admin@trajai.dev", "password": a.password}).json()["access_token"]
     c.headers["Authorization"] = f"Bearer {tok}"
     for email, role in [("analyst@trajai.dev", "analyst"), ("viewer@trajai.dev", "viewer")]:
-        c.post("/api/users", json={"email": email, "password": "password123", "role": role, "full_name": role.title()})
+        c.post("/api/users", json={"email": email, "password": "Trajai-demo-2026", "role": role, "full_name": role.title()})
     existing = {x["name"] for x in c.get("/api/scenarios", params={"limit": 100}).json()["items"]}
     for body in SCENARIOS:
         if body["name"] in existing:

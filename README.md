@@ -25,14 +25,15 @@ cd server && uvicorn app.main:app --reload       # API + 문서: http://127.0.0.
 cd web && npm ci && npm run dev                   # 콘솔: http://127.0.0.1:5173  (admin@trajai.dev / admin1234)
 # (한 포트로 쓰려면 web에서 npm run build를 먼저 하고 서버를 시작: SPA를 http://127.0.0.1:8000/ 에서 서빙)
 
-# PostgreSQL + 단일 컨테이너
-export TRAJAI_JWT_SECRET=$(openssl rand -hex 32)
-docker compose up --build                         # http://localhost:8000
+# PostgreSQL + 단일 컨테이너 (운영 모드: 기본 비밀값이면 시작하지 않음, /api/docs 숨김)
+export TRAJAI_JWT_SECRET=$(openssl rand -hex 32) POSTGRES_PASSWORD=$(openssl rand -hex 16)
+export TRAJAI_ADMIN_PASSWORD='12자 이상 직접 정한 값'
+docker compose up --build                         # http://127.0.0.1:8000
 # 데모 데이터 (기상 제공자의 요청 제한에 걸리면 65초 기다렸다 다시 시도하므로 몇 분 걸릴 수 있음)
 python server/scripts/seed_demo.py --base http://127.0.0.1:8000
 
 # 테스트
-python -m pytest -q tests server/tests            # 코어 22 + API 25
+python -m pytest -q tests server/tests            # 코어 22 + API·보안 37
 cd web && npm test                                # 프론트엔드 11
 E2E_BASE=http://127.0.0.1:8000 python -m pytest e2e   # Playwright 13 (서버 실행 + seed_demo.py 필요, 만든 데이터는 끝나고 삭제)
 ```
