@@ -1,9 +1,11 @@
 name: benchmark
 # Builds TrajAI-Bench (the five test splits, Stone Soup CSVs, evaluator, leaderboard), checks that the evaluator
-# reproduces the EKF baseline exactly, and attaches the zip to a GitHub release. Push a tag benchmark-v* to publish.
+# reproduces the EKF baseline exactly, and attaches the zip to a GitHub release benchmark-<version>.
+# Publish: push to the benchmark-release branch (version from benchmark_src/VERSION) or push a tag benchmark-v*.
 on:
   push:
     tags: ["benchmark-v*"]
+    branches: [benchmark-release]
   workflow_dispatch:
 
 defaults: {run: {shell: bash}}
@@ -22,7 +24,7 @@ jobs:
       - run: python scripts/prepare.py
       - name: package
         run: |
-          V=${GITHUB_REF_NAME#benchmark-}; [ "$V" = "$GITHUB_REF_NAME" ] && V=dev
+          if [[ "$GITHUB_REF" == refs/tags/benchmark-* ]]; then V=${GITHUB_REF_NAME#benchmark-}; else V=$(cat benchmark_src/VERSION); fi
           python scripts/export_benchmark.py --out TrajAI-Bench-$V --version $V
           echo "V=$V" >> $GITHUB_ENV
       - name: evaluator reproduces the EKF leaderboard row
@@ -42,8 +44,11 @@ jobs:
       - uses: actions/upload-artifact@v4
         with: {name: "TrajAI-Bench-${{ env.V }}", path: "TrajAI-Bench-${{ env.V }}.zip"}
       - uses: softprops/action-gh-release@v2
-        if: startsWith(github.ref, 'refs/tags/benchmark-v')
+        if: startsWith(github.ref, 'refs/tags/benchmark-v') || github.ref == 'refs/heads/benchmark-release'
         with:
+          tag_name: benchmark-${{ env.V }}
+          name: TrajAI-Bench ${{ env.V }}
+          target_commitish: ${{ github.sha }}
           files: TrajAI-Bench-${{ env.V }}.zip
           body: |
             TrajAI-Bench ${{ env.V }}: 짧은 레이더 관측으로 탄도 비행체 탄착점 예측하기.
