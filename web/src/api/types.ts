@@ -83,7 +83,14 @@ export const MODEL_SHORT: Record<string, string> = {
   pinn_tf_v2_rts: "RTS 입력",
   pinn_tf_hybrid_v2: "표준 대기 v2",
   pinn_tf_hybrid: "v1 (구버전)",
+  pinn_lstm_v2: "LSTM · 물리 손실",
+  data_lstm_v2: "LSTM · 데이터만",
 };
+/** Bi-LSTM pair run from the scenario page for the LSTM vs PINN comparison (§9.11 of the report). */
+export const LSTM_RUNS = [
+  { model: "pinn_lstm_v2", label: "LSTM-PINN" },
+  { model: "data_lstm_v2", label: "LSTM 데이터만" },
+] as const;
 export const modelShort = (m: string | null | undefined) => (m ? MODEL_SHORT[m] ?? m : null);
 
 /** Glossary used for hover definitions across the console. */

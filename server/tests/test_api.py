@@ -319,3 +319,21 @@ def test_flight_replay_environment_and_events(scenarios, client, users):
     assert abs(d["shift_m"] - (d["shift_down_m"] ** 2 + d["shift_cross_m"] ** 2) ** 0.5) < 1
     assert client.get("/api/scenarios/999999/flight", headers=users["viewer"]).status_code == 404
     assert client.post("/api/scenarios", json={"name": "x", "vehicle": "battleship"}, headers=users["analyst"]).status_code == 422
+
+
+def test_lstm_pair_selectable(scenarios, client, users):
+    """The Bi-LSTM pair (physics loss on / off) can be run on the same track as the served PINN (§9.11)."""
+    std, _ = scenarios
+    h = users["analyst"]
+    out = {}
+    for name in ("pinn_lstm_v2", "data_lstm_v2"):
+        r = client.post(f"/api/scenarios/{std['id']}/estimates", json={"method": "pinn", "model": name}, headers=h)
+        assert r.status_code == 201, r.text
+        out[name] = r.json()
+        assert out[name]["model_name"] == name and out[name]["cep"] > 0
+    assert out["pinn_lstm_v2"]["ip_x"] != out["data_lstm_v2"]["ip_x"]
+    r = client.post(f"/api/scenarios/{std['id']}/estimates", json={"method": "pinn", "model": "nope"}, headers=h)
+    assert r.status_code == 404
+    # viewers still cannot run estimators
+    assert client.post(f"/api/scenarios/{std['id']}/estimates", json={"method": "pinn", "model": "pinn_lstm_v2"},
+                       headers=users["viewer"]).status_code == 403

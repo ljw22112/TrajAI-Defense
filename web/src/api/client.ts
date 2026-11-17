@@ -104,7 +104,8 @@ export const api = {
   flight: (id: number) => request<Flight>("GET", `/api/scenarios/${id}/flight`),
   createScenario: (b: ScenarioIn) => request<Scenario>("POST", "/api/scenarios", b),
   deleteScenario: (id: number) => request<void>("DELETE", `/api/scenarios/${id}`),
-  estimate: (id: number, method: Method) => request<Estimate>("POST", `/api/scenarios/${id}/estimates`, { method }),
+  estimate: (id: number, method: Method, model?: string) =>
+    request<Estimate>("POST", `/api/scenarios/${id}/estimates`, model ? { method, model } : { method }),
 
   models: () => request<ModelVersion[]>("GET", "/api/models"),
   activateModel: (id: number) => request<ModelVersion>("POST", `/api/models/${id}/activate`),

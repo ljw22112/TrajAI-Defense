@@ -15,9 +15,10 @@ import websockets
 
 
 async def record_live(base: str, tok: str, sid: int, weather: int) -> list:
-    url = base.replace("http", "ws", 1) + f"/api/ws/scenarios/{sid}/live?token={tok}&speed=100000&weather={weather}"
+    url = base.replace("http", "ws", 1) + f"/api/ws/scenarios/{sid}/live?speed=100000&weather={weather}"
     msgs = []
     async with websockets.connect(url, max_size=None) as ws:
+        await ws.send(json.dumps({"type": "auth", "token": tok}))       # token as first message, not in the URL
         async for m in ws:
             msgs.append(json.loads(m))
     return msgs

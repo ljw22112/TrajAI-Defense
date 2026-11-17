@@ -190,7 +190,8 @@ def main():
     holm(rows)
 
     cal_specs = [(m, s) for m in ["ekf", "ukf", "data_tf_v2"] + ([pinn] if pinn else []) + ["pinn_tf_hybrid_v2"]
-                 + (["pinn_tf_v2_rts"] if load("pinn_tf_v2_rts", "test_id_f10") else []) for s in ["test_id_f10", "test_id_noise", "test_ood"]]
+                 + (["pinn_tf_v2_rts"] if load("pinn_tf_v2_rts", "test_id_f10") else [])
+                 + [m for m in ("data_lstm_v2", "pinn_lstm_v2") if load(m, "test_id_f10")] for s in ["test_id_f10", "test_id_noise", "test_ood"]]
     cal_specs += [(m, "test_wx") for m in ["ekf_date", "pinn_tf_hybrid_v2", "wx_hybrid_clim", "wx_hybrid_date"]]
     cal = [c for c in (calibrate(m, s, rng) for m, s in cal_specs) if c]
     # transfer test: scale fitted on ID 10 % applied to shifted splits (no refit)

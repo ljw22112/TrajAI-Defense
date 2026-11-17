@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Fragment, useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { api } from "../api/client";
-import { CONDITION_LABEL, METHOD_LABEL, modelShort, type Condition, type Estimate, type Method } from "../api/types";
+import { CONDITION_LABEL, LSTM_RUNS, METHOD_LABEL, modelShort, type Condition, type Estimate, type Method } from "../api/types";
 import { FlightReplay } from "../components/FlightReplay";
 import { PrintButton } from "../components/PrintButton";
 import { useAuth } from "../auth/AuthContext";
@@ -12,6 +12,10 @@ import { Card, Empty, ErrorBox, PageHead, Spinner, Stat, Term, ThreatBadge, fmt,
 import { useLiveTrack } from "../hooks/useLiveTrack";
 
 const METHOD_COLOR: Record<Method, string> = { ekf_std: "--truth", ekf_wx: "--ekf", ukf_wx: "--ukf", pinn: "--pred", ekf_pinn: "--obs" };
+const LSTM_COLOR: Record<string, string> = { pinn_lstm_v2: "--ok", data_lstm_v2: "--ink-3" };
+const isLstm = (e: Estimate) => !!e.model_name && e.model_name in LSTM_COLOR;
+const colorOf = (e: Estimate) => (isLstm(e) ? LSTM_COLOR[e.model_name!] : METHOD_COLOR[e.method]);
+const labelOf = (e: Estimate) => (isLstm(e) ? LSTM_RUNS.find(r => r.model === e.model_name)!.label : METHOD_LABEL[e.method]);
 
 const ENV_LABEL: Record<string, string> = { altitude_m: "고도", speed_ms: "속도", path_angle_deg: "경로각", ln_beta: "탄도계수" };
 const guardWhy = (g: { score: number; threshold: number; outside?: string[] }) =>
@@ -26,7 +30,7 @@ export function ScenarioDetailPage() {
   const assets = useQuery({ queryKey: ["assets"], queryFn: api.assets });
   const flight = useQuery({ queryKey: ["flight", id], queryFn: () => api.flight(id), enabled: Number.isFinite(id), staleTime: Infinity });
   const run = useMutation({
-    mutationFn: (m: Method) => api.estimate(id, m),
+    mutationFn: (m: Method | { model: string }) => (typeof m === "string" ? api.estimate(id, m) : api.estimate(id, "pinn", m.model)),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["scenario", id] }); qc.invalidateQueries({ queryKey: ["stats"] }); },
   });
   const del = useMutation({ mutationFn: () => api.deleteScenario(id), onSuccess: () => { qc.invalidateQueries({ queryKey: ["scenarios"] }); nav("/scenarios"); } });
@@ -35,10 +39,10 @@ export function ScenarioDetailPage() {
   const [liveWx, setLiveWx] = useState(true);
   const s = q.data;
 
-  // latest estimate per method
+  // latest estimate per method (the Bi-LSTM models are kept apart from the served PINN)
   const latest = useMemo(() => {
-    const m = new Map<Method, Estimate>();
-    s?.estimates.forEach(e => m.set(e.method, e));
+    const m = new Map<string, Estimate>();
+    s?.estimates.forEach(e => m.set(isLstm(e) ? `${e.method}:${e.model_name}` : e.method, e));
     return [...m.values()];
   }, [s]);
   const latestIds = useMemo(() => new Set(latest.map(e => e.id)), [latest]);
@@ -49,7 +53,7 @@ export function ScenarioDetailPage() {
       { kind: "line", x: s.truth.x.map(v => v / 1000), y: s.truth.z.map(v => v / 1000), color: "--truth", width: 2, dash: [3, 5] },
       { kind: "points", x: s.measurements.map(m => m.x / 1000), y: s.measurements.map(m => m.z / 1000), color: "--obs", size: 2.2 },
     ];
-    latest.forEach(e => out.push({ kind: "line", x: e.trajectory.x.map(v => v / 1000), y: e.trajectory.z.map(v => v / 1000), color: METHOD_COLOR[e.method], width: 2.4, dash: [10, 6] }));
+    latest.forEach(e => out.push({ kind: "line", x: e.trajectory.x.map(v => v / 1000), y: e.trajectory.z.map(v => v / 1000), color: colorOf(e), width: 2.4, dash: [10, 6] }));
     if (live.meas.length) out.push({ kind: "points", x: live.meas.map(m => m.x / 1000), y: live.meas.map(m => m.z / 1000), color: "--pred", size: 3 });
     return out;
   }, [s, latest, live.meas]);
@@ -59,8 +63,8 @@ export function ScenarioDetailPage() {
     const out: Series[] = [];
     (assets.data ?? []).forEach(a => out.push({ kind: "circle", x: [a.x_km], y: [a.y_km], r: [a.radius_km], color: "--ink-3", width: 1.2 }));
     latest.forEach(e => {
-      out.push({ kind: "circle", x: [e.ip_x / 1000], y: [e.ip_y / 1000], r: [e.cep / 1000], color: METHOD_COLOR[e.method], width: 2 });
-      out.push({ kind: "points", x: [e.ip_x / 1000], y: [e.ip_y / 1000], color: METHOD_COLOR[e.method], size: 3.5 });
+      out.push({ kind: "circle", x: [e.ip_x / 1000], y: [e.ip_y / 1000], r: [e.cep / 1000], color: colorOf(e), width: 2 });
+      out.push({ kind: "points", x: [e.ip_x / 1000], y: [e.ip_y / 1000], color: colorOf(e), size: 3.5 });
     });
     out.push({ kind: "cross", x: [s.impact_x / 1000], y: [s.impact_y / 1000], color: "--ink", width: 2, size: 8 });
     return out;
@@ -102,6 +106,10 @@ export function ScenarioDetailPage() {
           {can("analyst") && methods.map(m => (
             <button key={m} className="btn ghost" disabled={run.isPending} onClick={() => run.mutate(m)}>{METHOD_LABEL[m]} 실행</button>
           ))}
+          {can("analyst") && LSTM_RUNS.map(r => (
+            <button key={r.model} className="btn ghost" disabled={run.isPending} onClick={() => run.mutate({ model: r.model })}
+              title="같은 Bi-LSTM 인코더에서 물리 손실 유무만 다른 모델 (기술 문서 §9.11)">{r.label} 실행</button>
+          ))}
           <Link className="btn ghost no-print" to={`/compare?a=${s.id}`}>비교</Link>
           <PrintButton />
           {can("analyst") && (user?.role === "admin" || s.created_by === user?.id) && (
@@ -124,13 +132,13 @@ export function ScenarioDetailPage() {
       </div>
       <Card title={`비행 재생과 환경 변화${flight.data ? ` · ${flight.data.vehicle_label}` : ""}`} aside={<small className="label">점 = 환경이 바뀌는 순간 · 목록을 누르면 그 시각으로 이동</small>}>
         {flight.isLoading ? <Spinner label="비행 경로의 대기 계산 중" /> : flight.error ? <ErrorBox error={flight.error} /> : flight.data && <FlightReplay f={flight.data} forecasts={latest.filter(e => e.trajectory?.t?.length).map(e => ({
-          label: METHOD_LABEL[e.method] + (e.trajectory.guard?.fallback ? " (→ EKF)" : ""), color: METHOD_COLOR[e.method], t: e.trajectory.t, x: e.trajectory.x, z: e.trajectory.z }))} />}
+          label: labelOf(e) + (e.trajectory.guard?.fallback ? " (→ EKF)" : ""), color: colorOf(e), t: e.trajectory.t, x: e.trajectory.x, z: e.trajectory.z }))} />}
       </Card>
       <div className="grid g2 g57">
         <Card title="측면 궤적 (고도–하향거리)" className="span2">
           <Plot series={sideSeries} xLabel="하향거리 x (km)" yLabel="고도 h (km)" height={340} ariaLabel="측면 궤적: 실제, 측정, 추정" />
           <Legend items={[{ label: "실제 궤적", color: "--truth", dash: true }, { label: "레이더 측정", color: "--obs" },
-            ...latest.map(e => ({ label: METHOD_LABEL[e.method], color: METHOD_COLOR[e.method], dash: true })),
+            ...latest.map(e => ({ label: labelOf(e), color: colorOf(e), dash: true })),
             ...(live.meas.length ? [{ label: "실시간 수신", color: "--pred" }] : [])]} />
         </Card>
         <Card title="탄착 영역 (지면 투영)">

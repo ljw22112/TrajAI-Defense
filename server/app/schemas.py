@@ -299,6 +299,7 @@ class ScenarioOut(ScenarioSummary):
 
 class EstimateIn(BaseModel):
     method: Method
+    model: str | None = Field(None, max_length=80, description="registry model name for method=pinn (default: the active model)")
 
 
 # ---------------------------------------------------------------- models / stats

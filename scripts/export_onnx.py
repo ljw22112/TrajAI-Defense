@@ -23,6 +23,8 @@ class Deployable(torch.nn.Module):
     def __init__(self, m):
         super().__init__()
         self.m = m
+        if hasattr(m.encoder, "no_pack"):        # Bi-LSTM: a single unpadded track needs no packed sequence
+            m.encoder.no_pack = True
         self.register_buffer("tau", torch.linspace(0, 1, 129)[None])
 
     def forward(self, feats, g, wx=None):

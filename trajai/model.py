@@ -97,8 +97,12 @@ class BiLSTMEncoder(nn.Module):
         super().__init__()
         self.lstm = nn.LSTM(N_FEAT, d, layers, batch_first=True, bidirectional=True)
         self.out = nn.Linear(2 * d, d)
+        self.no_pack = False     # deployment (one unpadded track): skip packing, identical result, exportable to ONNX
 
     def forward(self, x, pad):
+        if self.no_pack:
+            _, (h, _) = self.lstm(x)
+            return self.out(torch.cat([h[-2], h[-1]], -1))
         lengths = (~pad).sum(1).cpu()
         packed = nn.utils.rnn.pack_padded_sequence(x, lengths, batch_first=True, enforce_sorted=False)
         _, (h, _) = self.lstm(packed)

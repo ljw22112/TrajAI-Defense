@@ -144,9 +144,15 @@ async def create_estimate(sid: int, body: EstimateIn, db: Session = Depends(get_
         raise HTTPException(422, "this scenario has no weather profile; use ekf_std or pinn")
     bank = wsvc.bank_of(s.weather)
     mv = None
+    if body.method == Method.pinn and body.model:
+        # an explicitly chosen registry model (e.g. the Bi-LSTM pair for the LSTM vs PINN comparison, §9.11)
+        mv = db.scalar(select(ModelVersion).where(ModelVersion.name == body.model))
+        if mv is None:
+            raise HTTPException(404, "model not found")
     if body.method == Method.pinn:
-        mv = db.scalar(select(ModelVersion).where(ModelVersion.is_active.is_(True)).order_by(ModelVersion.id.desc()))
-        if mv is not None and mv.uses_weather and bank is None:
+        if mv is None:
+            mv = db.scalar(select(ModelVersion).where(ModelVersion.is_active.is_(True)).order_by(ModelVersion.id.desc()))
+        if mv is not None and mv.uses_weather and bank is None and not body.model:
             # A weather-input model given an all-zero profile is out of distribution (scenario 6: 9.4 km vs 2.1 km),
             # so standard-atmosphere scenarios fall back to the newest standard-atmosphere served model (RTS-input PINN, then ensemble).
             mv = db.scalar(select(ModelVersion).where(ModelVersion.uses_weather.is_(False), ModelVersion.kind.like("pinn-%"))
