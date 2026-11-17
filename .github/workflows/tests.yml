@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with: {python-version: "3.11"}
       - run: pip install numpy scipy pytest
       - run: python -m pytest -q tests
@@ -30,7 +30,7 @@ jobs:
       TRAJAI_DATABASE_URL: postgresql+psycopg2://postgres:postgres@localhost:5432/trajai_test
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with: {python-version: "3.11"}
       - run: pip install -r server/requirements.txt pytest
       - name: migrations round-trip
@@ -60,7 +60,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: {fetch-depth: 0}
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with: {python-version: "3.11"}
       - uses: actions/setup-node@v4
         with: {node-version: "20"}
