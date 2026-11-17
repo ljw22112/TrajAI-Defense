@@ -117,9 +117,13 @@ for pat, val, where in ((r"PINN 단독 오차가 ID 10% (\d[\d,]*) →", med("pi
 if "pinn_lstm_v2" in M:
     LJ = load("lstm_vs_pinn.json")
     red = (1 - M["pinn_lstm_v2"]["test_id_f10"]["phys_rms_g"]["median"] / M["data_lstm_v2"]["test_id_f10"]["phys_rms_g"]["median"]) * 100
-    claim(r"같은 수준으로 재현\((\d+)% 감소\)", red, 0.02, "RQ2 LSTM residual reduction")
+    claim(r"같은 수준으로 재현\((\d+)% 감소", red, 0.02, "RQ2 LSTM residual reduction")
     claim(r"물리 잔차 50% 이상 감소\(Bi-LSTM (\d+)%", red, 0.02, "§3 LSTM residual reduction")
-    claim(r"Bi-LSTM PINN ([\d,]+) m로 미충족", LJ["splits"]["test_id_f10"]["rmse_pinn_m"], 0.005, "§3 LSTM RMSE")
+    claim(r"Bi-LSTM PINN은 기본 ([\d,]+) m", LJ["splits"]["test_id_f10"]["rmse_pinn_m"], 0.005, "§3 LSTM RMSE")
+    if os.path.exists(f"{R}/lstm_vs_pinn_rts.json"):
+        LR = load("lstm_vs_pinn_rts.json")["splits"]["test_id_f10"]
+        claim(r"RTS 입력 ([\d,]+) m로 1,000 m 이하", LR["rmse_pinn_m"], 0.005, "§3 LSTM RTS RMSE")
+        claim(r"EKF의 ([\d.]+)배라 미충족", LR["rmse_pinn_m"] / LR["rmse_ekf_m"], 0.01, "§3 LSTM RTS ratio")
     claim(r"EKF\((\d+) m\)의 1.2배 이내", LJ["splits"]["test_id_f10"]["rmse_ekf_m"], 0.005, "§3 EKF RMSE")
     claim(r"잔차를 [\d.]+ → [\d.]+ g\((\d+)%\)으로", red, 0.02, "README LSTM residual reduction", readme)
     claim(r"ID 10% (\d[\d,]*) → \d[\d,]* m\)\. 다만", med("data_lstm_v2", "test_id_f10"), 0.01, "README LSTM data ID10", readme)
@@ -129,6 +133,18 @@ if "pinn_lstm_v2" in M:
     for i, s_ in enumerate(("test_id_f10", "test_id_f15", "test_id_noise", "test_ood")):
         for name, row in (("data_lstm_v2", "Bi-LSTM \\(data only, v2\\)"), ("pinn_lstm_v2", "PINN-Bi-LSTM \\(v2\\)")):
             claim(r"\| " + row + r" \|" + r" [\d,]+ m \|" * i + r" ([\d,]+) m \|", med(name, s_), 0.01, f"README table {name} {s_}", readme)
+
+# Bi-LSTM follow-ups and multi-radar (README hand-written numbers)
+if os.path.exists(f"{R}/lstm_vs_pinn_rts.json") and os.path.exists(f"{R}/multiradar.json"):
+    LR = load("lstm_vs_pinn_rts.json")["splits"]
+    LW = load("lstm_vs_pinn_wide.json")["splits"]
+    MR = load("multiradar.json")["splits"]
+    claim(r"RTS 입력을 쓰면 ID 10% RMSE가 [\d,]+ → ([\d,]+) m", LR["test_id_f10"]["rmse_pinn_m"], 0.005, "README LSTM RTS RMSE", readme)
+    claim(r"고잡음 중앙값이 [\d,]+ → ([\d,]+) m로 줄고", LR["test_id_noise"]["miss_pinn_m"], 0.01, "README LSTM RTS noise", readme)
+    claim(r"ID 5% 붕괴가 [\d,]+ → ([\d,]+) m", LW["test_id_f05"]["miss_pinn_m"], 0.01, "README LSTM wide ID5", readme)
+    claim(r"ID 5% [\d,]+ → ([\d,]+) m, ID 10% [\d,]+ → [\d,]+ m, 고잡음", MR["test_id_f05"]["A+B"]["miss_median_m"], 0.01, "README multiradar ID5", readme)
+    claim(r"ID 10% [\d,]+ → ([\d,]+) m, 고잡음 [\d,]+ → [\d,]+ m로 줄어듭니다", MR["test_id_f10"]["A+B"]["miss_median_m"], 0.01, "README multiradar ID10", readme)
+    claim(r"고잡음 [\d,]+ → ([\d,]+) m로 줄어듭니다", MR["test_id_noise"]["A+B"]["miss_median_m"], 0.01, "README multiradar noise", readme)
 
 # §9.10 validity row must match how many seeds exist
 seeds = {"PINN": sum(m in M for m in ("pinn_tf_v2", "pinn_tf_v2_s1", "pinn_tf_v2_s2")),

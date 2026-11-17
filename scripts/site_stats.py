@@ -136,10 +136,12 @@ def key_findings(html, rows, cal):
     c90 = [c["cal90"] for c in cal]
     lstm = []
     if "pinn_lstm_v2" in M and os.path.exists(f"{R}/lstm_vs_pinn.json"):
-        red = json.load(open(f"{R}/lstm_vs_pinn.json"))["splits"]["test_id_f10"]["phys_reduction"] * 100
+        reds = [json.load(open(f))["splits"]["test_id_f10"]["phys_reduction"] * 100
+                for f in (f"{R}/lstm_vs_pinn.json", f"{R}/lstm_vs_pinn_seed1.json", f"{R}/lstm_vs_pinn_seed2.json") if os.path.exists(f)]
+        lo, hi = min(reds), max(reds)
         rd, rp = med("data_tf_v2", "test_id_f10", "phys_rms_g"), med("pinn_tf_v2", "test_id_f10", "phys_rms_g")
         lstm = [("ok", "물리 손실 효과는 인코더와 무관", f"{rd:.2f} → {rp:.2f} g",
-                 f"운동 방정식 잔차. Transformer와 Bi-LSTM 두 인코더에서 같은 수준으로 재현(Bi-LSTM {red:.0f}% 감소)", "#sec-lstm")]
+                 f"운동 방정식 잔차. Transformer와 Bi-LSTM 두 인코더, Bi-LSTM은 seed 3개 모두에서 재현({lo:.0f}–{hi:.0f}% 감소)", "#sec-lstm")]
     # service value first (speed, weather, PINN→EKF, physics), then limits
     cards = [
         ("ok", "지연 목표 충족", f"{onnx:.2f} ms", f"ONNX Runtime p50, CPU 1스레드. EKF + Monte Carlo {ekfmc:.0f} ms보다 약 {ekfmc / onnx:,.0f}배 빠름", "#sec-results"),

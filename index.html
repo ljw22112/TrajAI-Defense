@@ -311,7 +311,7 @@ footer b{color:var(--ink); font-weight:600}
     <a class="key ok" href="#sec-results"><span class="label">지연 목표 충족</span><b>0.87 ms</b><span>ONNX Runtime p50, CPU 1스레드. EKF + Monte Carlo 228 ms보다 약 262배 빠름</span></a>
     <a class="key ok" href="#sec-weather"><span class="label">실제 기상 반영이 가장 큰 개선</span><b>−87%</b><span>EKF IP 오차 2,633 → 339 m (표준 대기 → 선택 일자 기상). 기본 설정으로 채택</span></a>
     <a class="key ok" href="#sec-feedback"><span class="label">필터의 사전정보로 쓰면 최선</span><b>−33%</b><span>PINN의 β 예측을 EKF 사전으로 넣으면 ID 5% IP 오차 1,429 → 956 m, 시험 분할 5개 중 5개에서 유의하게 개선</span></a>
-    <a class="key ok" href="#sec-lstm"><span class="label">물리 손실 효과는 인코더와 무관</span><b>0.40 → 0.10 g</b><span>운동 방정식 잔차. Transformer와 Bi-LSTM 두 인코더에서 같은 수준으로 재현(Bi-LSTM 76% 감소)</span></a>
+    <a class="key ok" href="#sec-lstm"><span class="label">물리 손실 효과는 인코더와 무관</span><b>0.40 → 0.10 g</b><span>운동 방정식 잔차. Transformer와 Bi-LSTM 두 인코더, Bi-LSTM은 seed 3개 모두에서 재현(73–76% 감소)</span></a>
     <a class="key ok" href="#sec-stats"><span class="label">신경망도 기상으로 학습하면 개선</span><b>2,779 → 720 m</b><span>직전 1년 실제 기상 속 발사 2만 회로 학습. 일자 기상 입력의 추가 효과(Δ -36 m)는 불확실</span></a>
     <a class="key part" href="#sec-calib"><span class="label">불확실성은 보정 필요</span><b>CEP50 → 0.50</b><span>계수 하나로 50% 포함률은 맞지만, 같은 계수의 90% 포함률은 22개 중 15개가 0.85 미만(0.76–0.84). 오차 꼬리가 두꺼움</span></a>
     <a class="key no" href="#sec-stats"><span class="label">신경망 단독은 필터보다 부정확</span><b>317 m vs 212 m</b><span>최선 신경망(RTS 입력 PINN) 대 UKF, ID 15% IP 오차 중앙값. 고잡음에서만 신경망이 EKF보다 정확</span></a>
@@ -326,8 +326,8 @@ footer b{color:var(--ink); font-weight:600}
       <tbody>
         <tr><td><b>A</b> 문제 정의·필요성</td><td>직접 측정한 문제 5가지, 1차·2차 사용자, 국내외 수요 근거와 출처 있는 시장 자료</td><td><a href="#sec-problem">§2.1</a>, <a href="#sec-users">§2.2</a></td></tr>
         <tr><td><b>B</b> 서비스 기획</td><td>운용 콘솔에 구현된 5단계 활용 시나리오, 유사 서비스 3종과의 비교</td><td><a href="#sec-scenario">§2.3</a>, <a href="#sec-compare">§2.4</a>, <a href="#sec-stack">§12</a></td></tr>
-        <tr><td><b>C</b> 기술 난이도</td><td>autograd 물리 잔차 PINN, EKF·UKF·RTS와 하이브리드, 통계 검정, CEP 보정, 분포 밖 감지, 실제 기상, 풀스택 서빙, 위협 모델 기반 보안 설계</td><td><a href="#sec-dyn">§5</a>–<a href="#sec-vv">§9</a>, <a href="#sec-stack">§12</a>, <a href="#sec-security">§12.3</a></td></tr>
-        <tr><td><b>D</b> 범위 적정성</td><td>필수 4개·선택 3개 구분과 완료 상태, 평가 기준별 달성 여부, LSTM vs PINN 비교</td><td><a href="#sec-scope">§2.5</a>, <a href="#sec-req">§3</a>, <a href="#sec-lstm">§9.11</a></td></tr>
+        <tr><td><b>C</b> 기술 난이도</td><td>autograd 물리 잔차 PINN, EKF·UKF·RTS와 하이브리드, 통계 검정, CEP 보정, 분포 밖 감지, 실제 기상, 풀스택 서빙, 위협 모델 기반 보안 설계</td><td><a href="#sec-dyn">§5</a>–<a href="#sec-vv">§9</a>, <a href="#sec-multiradar">§9.12</a>, <a href="#sec-bench">§10.2</a>, <a href="#sec-security">§12.3</a></td></tr>
+        <tr><td><b>D</b> 범위 적정성</td><td>필수 4개·선택 항목 구분과 완료 상태, 평가 기준별 달성 여부, LSTM vs PINN 비교(seed 3개), 범위 밖 항목의 로드맵</td><td><a href="#sec-scope">§2.5</a>, <a href="#sec-req">§3</a>, <a href="#sec-lstm">§9.11</a>, <a href="#sec-roadmap">§9.13</a></td></tr>
         <tr><td><b>E</b> 수행 계획·위험 관리</td><td>중간 점검 M1–M3가 있는 7주 일정, 주차별 완료 기준, 징후·대응·실제 결과가 있는 위험 5개</td><td><a href="#sec-plan">§11</a></td></tr>
       </tbody>
     </table>
@@ -340,7 +340,7 @@ footer b{color:var(--ink); font-weight:600}
       <thead><tr><th>질문</th><th>근거</th><th>현재 답</th></tr></thead>
       <tbody>
         <tr><td><b>RQ1</b> 짧은 관측(10–15%)만으로 PINN이 탄착점을 실시간으로 예측할 수 있는가</td><td><a href="#sec-results">§9.1</a>, Fig. 8, <a href="#sec-mismatch">§9.9</a></td><td>지연은 충족(0.87 ms, EKF + MC보다 약 262배 빠름). 정확도는 입력에 따라 다름: Savitzky–Golay 특징으로는 EKF/UKF보다 낮지만, RTS 평활 특징을 쓰면 고잡음에서 EKF보다 정확(607 m vs 629 m). 실제 비행이 공칭 모델과 다르면 격차는 줄지만(양력 기동에서 EKF의 1.02배) 불일치 데이터로 다시 학습해도 필터를 넘지 못함(양력 1,142 m vs EKF 1,125 m)</td></tr>
-        <tr><td><b>RQ2</b> 물리 손실이 데이터만 쓴 학습보다 나은가</td><td><a href="#sec-results">§9.2</a>, <a href="#sec-stats">§9.4</a>, <a href="#sec-ensemble">§9.7</a>, <a href="#sec-lstm">§9.11</a></td><td>궤적의 물리 일관성은 확실히 개선(잔차 0.40 → 0.10 g), Bi-LSTM 인코더에서도 같은 수준으로 재현(76% 감소). 가중치를 더 키우면 잔차는 더 줄지만 IP 정확도를 내줌(Table R10b). IP 정확도 이득은 seed 2쌍 모두에서 ID 10%·OOD에만 일관되고, 나머지 조건은 학습 무작위성 수준. Bi-LSTM에서는 ID 10·15%·고잡음 중앙값이 모두 유의하게 줄지만 RMSE(꼬리)는 거의 그대로</td></tr>
+        <tr><td><b>RQ2</b> 물리 손실이 데이터만 쓴 학습보다 나은가</td><td><a href="#sec-results">§9.2</a>, <a href="#sec-stats">§9.4</a>, <a href="#sec-ensemble">§9.7</a>, <a href="#sec-lstm">§9.11</a></td><td>궤적의 물리 일관성은 확실히 개선(잔차 0.40 → 0.10 g), Bi-LSTM 인코더에서도 같은 수준으로 재현(76% 감소, seed 3개 모두 73% 이상). 가중치를 더 키우면 잔차는 더 줄지만 IP 정확도를 내줌(Table R10b). IP 정확도 이득은 seed 2쌍 모두에서 ID 10%·OOD에만 일관되고, 나머지 조건은 학습 무작위성 수준. Bi-LSTM에서는 seed 3개 중 ID 15% 3개, ID 10% 2개, 고잡음 1개에서만 중앙값이 유의하게 줄고 RMSE(꼬리)는 거의 그대로</td></tr>
         <tr><td><b>RQ3</b> 칼만 필터와 PINN을 어떻게 결합해야 가장 좋은가</td><td><a href="#sec-est">§6.2</a>, <a href="#sec-feedback">§9.6</a>, Table R8b</td><td>필터를 신경망의 앞뒤에 두는 결합이 효과적: EKF-RTS 평활 특징을 입력으로(PINN 오차가 ID 10%·15%·고잡음에서 40–64% 감소, 관측 5%에서는 이득 없음), PINN의 β 예측을 EKF 사전정보로(5개 조건 모두 EKF보다 정확)</td></tr>
         <tr><td><b>RQ4</b> 실제 기상(기온·바람)이 예측 오차에 얼마나 영향을 주는가</td><td><a href="#sec-weather">§9.3</a>, <a href="#sec-wximpact">§12.1</a></td><td>가장 큰 오차 원인. 일자 기상 반영으로 EKF 오차 87% 감소, 신경망도 기상 학습으로 2.8 → 0.7 km</td></tr>
         <tr><td><b>RQ5</b> 예측 불확실성(CEP)을 믿을 수 있는가</td><td><a href="#sec-calib">§9.5</a>, <a href="#sec-ensemble">§9.7</a>, <a href="#sec-ood">§9.8</a>, <a href="#sec-mismatch">§9.9</a></td><td>계수 하나로 50% 포함률 보정 가능, 꼬리는 두꺼움. 분포 밖에서는 보정·앙상블 모두 실패하지만, 내부 표현 거리로 감지(AUROC 0.999)해 EKF로 넘기면 OOD 오차 11.7 → 0.44 km. 모르는 양력 기동 앞에서는 공칭 모델 추정기 모두 과신(포함률 0.07–0.19)하고, 정점 이후까지 추적해도 혁신 검정·IMM으로 감지되지 않음. 예측에 기동 가설을 넣으면 포함률 0.43까지 오르나 CEP가 약 2배로 넓어짐</td></tr>
@@ -445,6 +445,7 @@ footer b{color:var(--ink); font-weight:600}
     <p><b>1차 사용자</b>는 방공 체계 M&amp;S 분석가입니다. 탄착점 예측 알고리즘을 비교·평가해 체계에 넣을 방식을 고르는 사람입니다. <b>2차 사용자</b>는 궤적 추정(칼만 필터, 물리 기반 신경망)을 공부하는 대학·연구실입니다. 실전 운용 지원(작전 통제관용)은 실측 자료 검증이 필요하므로 향후 확장으로 둡니다.</p>
     <p><b>수요 근거.</b> 영국 국방과학기술연구소(Dstl)는 추적 알고리즘이 복잡해 서로 비교하기 어렵다는 문제를 풀려고, 같은 데이터에서 알고리즘을 나란히 비교하는 오픈소스 프레임워크 Stone Soup를 Five Eyes 5개국 국방연구기관과 함께 만들어 2019년에 공개했습니다[9]. 국방 연구기관이 직접 알고리즘 비교 도구를 필요로 한다는 뜻이며, 이 플랫폼은 Stone Soup에 없는 탄착점 예측과 물리 기반 신경망 비교를 다룹니다. 시장으로는 군사 AI 시장이 2025년 140억 달러에서 2035년 484억 달러(연평균 13.2%, 2026–2035)로[10], 군사 시뮬레이션·훈련 시장이 2024년 137억 달러에서 2034년 228억 달러(연평균 5.3%)로[11] 성장할 것으로 전망됩니다. 국내에서는 국방혁신 4.0 기본계획(국방부, 2023.3)이 AI 기반 과학기술강군을 목표로 제시했습니다[12].</p>
     <p><b>국내 연구 근거.</b> 국내 방산 체계업체 연구진은 한국형 미사일 방어(KAMD)에서 탄도미사일의 사거리·기동 특성 예측이 중요하고 심층 신경망 적용 요구가 커지지만, 보안 때문에 궤적 자료가 제한되어 합성 궤적을 만들어 써야 한다고 보고했습니다[13]. 같은 연구진은 활공 기동 구간에서는 탄착점 예측 오차가 수십 km에 이르러 예측이 어렵다고 분석했고[14], 한국시뮬레이션학회에서는 시뮬레이션 궤적으로 학습한 두 생성형 AI 궤적 예측 모델의 성능을 비교한 연구가 나왔습니다[15]. 국내에서도 여러 예측 방법을 각자 만든 합성 자료로 비교하고 있다는 뜻입니다. 이 플랫폼은 그런 비교를 같은 트랙·같은 지표·통계 검정으로 재현할 수 있게 하는 것을 목표로 하며, 합성 데이터 사용(§8)과 기동 비행체 제외(§9.10)도 이 선행 연구들과 같은 판단입니다.</p>
+    <p><b>사용자 검증 계획.</b> 문헌 근거에 더해, 궤적 추정을 공부하는 학생·연구원 2–5명이 같은 질문을 스프레드시트(기존 방식)와 이 콘솔로 각각 풀게 하는 A/B 과제, 사용성 척도(SUS), 필요성 설문, 짧은 인터뷰로 이루어진 검증 키트를 만들었습니다(<code>docs/user-study.md</code>). 결과를 받는 대로 소요 시간, 정답률, SUS 점수를 이 절에 추가합니다.</p>
   </div>
   <h3 class="sub" id="sec-scenario"><span class="no">2.3</span>활용 시나리오</h3>
   <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
@@ -453,7 +454,7 @@ footer b{color:var(--ink); font-weight:600}
       <thead><tr><th>단계</th><th>분석가</th><th>플랫폼</th></tr></thead>
       <tbody>
         <tr><td>1</td><td>날짜·지역·발사체 유형(5종)을 고르거나 기상을 직접 설정</td><td>실제 기상 속에서 궤적을 적분하고 레이더 1대의 잡음 측정을 생성해 저장</td></tr>
-        <tr><td>2</td><td>같은 트랙에 추정기를 실행</td><td>EKF·UKF·PINN(β 사전 EKF 포함)을 실행해 IP, ToT, CEP, 위협 등급, 계산 시간을 기록</td></tr>
+        <tr><td>2</td><td>같은 트랙에 추정기를 실행</td><td>EKF·UKF·PINN(β 사전 EKF 포함)과 Bi-LSTM 쌍(물리 손실 있음·없음)을 실행해 IP, ToT, CEP, 위협 등급, 계산 시간을 기록</td></tr>
         <tr><td>3</td><td>결과를 비교</td><td>추정기별 IP 오차·CEP 포함률·지연 비교, 모델 레지스트리의 시험 지표</td></tr>
         <tr><td>4</td><td>비행 재생으로 원인 확인</td><td>제트기류 진입, 대류권계면, 최대 동압, 레이더 관측 종료 같은 환경 변화를 타임라인으로 보여 주고, 관측 종료 뒤 각 추정기의 예측 경로가 어디서 갈라지는지 겹쳐 표시</td></tr>
         <tr><td>5</td><td>기간 단위로 영향 분석</td><td>같은 비행 조건을 최대 7일 × 하루 4회 실제 기상에 날려 기상 반영 여부에 따른 오차 변화를 저장</td></tr>
@@ -485,6 +486,11 @@ footer b{color:var(--ink); font-weight:600}
         <tr><td>선택</td><td>웹 콘솔·3D 결과 뷰어</td><td><span class="st ok">완료</span> §12</td></tr>
         <tr><td>선택</td><td>실제 기상 반영</td><td><span class="st ok">완료</span> §9.3</td></tr>
         <tr><td>선택</td><td>분포 밖 입력 감지와 EKF 전환, PINN–EKF 하이브리드</td><td><span class="st ok">완료</span> §9.6, §9.8</td></tr>
+        <tr><td>선택</td><td>Bi-LSTM 후속 실험 (seed 3개, RTS 입력, 관측 5–20% 학습)</td><td><span class="st ok">완료</span> §9.11</td></tr>
+        <tr><td>선택</td><td>다중 레이더 융합</td><td><span class="st ok">완료</span> §9.12</td></tr>
+        <tr><td>선택</td><td>공개 벤치마크(TrajAI-Bench, Stone Soup 형식)</td><td><span class="st ok">완료</span> §10.2</td></tr>
+        <tr><td>선택</td><td>보안 설계(위협 모델, 운영 모드 검사, CI 보안 검사)</td><td><span class="st ok">완료</span> §12.3</td></tr>
+        <tr><td>범위 밖</td><td>실측 검증, 6-DOF, 기동 비행체, 추진 구간</td><td>로드맵 §9.13</td></tr>
       </tbody>
     </table>
   </div>
@@ -514,7 +520,7 @@ footer b{color:var(--ink); font-weight:600}
       </tbody>
     </table>
   </div>
-  <div class="prose"><p>REQ-P-01은 기획서의 추론 시간 목표(약 3 s에서 0.05 s로, 95% 단축)에서 나왔습니다. REQ-P-02(−40%)와 REQ-P-03(+25 s)은 근거 없이 정한 목표였으므로, 개정 기획서(<code>docs/</code>)는 이를 측정 가능한 평가 기준으로 바꿨습니다: 탄착점 RMSE(ID 10%) 1,000 m 이하이면서 EKF(747 m)의 1.2배 이내(RTS 입력 PINN 822 m로 충족, Bi-LSTM PINN 1,035 m로 미충족, §9.11), 물리 잔차 50% 이상 감소(Bi-LSTM 76%, 충족), 보정 후 CEP<sub>50</sub> 포함률 0.50 ± 0.05(충족, §9.5), 분포 밖 감지 후 EKF 전환(AUROC 0.999, 충족, §9.8). 위 표의 원래 요구사항과 판정은 기록으로 남겨 둡니다. REQ-F-03의 잔차 기준은 §7의 물리 손실과 같은 식으로 계산하며, 현재 측정값과 판정 근거는 §9.2에 있습니다.</p></div>
+  <div class="prose"><p>REQ-P-01은 기획서의 추론 시간 목표(약 3 s에서 0.05 s로, 95% 단축)에서 나왔습니다. REQ-P-02(−40%)와 REQ-P-03(+25 s)은 근거 없이 정한 목표였으므로, 개정 기획서(<code>docs/</code>)는 이를 측정 가능한 평가 기준으로 바꿨습니다: 탄착점 RMSE(ID 10%) 1,000 m 이하이면서 EKF(747 m)의 1.2배 이내(Transformer RTS 입력 PINN 822 m로 충족. Bi-LSTM PINN은 기본 1,035 m, RTS 입력 933 m로 1,000 m 이하는 맞지만 EKF의 1.25배라 미충족, §9.11), 물리 잔차 50% 이상 감소(Bi-LSTM 76%, seed 3개 모두 73% 이상, 충족), 보정 후 CEP<sub>50</sub> 포함률 0.50 ± 0.05(충족, §9.5), 분포 밖 감지 후 EKF 전환(AUROC 0.999, 충족, §9.8). 위 표의 원래 요구사항과 판정은 기록으로 남겨 둡니다. REQ-F-03의 잔차 기준은 §7의 물리 손실과 같은 식으로 계산하며, 현재 측정값과 판정 근거는 §9.2에 있습니다.</p></div>
 </section>
 
 <!-- 4 ARCH -->
@@ -1178,7 +1184,7 @@ footer b{color:var(--ink); font-weight:600}
       <thead><tr><th>인코더</th><th class="n">IP 중앙값 data → PINN</th><th class="n">잔차 data → PINN</th><th>IP 중앙값이 유의하게 준 분할 (ID 10·15%·고잡음 중)</th><th class="n">지연</th></tr></thead>
       <tbody>
         <tr><td>Transformer</td><td class="n">794 → 733</td><td class="n">0.40 → 0.10 <small class="muted">(76% 감소)</small></td><td>ID 10%</td><td class="n">1.6 / 2.1</td></tr>
-        <tr><td>Bi-LSTM</td><td class="n">668 → 584</td><td class="n">0.40 → 0.10 <small class="muted">(76% 감소)</small></td><td>ID 10%, ID 15%, 고잡음</td><td class="n">2.3 / 3.1</td></tr>
+        <tr><td>Bi-LSTM</td><td class="n">668 → 584</td><td class="n">0.40 → 0.10 <small class="muted">(76% 감소)</small></td><td>ID 10%, ID 15%, 고잡음</td><td class="n">2.3 / 2.9</td></tr>
       </tbody>
     </table>
   </div>
@@ -1187,7 +1193,69 @@ footer b{color:var(--ink); font-weight:600}
     <p><b>IP 정확도 이득은 중앙값에서만 뚜렷합니다.</b> Bi-LSTM에서는 ID 10%·15%·고잡음 세 분할 모두 PINN의 IP 오차 중앙값이 유의하게 작아(Δ -84 m, ID 10%) Transformer 쌍보다 일관됩니다. 그러나 RMSE는 ID 15%에서만 줄고(938 → 848 m), ID 10%(1,047 → 1,035 m)와 고잡음(1,768 → 1,790 m)에서는 거의 같습니다. ID 10%의 RMSE는 개정 기획서의 평가 기준(1,000 m 이하, EKF 747 m의 1.2배 이내)을 충족하지 못합니다. 물리 손실이 전형적인 트랙의 오차는 줄이지만 드문 대형 오차(꼬리)는 대체로 줄이지 못합니다.</p>
     <p><b>학습 범위 밖에서는 두 모델 모두 실패합니다.</b> 관측 5%는 학습 분할의 관측 비율(8–20%) 밖이라 두 모델 모두 IP 오차가 수 km이고, PINN이 오히려 큽니다(6,343 → 6,982 m, EKF 1,429 m). OOD도 같습니다. 인코더를 바꿔도 외삽은 해결되지 않으므로 §9.8의 분포 밖 감지·EKF 전환이 필요합니다.</p>
   </div>
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
+    <table>
+      <caption><b>Table R16c</b>학습 seed별 Bi-LSTM 물리 손실 효과. 잔차 감소율(ID 10%)과 IP 오차 중앙값 차이 Δ = PINN − data only [m], 95% CI. ✓ = Holm 보정 후 유의하고 CI가 0 미만</caption>
+      <thead><tr><th class="c">seed</th><th class="n">잔차 감소</th><th class="n">ID 10%</th><th class="n">ID 15%</th><th class="n">고잡음</th></tr></thead>
+      <tbody>
+        <tr><td class="c">0</td><td class="n">76%</td><td class="n">-84 <small class="muted">[-129, -40]</small> ✓</td><td class="n">-73 <small class="muted">[-107, -37]</small> ✓</td><td class="n">-81 <small class="muted">[-158, -17]</small> ✓</td></tr>
+        <tr><td class="c">1</td><td class="n">73%</td><td class="n">-27 <small class="muted">[-66, +14]</small></td><td class="n">-64 <small class="muted">[-106, -29]</small> ✓</td><td class="n">-57 <small class="muted">[-105, +18]</small></td></tr>
+        <tr><td class="c">2</td><td class="n">73%</td><td class="n">-161 <small class="muted">[-206, -118]</small> ✓</td><td class="n">-115 <small class="muted">[-150, -80]</small> ✓</td><td class="n">+15 <small class="muted">[-84, +73]</small></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
+    <table>
+      <caption><b>Table R16d</b>PINN-Bi-LSTM의 입력과 학습 범위를 바꾼 결과. IP 오차 중앙값 [m], ID 10% RMSE와 평가 기준(1,000 m 이하, EKF RMSE의 1.2배 이내), 보정 전 CEP<sub>50</sub> 포함률</caption>
+      <thead><tr><th>변형</th><th class="n">ID 5%</th><th class="n">ID 10%</th><th class="n">ID 10% RMSE</th><th class="n">고잡음</th><th class="n">OOD</th><th class="n">포함률</th></tr></thead>
+      <tbody>
+        <tr><td>Savitzky–Golay 입력, 관측 8–20% 학습 (기본)</td><td class="n">6,982</td><td class="n">584</td><td class="n">1,035 <small class="muted">✗ ≤ 1,000 · 1.39× EKF ✗</small></td><td class="n">1,031</td><td class="n">10,613</td><td class="n">0.74</td></tr>
+        <tr><td>RTS 평활 입력</td><td class="n">1,858</td><td class="n">565</td><td class="n">933 <small class="muted">✓ ≤ 1,000 · 1.25× EKF ✗</small></td><td class="n">726</td><td class="n">10,968</td><td class="n">0.65</td></tr>
+        <tr><td>관측 5–20%로 넓혀 학습</td><td class="n">1,569</td><td class="n">575</td><td class="n">949 <small class="muted">✓ ≤ 1,000 · 1.27× EKF ✗</small></td><td class="n">1,048</td><td class="n">11,668</td><td class="n">0.82</td></tr>
+        <tr><td>EKF + Monte Carlo (기준)</td><td class="n">1,429</td><td class="n">340</td><td class="n">747</td><td class="n">629</td><td class="n">438</td><td class="n">0.70</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="prose">
+    <p><b>seed 3개로 확인한 결론.</b> 물리 잔차 감소는 세 seed 모두 같은 크기입니다(73–76%). IP 오차 중앙값 이득은 ID 15%에서 3/3, ID 10%에서 2/3, 고잡음에서 1/3 seed만 유의합니다. "물리 손실은 궤적의 물리 일관성을 확실히 높이고, 정확도 이득은 작고 조건에 따라 다르다"는 Transformer 쌍(§9.7)의 결론이 Bi-LSTM에서도 그대로 재현됩니다.</p>
+    <p><b>RTS 입력은 구조와 무관하게 통합니다.</b> Transformer에서 효과가 컸던 RTS 평활 특징(§9.6)을 Bi-LSTM에 넣으면 ID 10% RMSE가 1,035 → 933 m로 1,000 m 기준 안에 들어오고, 고잡음 중앙값은 1,031 → 726 m로 줄어듭니다. 다만 EKF RMSE(747 m)의 1.2배 이내라는 두 번째 기준은 1.25배라 아직 충족하지 못합니다.</p>
+    <p><b>관측 5% 붕괴는 학습 범위의 문제였습니다.</b> 학습 분할의 관측 비율을 8–20%에서 5–20%로 넓히면 ID 5% 중앙값이 6,982 → 1,569 m(EKF 1,429 m), 포함률이 0.03 → 0.46로 회복되고 다른 ID 분할은 유의하게 나빠지지 않습니다. 대신 OOD 중앙값은 커져(10,613 → 11,668 m) 학습 범위 밖 외삽 문제는 여전히 §9.8의 감지·EKF 전환으로 다뤄야 합니다.</p>
+  </div>
 <!-- LSTM:END -->
+<!-- EXT:BEGIN -->
+  <h3 class="sub" id="sec-multiradar"><span class="no">9.12</span>다중 레이더 융합</h3>
+  <div class="prose">
+    <p>지금까지는 레이더 1대만 썼습니다. 같은 시험 트랙을 두 번째 가상 레이더(지역 좌표 (90 km, -60 km), 같은 잡음)로도 관측하게 하고, EKF가 매 시각 1번 레이더 갱신 뒤 2번 레이더 측정으로 한 번 더 갱신하도록 했습니다(<code>filters.ekf(..., extra=)</code>). 1번 레이더 측정은 데이터셋과 같은 난수열로 다시 만들어 기존 시험 분할과 완전히 같고, 단일 레이더 결과는 §9.1의 EKF 값과 일치합니다. 재현: <code>python scripts/multiradar.py</code>.</p>
+  </div>
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
+    <table>
+      <caption><b>Table R17</b>EKF + Monte Carlo, 레이더 1대 → 2대 융합. IP 오차 중앙값과 쌍대 bootstrap 95% CI [m], 승률(융합이 더 정확한 트랙 비율), RMSE, CEP<sub>50</sub> 중앙값, 포함률</caption>
+      <thead><tr><th>분할</th><th class="n">IP 중앙값</th><th class="n">Δ 중앙값</th><th class="n">승률</th><th class="n">RMSE</th><th class="n">CEP</th><th class="n">포함률</th></tr></thead>
+      <tbody>
+        <tr><td>ID 5%</td><td class="n">1,429 → 1,200</td><td class="n">-229 <small class="muted">[-322, -108]</small></td><td class="n">0.61</td><td class="n">3,056 → 2,698</td><td class="n">1,168 → 1,088</td><td class="n">0.37 → 0.42</td></tr>
+        <tr><td>ID 10%</td><td class="n">340 → 310</td><td class="n">-30 <small class="muted">[-45, -7]</small></td><td class="n">0.58</td><td class="n">747 → 683</td><td class="n">595 → 572</td><td class="n">0.70 → 0.72</td></tr>
+        <tr><td>고잡음</td><td class="n">629 → 548</td><td class="n">-80 <small class="muted">[-124, -43]</small></td><td class="n">0.60</td><td class="n">1,358 → 1,262</td><td class="n">798 → 761</td><td class="n">0.54 → 0.55</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="prose">
+    <p>융합하면 세 분할 모두 IP 오차가 줄고 신뢰구간이 0을 포함하지 않습니다(ID 5% −16%, ID 10% −9%, 고잡음 −13%). 이득은 관측이 짧거나 잡음이 클 때 크고, 관측이 충분하면 작습니다. 두 레이더가 같은 시각에 같은 구간을 보므로 측정 수가 늘어날 뿐 관측 구간이 길어지지는 않아, 탄도계수 β를 알아내기 어려운 근본 한계(§2, Phase II)는 그대로이기 때문입니다. 실제 운용에서는 갱신 주기가 다르고 레이더 사이 정렬 오차(bias)가 있으므로, 이를 함께 추정하는 것이 다음 단계입니다(§9.13).</p>
+  </div>
+  <h3 class="sub" id="sec-roadmap"><span class="no">9.13</span>확장 로드맵: 실측 검증, 6-DOF, 기동 비행체</h3>
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
+    <table>
+      <caption><b>Table R18</b>이 연구의 범위 밖 항목과 확장에 필요한 것</caption>
+      <thead><tr><th>항목</th><th>현재</th><th>확장에 필요한 것</th></tr></thead>
+      <tbody>
+        <tr><td>실측 검증</td><td>합성 자료만 사용. 공개된 탄도 비행체 레이더 궤적 자료는 찾지 못함(국내 선행 연구도 같은 이유로 합성 궤적 사용, §2.2)</td><td>협력 기관의 관측 자료(비공개 환경에서만), 또는 공개된 관측 로켓 비행 기록이나 우주 물체 재진입 관측으로 정성 비교. 궤도 요소(TLE) 기반 재진입 예측은 수일 단위 궤도 감쇠 문제라 이 과제와 물리가 달라 직접 비교에는 쓰지 않음</td></tr>
+        <tr><td>6-DOF 동역학</td><td>3-DOF 점질량(§5)</td><td>받음각·옆미끄럼각에 따른 공력 계수(C<sub>L</sub>, C<sub>D</sub>, C<sub>m</sub>)와 관성 자료, 자세 상태를 포함한 EKF, PINN 잔차를 6-DOF 운동 방정식으로 확장</td></tr>
+        <tr><td>기동 비행체(HGV)</td><td>약한 양력 기동만 시험(§9.9). 활공 기동은 국내 연구에서도 탄착점 오차가 수십 km(§2.2)</td><td>양력·뱅크각 제어 모델로 기동 궤적 생성, 기동 가설을 가진 IMM과 신경망의 결합, 탄착점보다 위협 영역(확률 지도) 출력</td></tr>
+        <tr><td>다중 레이더</td><td>2대, 같은 시각, 정렬 오차 없음(§9.12)</td><td>서로 다른 갱신 주기의 비동기 융합, 레이더별 정렬 오차 추정, 다표적 데이터 연관(Stone Soup와 연동, §10.2)</td></tr>
+        <tr><td>추진 구간</td><td>연소 종료 이후만</td><td>추력·질량 변화 모델과 연소 종료 시점 추정</td></tr>
+      </tbody>
+    </table>
+  </div>
+<!-- EXT:END -->
 </section>
 
 <!-- 10 IMPL -->
@@ -1223,6 +1291,26 @@ python scripts/evaluate.py pinn_tf_hybrid_v2 data_tf_v2 wx_hybrid_date
 python scripts/export_onnx.py wx_hybrid_date x                      # ONNX + 지연
 python scripts/site_results.py ... && python scripts/site_weather.py ... && python scripts/site_stats.py
 python -m pytest -q tests server/tests</code></pre>
+<!-- BENCH:BEGIN -->
+  <h3 class="sub" id="sec-bench"><span class="no">10.2</span>공개 벤치마크 TrajAI-Bench</h3>
+  <div class="prose">
+    <p>이 플랫폼의 비교를 다른 사람도 같은 조건으로 재현할 수 있도록 시험 분할 5종(각 1,000 트랙)을 벤치마크로 묶었습니다. 입력(레이더 측정)과 정답(탄착점·탄착 시각·실제 잔여 궤적)을 나눈 numpy 파일, Stone Soup의 CSV 판독기로 바로 읽히는 검출·실제 궤적 파일, numpy만 쓰는 채점기(<code>evaluate.py</code>), 이 문서의 결과로 만든 리더보드가 들어 있습니다. 채점기는 예시 제출(EKF 기준선)로 리더보드의 EKF 값을 정확히 재현하는지 CI에서 확인하고, 태그 <code>benchmark-v*</code>를 올리면 GitHub 릴리스로 배포됩니다(<code>.github/workflows/benchmark.yml</code>). 모든 자료는 합성이며 실제 체계 정보가 없어 공개해도 안전합니다(§12.3).</p>
+  </div>
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
+    <table>
+      <caption><b>Table 12b</b>리더보드 일부 (ID 10%). IP 오차 중앙값·RMSE [m], 보정 전 CEP<sub>50</sub> 포함률. RMSE는 배포 모델을 다시 실행해 계산(<code>scripts/rmse_onnx.py</code>)</caption>
+      <thead><tr><th>추정기</th><th class="n">중앙값</th><th class="n">RMSE</th><th class="n">포함률</th></tr></thead>
+      <tbody>
+        <tr><td>EKF + Monte Carlo</td><td class="n">340</td><td class="n">747</td><td class="n">0.70</td></tr>
+        <tr><td>PINN-Transformer</td><td class="n">733</td><td class="n">1,488</td><td class="n">0.61</td></tr>
+        <tr><td>PINN-Transformer + EKF</td><td class="n">578</td><td class="n">996</td><td class="n">0.59</td></tr>
+        <tr><td>PINN-Transformer, RTS 입력</td><td class="n">437</td><td class="n">822</td><td class="n">0.64</td></tr>
+        <tr><td>PINN-Bi-LSTM</td><td class="n">584</td><td class="n">1,035</td><td class="n">0.74</td></tr>
+        <tr><td>PINN-Bi-LSTM, RTS 입력</td><td class="n">565</td><td class="n">933</td><td class="n">0.65</td></tr>
+      </tbody>
+    </table>
+  </div>
+<!-- BENCH:END -->
 </section>
 
 <!-- 11 PLAN -->
@@ -1266,7 +1354,7 @@ python -m pytest -q tests server/tests</code></pre>
         <tr><td class="id" style="white-space:nowrap">R-01</td><td>실측 비행 데이터 부재</td><td>— (처음부터 확정)</td><td>합성 데이터 + 실제 기상 + 모델 불일치 시험</td><td>실제 기상 실험(§9.3), 양력·항력 불일치 시험(§9.9)</td></tr>
         <tr><td class="id" style="white-space:nowrap">R-02</td><td>PINN 학습 수렴 불안정</td><td>검증 오차가 정체·발산</td><td>data only 기준선을 먼저 확보, 물리 손실 가중치를 점진적으로 높임(curriculum)</td><td>물리 손실 0 → 1 선형 증가(처음 40%). Transformer·Bi-LSTM 4개 모델 모두 마지막 평가 시점에 검증 오차가 최저(발산 없음)</td></tr>
         <tr><td class="id" style="white-space:nowrap">R-03</td><td>범위 과다</td><td>W4에 필수 항목 미완</td><td>선택 기능(Table 1c)을 뺌</td><td>필수·선택 모두 완료(Table 1c). LSTM vs PINN은 Transformer 쌍으로 먼저 수행하고 Bi-LSTM 쌍을 마지막에 보완(§9.11)</td></tr>
-        <tr><td class="id" style="white-space:nowrap">R-04</td><td>계산 자원 부족 (CPU만)</td><td>1회 학습이 6시간 초과</td><td>학습 step 고정, 중간 저장 후 재개, 학습을 CI 러너에 병렬 분산</td><td>Bi-LSTM 2개를 GitHub Actions에서 병렬 학습 (모델당 30–41분)</td></tr>
+        <tr><td class="id" style="white-space:nowrap">R-04</td><td>계산 자원 부족 (CPU만)</td><td>1회 학습이 6시간 초과</td><td>학습 step 고정, 중간 저장 후 재개, 학습을 CI 러너에 병렬 분산</td><td>Bi-LSTM 10개(seed·입력·학습 범위 변형 포함)를 GitHub Actions에서 병렬 학습, 모델당 30–70분</td></tr>
         <tr><td class="id" style="white-space:nowrap">R-05</td><td>합성과 실제의 차이로 인한 과신</td><td>CEP 포함률 저하</td><td>분포 밖 감지 후 EKF 전환, CEP 보정</td><td>AUROC 0.999, OOD 오차 11.7 → 0.44 km (§9.8), 보정 후 포함률 0.50 (§9.5)</td></tr>
       </tbody>
     </table>

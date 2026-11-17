@@ -59,7 +59,9 @@ E2E_BASE=http://127.0.0.1:8000 python -m pytest e2e   # Playwright 13 (서버 �
 | `e2e/` | Playwright 종단 간 테스트 |
 | `prototype/viewer.html` | 시험 케이스의 궤적·예측·CEP·위협 평가 Three.js 뷰어 |
 | `legacy/` | 초기 프로토타입 코드 (Euler 생성기, 1-step PINN) |
-| `docs/` | AI 서비스 컨셉 정의서, 프로젝트 기획서 |
+| `docs/` | AI 서비스 컨셉 정의서, 프로젝트 기획서, 사용자 검증 키트(`user-study.md`), 아키텍처 |
+| `benchmark_src/`, `scripts/export_benchmark.py` | 공개 벤치마크 TrajAI-Bench (시험 분할 5종, Stone Soup CSV, 채점기, 리더보드). 태그 `benchmark-v*`로 릴리스 |
+| `server/tests/test_security.py`, `.github/workflows/codeql.yml` | 보안 테스트 12개, CodeQL·pip-audit·npm audit·bandit·gitleaks (기술 문서 §12.3) |
 
 ## 재현
 
@@ -104,6 +106,8 @@ python scripts/lstm_compare.py && python scripts/site_lstm.py
 - 잡음 증강으로 고잡음 붕괴(v1 12.2 km)가 사라졌고, 물리 잔차는 0.23 g → 0.086 g으로 줄었습니다.
 - 물리 손실(PINN 대 data only, 같은 v2 조건)은 잔차를 0.40 → 0.10 g으로 확실히 줄이지만, IP 오차 이득은 ID 10%(−61 m)와 OOD(−3.9 km)에서만 유의하고 ID 15%·고잡음에서는 불확실합니다.
 - **인코더를 Bi-LSTM으로 바꿔도**(§9.11) 물리 손실은 잔차를 0.40 → 0.10 g(76%)으로 줄이고, IP 오차 중앙값은 ID 10%·15%·고잡음 모두에서 유의하게 줄었습니다(ID 10% 668 → 584 m). 다만 RMSE는 ID 10%에서 1,047 → 1,035 m로 거의 같아 꼬리 오차는 남고, 관측 5%처럼 학습 범위 밖에서는 두 모델 모두 실패합니다.
+- **Bi-LSTM 후속 실험**(§9.11): 잔차 감소는 seed 3개 모두 73–76%로 재현되고, IP 중앙값 이득은 ID 15%에서 3/3, ID 10%에서 2/3 seed만 유의합니다. RTS 입력을 쓰면 ID 10% RMSE가 1,035 → 933 m(1,000 m 기준 충족, EKF의 1.25배), 고잡음 중앙값이 1,031 → 726 m로 줄고, 관측 5–20%로 넓혀 학습하면 ID 5% 붕괴가 6,982 → 1,569 m로 해결됩니다.
+- **다중 레이더 융합**(§9.12): 같은 트랙을 레이더 2대로 보고 EKF에서 융합하면 IP 오차 중앙값이 ID 5% 1,429 → 1,200 m, ID 10% 340 → 310 m, 고잡음 629 → 548 m로 줄어듭니다.
 - 대기 모델이 IP 오차의 가장 큰 원인입니다. 선택 일자 기상을 쓰면 EKF 오차가 표준 대기 대비 87% 줄어 기본 설정으로 채택했습니다.
 - Savitzky–Golay 특징을 쓰는 신경망은 같은 물리 모델을 쓰는 EKF/UKF보다 부정확하고 OOD에 취약합니다. 확실한 이점은 지연입니다(ONNX Runtime 0.87 ms 대 EKF + MC 228 ms).
 - **PINN → EKF 되먹임**: PINN의 탄도계수 예측을 EKF 사전정보로 쓰면 5개 시험 분할 모두에서 EKF보다 정확합니다(ID 5% 1,429 → 956 m, OOD 438 → 363 m). 신경망은 필터를 대체할 때보다 필터 안에서 쓸 때 가장 효과적이었습니다.
