@@ -1,0 +1,45 @@
+pinn_lstm_v2_rts   test_id_f05    ADE    1865  miss    1858  ToT  6.49  CEP    832  cov 0.17  res 0.176 g
+pinn_lstm_v2_rts   test_id_f10    ADE     689  miss     565  ToT  1.28  CEP    726  cov 0.65  res 0.095 g
+pinn_lstm_v2_rts   test_id_f15    ADE     542  miss     464  ToT  1.25  CEP    639  cov 0.65  res 0.085 g
+pinn_lstm_v2_rts   test_id_noise  ADE     786  miss     726  ToT  1.44  CEP    705  cov 0.48  res 0.092 g
+pinn_lstm_v2_rts   test_ood       ADE   25922  miss   10968  ToT 44.23  CEP   3083  cov 0.10  res 0.497 g
+pinn_lstm_v2_rts latency {'p50_ms': 2.435173000009172, 'p99_ms': 4.563965620029647}
+pinn_lstm_rts_hyb  test_id_f05    ADE    2146  miss    2215  ToT  4.53  CEP    818  cov 0.11  res 0.169 g
+pinn_lstm_rts_hyb  test_id_f10    ADE     748  miss     556  ToT  1.63  CEP    699  cov 0.64  res 0.096 g
+pinn_lstm_rts_hyb  test_id_f15    ADE     575  miss     473  ToT  1.37  CEP    638  cov 0.64  res 0.085 g
+pinn_lstm_rts_hyb  test_id_noise  ADE     811  miss     699  ToT  1.56  CEP    679  cov 0.48  res 0.096 g
+pinn_lstm_rts_hyb  test_ood       ADE   18394  miss   11926  ToT 26.07  CEP   3397  cov 0.07  res 0.492 g
+pinn_lstm_rts_hyb latency {'p50_ms': 2.337866999994276, 'p99_ms': 3.025990820003699}
+pinn_lstm_rts_wide test_id_f05    ADE    1341  miss    1348  ToT  1.96  CEP   1389  cov 0.46  res 0.131 g
+pinn_lstm_rts_wide test_id_f10    ADE     699  miss     590  ToT  1.33  CEP    956  cov 0.73  res 0.089 g
+pinn_lstm_rts_wide test_id_f15    ADE     602  miss     499  ToT  1.38  CEP    700  cov 0.65  res 0.086 g
+pinn_lstm_rts_wide test_id_noise  ADE     801  miss     729  ToT  1.46  CEP    846  cov 0.54  res 0.090 g
+pinn_lstm_rts_wide test_ood       ADE   30985  miss   10533  ToT 50.34  CEP   3213  cov 0.10  res 0.491 g
+pinn_lstm_rts_wide latency {'p50_ms': 2.3721325000281013, 'p99_ms': 3.0610085999734333}
+pinn_lstm_rts_9k   test_id_f05    ADE    1471  miss    1634  ToT  3.38  CEP    857  cov 0.19  res 0.142 g
+pinn_lstm_rts_9k   test_id_f10    ADE     459  miss     396  ToT  0.94  CEP    576  cov 0.68  res 0.062 g
+pinn_lstm_rts_9k   test_id_f15    ADE     351  miss     288  ToT  0.76  CEP    402  cov 0.66  res 0.052 g
+pinn_lstm_rts_9k   test_id_noise  ADE     542  miss     605  ToT  0.89  CEP    504  cov 0.40  res 0.056 g
+pinn_lstm_rts_9k   test_ood       ADE   15675  miss    6096  ToT 21.20  CEP   3495  cov 0.23  res 0.356 g
+pinn_lstm_rts_9k latency {'p50_ms': 2.337025500025902, 'p99_ms': 3.012328240027386}
+pinn_lstm_rts_hyb vs pinn_lstm_v2_rts
+split            miss b   miss a   rmse b   rmse a  phys b  phys a  p_holm
+test_id_f05        1858     2215     4341     4353   0.176   0.169  8.56e-06
+test_id_f10         565      556      933      981   0.095   0.096  0.722
+test_id_f15         464      473      844      827   0.085   0.085  0.582
+test_id_noise       726      699     1281     1320   0.092   0.096  0.722
+test_ood          10968    11926    25024    35108   0.497   0.492  7.66e-36
+pinn_lstm_rts_wide vs pinn_lstm_v2_rts
+split            miss b   miss a   rmse b   rmse a  phys b  phys a  p_holm
+test_id_f05        1858     1348     4341     2451   0.176   0.131  9.86e-36
+test_id_f10         565      590      933      968   0.095   0.089  0.0147
+test_id_f15         464      499      844      879   0.085   0.086  5.63e-07
+test_id_noise       726      729     1281     1330   0.092   0.090  0.00138
+test_ood          10968    10533    25024    24120   0.497   0.491  4.3e-07
+pinn_lstm_rts_9k vs pinn_lstm_v2_rts
+split            miss b   miss a   rmse b   rmse a  phys b  phys a  p_holm
+test_id_f05        1858     1634     4341     3628   0.176   0.142  9.88e-27
+test_id_f10         565      396      933      686   0.095   0.062  4.43e-54
+test_id_f15         464      288      844      508   0.085   0.052  1.4e-82
+test_id_noise       726      605     1281     1079   0.092   0.056  9.88e-27
+test_ood          10968     6096    25024    27234   0.497   0.356  5.99e-09
