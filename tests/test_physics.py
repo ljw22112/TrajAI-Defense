@@ -74,3 +74,14 @@ def test_polar_jacobian_matches_finite_difference():
         dp = p.copy(); dp[0, j] += eps
         fd = (radar.to_polar(dp) - radar.to_polar(p))[0] / eps
         assert np.allclose(J[:, j], fd, rtol=1e-4, atol=1e-10)
+
+
+def test_glide_extends_range_and_ballistic_reference_unchanged():
+    """trajai.hgv: lift only during descent lengthens the flight; zero L/D reproduces the ballistic truth."""
+    import numpy as np
+    from trajai import dataset, hgv
+    a = dataset.generate(50, seed=5, frac=0.12)
+    b = dataset.generate(50, seed=5, frac=0.12, truth=lambda m, r: hgv.nominal(m))
+    assert np.allclose(a["impact"], b["impact"], atol=1.0)
+    c = dataset.generate(50, seed=5, frac=0.12, truth=lambda m, r: hgv.sample(m, r))
+    assert np.median(c["T"]) > np.median(a["T"]) + 30

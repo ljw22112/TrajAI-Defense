@@ -1,0 +1,112 @@
+{
+ "nom_f12": {
+  "t_c_median_s": 22.0,
+  "flight_median_s": 185.49792138995974,
+  "range_median_km": 89.69787790208147,
+  "ekf": {
+   "miss_median_m": 280.535688327036,
+   "miss_p90_m": 887.9071241143066,
+   "miss_rmse_m": 558.5942409907287,
+   "coverage": 0.755,
+   "cep_median_m": 530.0143053254615,
+   "area90_median_km2": 2.9315630130235952
+  },
+  "imm": {
+   "miss_median_m": 336.1313672463018,
+   "miss_p90_m": 1026.0090407240614,
+   "miss_rmse_m": 666.357975462687,
+   "coverage": 0.8233333333333334,
+   "cep_median_m": 749.7963103498898
+  },
+  "footprint": {
+   "coverage90": 1.0,
+   "area_median_km2": 6066.507454453573,
+   "center_miss_median_m": 14030.82143652262
+  },
+  "pinn_rts": {
+   "miss_median_m": 372.133260933991,
+   "miss_p90_m": 937.2796062166923,
+   "miss_rmse_m": 711.6943604996742
+  }
+ },
+ "hgv_f12": {
+  "t_c_median_s": 39.5,
+  "flight_median_s": 331.5291074221698,
+  "range_median_km": 114.13577100937151,
+  "ekf": {
+   "miss_median_m": 34999.3627150868,
+   "miss_p90_m": 68080.10559083194,
+   "miss_rmse_m": 44921.34208133163,
+   "coverage": 0.0,
+   "cep_median_m": 443.7421529871508,
+   "area90_median_km2": 2.054875068251949
+  },
+  "imm": {
+   "miss_median_m": 35017.40383757444,
+   "miss_p90_m": 68120.67027395302,
+   "miss_rmse_m": 44922.90295583134,
+   "coverage": 0.0,
+   "cep_median_m": 619.180385248632
+  },
+  "footprint": {
+   "coverage90": 0.805,
+   "area_median_km2": 6016.817485643093,
+   "center_miss_median_m": 31987.88281578972
+  },
+  "pinn_rts": {
+   "miss_median_m": 35026.38619071651,
+   "miss_p90_m": 68036.66891577815,
+   "miss_rmse_m": 44547.5592677461
+  }
+ },
+ "nom_long": {
+  "t_c_median_s": 99.5,
+  "flight_median_s": 188.33921825911852,
+  "range_median_km": 90.58907225092574,
+  "ekf": {
+   "miss_median_m": 103.88900319137662,
+   "miss_p90_m": 282.50995286300446,
+   "miss_rmse_m": 165.15279220223104,
+   "coverage": 0.9216666666666666,
+   "cep_median_m": 283.26206378530463,
+   "area90_median_km2": 0.8373381537608697
+  },
+  "imm": {
+   "miss_median_m": 141.88463491382478,
+   "miss_p90_m": 404.51324012039936,
+   "miss_rmse_m": 243.3305321526102,
+   "coverage": 0.9716666666666667,
+   "cep_median_m": 399.5087357986902
+  },
+  "footprint": {
+   "coverage90": 1.0,
+   "area_median_km2": 5242.3144359478065,
+   "center_miss_median_m": 12622.371214122464
+  }
+ },
+ "hgv_long": {
+  "t_c_median_s": 99.5,
+  "flight_median_s": 346.3328150630318,
+  "range_median_km": 118.72610856816534,
+  "ekf": {
+   "miss_median_m": 32726.401719629204,
+   "miss_p90_m": 69577.92977137252,
+   "miss_rmse_m": 43306.25198602344,
+   "coverage": 0.0,
+   "cep_median_m": 289.8556770450996,
+   "area90_median_km2": 0.876774018948326
+  },
+  "imm": {
+   "miss_median_m": 32278.093160141918,
+   "miss_p90_m": 69218.28933708699,
+   "miss_rmse_m": 43119.75638952748,
+   "coverage": 0.0,
+   "cep_median_m": 509.8399569540326
+  },
+  "footprint": {
+   "coverage90": 0.7683333333333333,
+   "area_median_km2": 5422.00352454644,
+   "center_miss_median_m": 30642.05015771283
+  }
+ }
+}

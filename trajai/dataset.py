@@ -43,7 +43,8 @@ def initial_state(params):
     return np.stack([0 * h0, 0 * h0, h0, vh * np.cos(psi), vh * np.sin(psi), V0 * np.sin(g)], 1)
 
 
-def generate(n, seed, ranges=ID_RANGES, frac=(0.08, 0.20), noise=radar.NOISE_NOMINAL, chunk=4000, bank=None, mismatch=None):
+def generate(n, seed, ranges=ID_RANGES, frac=(0.08, 0.20), noise=radar.NOISE_NOMINAL, chunk=4000, bank=None, mismatch=None,
+             truth=None):
     """bank: optional weather ProfileBank; each trajectory then flies through a randomly chosen profile
     (stored as 'wx_idx'). Without a bank the standard model (exponential density, no wind) is the truth."""
     rng = np.random.default_rng(seed)
@@ -58,6 +59,8 @@ def generate(n, seed, ranges=ID_RANGES, frac=(0.08, 0.20), noise=radar.NOISE_NOM
         if mismatch is not None:                      # truth-only model error, see trajai.mismatch
             from . import mismatch as mm
             atm = mm.sample(m, rng, **mismatch)
+        if truth is not None:                         # any truth-only dynamics, e.g. trajai.hgv.sample (glide)
+            atm = truth(m, rng)
         times, pos, vel, T, r_imp = physics.simulate_ballistic(s0, p[:, 4], dt=0.1, out_dt=DT_MEAS, atm=atm)
         f = rng.uniform(*frac, m) if isinstance(frac, tuple) else np.full(m, frac)
         k_c = np.minimum(np.floor(f * T / DT_MEAS).astype(int), K_MAX - 1)
