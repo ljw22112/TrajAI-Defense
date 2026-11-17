@@ -1,0 +1,51 @@
+name: benchmark
+# Builds TrajAI-Bench (the five test splits, Stone Soup CSVs, evaluator, leaderboard), checks that the evaluator
+# reproduces the EKF baseline exactly, and attaches the zip to a GitHub release. Push a tag benchmark-v* to publish.
+on:
+  push:
+    tags: ["benchmark-v*"]
+  workflow_dispatch:
+
+defaults: {run: {shell: bash}}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions: {contents: write}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: {python-version: "3.11"}
+      - run: pip install numpy scipy stonesoup
+      - run: python scripts/make_dataset.py --only test_id_f05 test_id_f10 test_id_f15 test_id_noise test_ood
+      - run: python scripts/prepare.py
+      - name: package
+        run: |
+          V=${GITHUB_REF_NAME#benchmark-}; [ "$V" = "$GITHUB_REF_NAME" ] && V=dev
+          python scripts/export_benchmark.py --out TrajAI-Bench-$V --version $V
+          echo "V=$V" >> $GITHUB_ENV
+      - name: evaluator reproduces the EKF leaderboard row
+        working-directory: TrajAI-Bench-${{ env.V }}
+        run: |
+          python evaluate.py sample_submission_ekf.csv --json /tmp/ekf.json
+          python - <<'PY'
+          import json
+          s = json.load(open("/tmp/ekf.json")); b = json.load(open("leaderboard.json"))["entries"]["ekf"]
+          for sp, v in s.items():
+              for k in ("miss_median_m", "cep_coverage"):
+                  assert abs(v[k] - b[sp][k]) <= 1e-6 * max(1, abs(b[sp][k])), (sp, k, v[k], b[sp][k])
+          print("evaluator matches the leaderboard")
+          PY
+          python stonesoup_example.py test_id_f10
+      - run: zip -qr TrajAI-Bench-${{ env.V }}.zip TrajAI-Bench-${{ env.V }}
+      - uses: actions/upload-artifact@v4
+        with: {name: "TrajAI-Bench-${{ env.V }}", path: "TrajAI-Bench-${{ env.V }}.zip"}
+      - uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/benchmark-v')
+        with:
+          files: TrajAI-Bench-${{ env.V }}.zip
+          body: |
+            TrajAI-Bench ${{ env.V }}: 짧은 레이더 관측으로 탄도 비행체 탄착점 예측하기.
+            시험 분할 5종(각 1,000 트랙), Stone Soup CSV, 채점기(evaluate.py), 리더보드. 모든 자료는 합성입니다.
+            자세한 설명은 압축 안의 README.md와 기술 문서 §9를 보세요.

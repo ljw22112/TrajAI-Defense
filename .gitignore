@@ -16,3 +16,7 @@ server/trajai.db
 export/*
 !export/*.onnx
 !export/*.onnx.data
+
+benchmark/
+TrajAI-Bench-*/
+TrajAI-Bench-*.zip
