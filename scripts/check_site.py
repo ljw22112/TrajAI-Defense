@@ -146,6 +146,14 @@ if os.path.exists(f"{R}/lstm_vs_pinn_rts.json") and os.path.exists(f"{R}/multira
     claim(r"ID 10% [\d,]+ → ([\d,]+) m, 고잡음 [\d,]+ → [\d,]+ m로 줄어듭니다", MR["test_id_f10"]["A+B"]["miss_median_m"], 0.01, "README multiradar ID10", readme)
     claim(r"고잡음 [\d,]+ → ([\d,]+) m로 줄어듭니다", MR["test_id_noise"]["A+B"]["miss_median_m"], 0.01, "README multiradar noise", readme)
 
+# extension experiments (README hand-written numbers)
+if all(os.path.exists(f"{R}/{f}") for f in ("hgv.json", "sixdof.json", "realdata_hayabusa.json")):
+    HG, SD, RD = load("hgv.json"), load("sixdof.json"), load("realdata_hayabusa.json")
+    claim(r"탄착 오차 약 (\d+) km\(포함률 0\)", HG["hgv_f12"]["ekf"]["miss_median_m"] / 1000, 0.05, "README HGV miss km", readme)
+    claim(r"실제 탄착점을 (\d+)%\(넓이", HG["hgv_f12"]["footprint"]["coverage90"] * 100, 0.02, "README HGV footprint coverage", readme)
+    claim(r"탄착점을 중앙값 (\d+) m 옮기지만", SD["truth_shift"]["median_m"], 0.02, "README 6-DOF shift", readme)
+    claim(r"3초 뒤 위치를 (\d+) m", RD["fits"]["4"]["drag_model"]["pred_err_m"][0], 0.02, "README Hayabusa 3 s", readme)
+
 # §9.10 validity row must match how many seeds exist
 seeds = {"PINN": sum(m in M for m in ("pinn_tf_v2", "pinn_tf_v2_s1", "pinn_tf_v2_s2")),
          "hybrid": sum(m in M for m in ("pinn_tf_hybrid_v2", "pinn_tf_hybrid_v2_s1", "pinn_tf_hybrid_v2_s2"))}

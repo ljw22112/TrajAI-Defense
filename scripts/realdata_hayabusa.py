@@ -1,7 +1,7 @@
 """Qualitative check of the drag / gravity / atmosphere model against a publicly observed re-entry (§9.16).
 
 Data: Hayabusa sample return capsule (SRC), 13 June 2010, positions from photographic observations, Table 3 of
-J. Borovička et al., "Photographic observations of the Hayabusa re-entry", PASJ 63 (2011) 1003, arXiv:1108.6006.
+J. Borovička et al., "Photographic and radiometric observations of the HAYABUSA re-entry", PASJ 63 (2011) 1003, arXiv:1108.6006.
 Stated precision of the coordinates ~100 m; times are relative; the last point is marked less reliable.
 
 This is not a ballistic-missile track (12 km/s super-orbital entry of a blunt capsule, unknown drag coefficient), so it

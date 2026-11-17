@@ -490,7 +490,8 @@ footer b{color:var(--ink); font-weight:600}
         <tr><td>선택</td><td>다중 레이더 융합</td><td><span class="st ok">완료</span> §9.12</td></tr>
         <tr><td>선택</td><td>공개 벤치마크(TrajAI-Bench, Stone Soup 형식)</td><td><span class="st ok">완료</span> §10.2</td></tr>
         <tr><td>선택</td><td>보안 설계(위협 모델, 운영 모드 검사, CI 보안 검사)</td><td><span class="st ok">완료</span> §12.3</td></tr>
-        <tr><td>범위 밖</td><td>실측 검증, 6-DOF, 기동 비행체, 추진 구간</td><td>로드맵 §9.13</td></tr>
+        <tr><td>선택</td><td>확장 시험: 활공 기동 표적, 축소 6-DOF 진값, 공개 실측 재진입 궤적</td><td><span class="st ok">완료</span> §9.14–§9.16</td></tr>
+        <tr><td>범위 밖</td><td>추진 구간, 완전 6-DOF, 탄도 비행체 레이더 실측으로 추정기 검증</td><td>남은 과제 §9.13</td></tr>
       </tbody>
     </table>
   </div>
@@ -1154,7 +1155,7 @@ footer b{color:var(--ink); font-weight:600}
         <tr><td style="white-space:nowrap">내적</td><td>CPU 학습 4,500 step에서 중단</td><td>검증 ADE가 마지막 구간까지 감소(하이브리드 v2: 703 → 580 m), 신경망 성능이 과소평가되었을 수 있음</td><td>GPU 장기 학습으로 상한 재측정</td></tr>
         <tr><td style="white-space:nowrap">내적</td><td>"inverse crime": 필터와 데이터 생성기가 같은 동역학</td><td>EKF/UKF에 유리한 조건 (§9.1)</td><td>기상 실험은 분석장 오차 섭동으로, 동역학은 Cd(M) 곡선 오차·약한 양력을 넣은 불일치 시험(§9.9)으로 점검</td></tr>
         <tr><td style="white-space:nowrap">내적</td><td>보정 계수를 시험 분할 안에서 교차 적합</td><td>보고한 포함률은 out-of-fold지만, 같은 분포의 자료를 재사용</td><td>운용에는 별도 보정 세트와 주기적 재보정 필요</td></tr>
-        <tr><td style="white-space:nowrap">외적</td><td>합성 데이터, 3-DOF 점질량, 기동은 약한 양력만, 단일 레이더</td><td>실제 표적·센서로의 일반화는 검증되지 않음</td><td>공개 궤적 자료로 정성 검증 (R-01), 6-DOF 확장. IMM과 혁신 검정은 시험했으나 관측 창 안의 기동이 너무 약해 효과 없음(§9.9)</td></tr>
+        <tr><td style="white-space:nowrap">외적</td><td>합성 데이터, 3-DOF 점질량, 기동은 약한 양력만, 단일 레이더</td><td>실제 표적·센서로의 일반화는 검증되지 않음</td><td>공개 재진입 관측으로 물리 모델 정성 검증(§9.16), 축소 6-DOF 진값으로 3-DOF 가정의 비용 측정(§9.15), 활공 기동 표적 시험(§9.14). IMM과 혁신 검정은 시험했으나 관측 창 안의 기동이 너무 약해 효과 없음(§9.9)</td></tr>
         <tr><td style="white-space:nowrap">외적</td><td>기압면 자료 상한 약 31 km, 그 위 바람 0</td><td>고고도 바람의 영향 누락</td><td>재분석 자료(ERA5 모델 레벨)로 확장</td></tr>
         <tr><td style="white-space:nowrap">구성</td><td>중앙값 중심 보고</td><td>꼬리 위험(드문 대형 오차)이 가려질 수 있음</td><td><code>results/metrics.json</code>에 평균·p90 함께 기록, §9.5에서 90% 포함률로 꼬리 점검</td></tr>
       </tbody>
@@ -1241,20 +1242,76 @@ footer b{color:var(--ink); font-weight:600}
   <div class="prose">
     <p>융합하면 세 분할 모두 IP 오차가 줄고 신뢰구간이 0을 포함하지 않습니다(ID 5% −16%, ID 10% −9%, 고잡음 −13%). 이득은 관측이 짧거나 잡음이 클 때 크고, 관측이 충분하면 작습니다. 두 레이더가 같은 시각에 같은 구간을 보므로 측정 수가 늘어날 뿐 관측 구간이 길어지지는 않아, 탄도계수 β를 알아내기 어려운 근본 한계(§2, Phase II)는 그대로이기 때문입니다. 실제 운용에서는 갱신 주기가 다르고 레이더 사이 정렬 오차(bias)가 있으므로, 이를 함께 추정하는 것이 다음 단계입니다(§9.13).</p>
   </div>
-  <h3 class="sub" id="sec-roadmap"><span class="no">9.13</span>확장 로드맵: 실측 검증, 6-DOF, 기동 비행체</h3>
+  <h3 class="sub" id="sec-roadmap"><span class="no">9.13</span>확장 실험과 남은 과제</h3>
   <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
-      <caption><b>Table R18</b>이 연구의 범위 밖 항목과 확장에 필요한 것</caption>
-      <thead><tr><th>항목</th><th>현재</th><th>확장에 필요한 것</th></tr></thead>
+      <caption><b>Table R18</b>처음 범위 밖으로 둔 항목: 이번에 시험한 것과 남은 것</caption>
+      <thead><tr><th>항목</th><th>이번에 한 것</th><th>남은 것</th></tr></thead>
       <tbody>
-        <tr><td>실측 검증</td><td>합성 자료만 사용. 공개된 탄도 비행체 레이더 궤적 자료는 찾지 못함(국내 선행 연구도 같은 이유로 합성 궤적 사용, §2.2)</td><td>협력 기관의 관측 자료(비공개 환경에서만), 또는 공개된 관측 로켓 비행 기록이나 우주 물체 재진입 관측으로 정성 비교. 궤도 요소(TLE) 기반 재진입 예측은 수일 단위 궤도 감쇠 문제라 이 과제와 물리가 달라 직접 비교에는 쓰지 않음</td></tr>
-        <tr><td>6-DOF 동역학</td><td>3-DOF 점질량(§5)</td><td>받음각·옆미끄럼각에 따른 공력 계수(C<sub>L</sub>, C<sub>D</sub>, C<sub>m</sub>)와 관성 자료, 자세 상태를 포함한 EKF, PINN 잔차를 6-DOF 운동 방정식으로 확장</td></tr>
-        <tr><td>기동 비행체(HGV)</td><td>약한 양력 기동만 시험(§9.9). 활공 기동은 국내 연구에서도 탄착점 오차가 수십 km(§2.2)</td><td>양력·뱅크각 제어 모델로 기동 궤적 생성, 기동 가설을 가진 IMM과 신경망의 결합, 탄착점보다 위협 영역(확률 지도) 출력</td></tr>
-        <tr><td>다중 레이더</td><td>2대, 같은 시각, 정렬 오차 없음(§9.12)</td><td>서로 다른 갱신 주기의 비동기 융합, 레이더별 정렬 오차 추정, 다표적 데이터 연관(Stone Soup와 연동, §10.2)</td></tr>
-        <tr><td>추진 구간</td><td>연소 종료 이후만</td><td>추력·질량 변화 모델과 연소 종료 시점 추정</td></tr>
+        <tr><td>다중 레이더</td><td>레이더 2대 같은 시각 EKF 융합 (§9.12)</td><td>서로 다른 갱신 주기의 비동기 융합, 레이더별 정렬 오차 추정, 다표적 연관</td></tr>
+        <tr><td>기동 비행체(HGV)</td><td>활공 기동 진값 모델과 시험 분할, 탄도 추정기 평가, 기동 가능 영역 예측 (§9.14)</td><td>영역의 포함률을 90%로 맞추는 형상(타원 대신 밀도 기반), 기동 중 관측이 있을 때의 추적, 기동 표적으로 학습한 신경망</td></tr>
+        <tr><td>6-DOF 동역학</td><td>받음각(원뿔 운동·트림)과 롤을 넣은 축소 6-DOF 진값으로 3-DOF 가정의 비용 측정 (§9.15)</td><td>실제 공력 계수표와 관성 자료를 쓰는 완전 6-DOF, 자세 상태를 추정하는 필터</td></tr>
+        <tr><td>실측 검증</td><td>공개 관측된 재진입(Hayabusa 캡슐) 궤적으로 항력·중력·대기 모델의 외삽 정확도 확인 (§9.16)</td><td>탄도 비행체의 레이더 실측 자료로 추정기 전체를 검증(비공개 환경에서만 가능)</td></tr>
+        <tr><td>추진 구간</td><td>—</td><td>추력·질량 변화 모델과 연소 종료 시점 추정</td></tr>
       </tbody>
     </table>
   </div>
+  <h3 class="sub" id="sec-hgv"><span class="no">9.14</span>기동 비행체: 활공 기동 표적</h3>
+  <div class="prose">
+    <p>진값에 활공 기동을 넣었습니다(<code>trajai/hgv.py</code>). 정점 이후 하강하는 동안 항력에 비례하는 양력(L/D 1.0–2.5)이 속도에 수직으로 작용하고, 뱅크각(±45°)만큼 기울어 진행 방향을 옆으로도 틉니다. 양력이 대기 밀도와 함께 커지므로 재진입 때 비행체가 끌어올려지며 활공하고, 비행 시간이 중앙값 185 → 332 s로 늘어납니다. 추정기는 모두 탄도 모델을 그대로 씁니다. 재현: <code>python scripts/hgv.py</code>.</p>
+  </div>
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
+    <table>
+      <caption><b>Table R19</b>활공 기동 표적(각 600 트랙). IP 오차 중앙값 [m] / CEP<sub>50</sub> 포함률, 그리고 기동 가설을 섞은 Monte Carlo 영역의 90% 포함률과 넓이 중앙값 [km²]</caption>
+      <thead><tr><th>분할</th><th class="n">비행 시간</th><th class="n">EKF</th><th class="n">IMM</th><th class="n">PINN (RTS)</th><th class="n">영역 포함률</th><th class="n">영역 넓이</th></tr></thead>
+      <tbody>
+        <tr><td>탄도, 관측 12%</td><td class="n">185 s</td><td class="n">281 <small class="muted">/ 0.76</small></td><td class="n">336 <small class="muted">/ 0.82</small></td><td class="n">372</td><td class="n">1.00</td><td class="n">6,067</td></tr>
+        <tr><td>활공, 관측 12%</td><td class="n">332 s</td><td class="n">34,999 <small class="muted">/ 0.00</small></td><td class="n">35,017 <small class="muted">/ 0.00</small></td><td class="n">35,026</td><td class="n">0.81</td><td class="n">6,017</td></tr>
+        <tr><td>탄도, 관측 최대 100 s</td><td class="n">188 s</td><td class="n">104 <small class="muted">/ 0.92</small></td><td class="n">142 <small class="muted">/ 0.97</small></td><td class="n">—</td><td class="n">1.00</td><td class="n">5,242</td></tr>
+        <tr><td>활공, 관측 최대 100 s</td><td class="n">346 s</td><td class="n">32,726 <small class="muted">/ 0.00</small></td><td class="n">32,278 <small class="muted">/ 0.00</small></td><td class="n">—</td><td class="n">0.77</td><td class="n">5,422</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="prose">
+    <p><b>점 예측은 기동 표적에서 실패합니다.</b> 기동은 레이더 관측 창(최대 100 s)이 끝난 뒤 재진입에서 시작되므로, EKF·IMM·PINN 모두 탄착 오차가 약 35 km이고 CEP 포함률은 0입니다. 기동 가설을 가진 IMM도 기동을 관측하지 못하면 도움이 되지 않습니다. 국내 연구가 활공 구간의 탄착점 예측 오차를 수십 km로 보고한 것과 같은 결과입니다(§2.2).</p>
+    <p><b>대안은 탄착점 대신 기동 가능 영역입니다.</b> EKF 사후 분포에서 뽑은 입자마다 활공 가설(L/D 0–2.5, 뱅크 ±45°, L/D 0은 탄도)을 붙여 지면까지 전파하고 90% 타원을 내면, 기동 표적의 실제 탄착점을 80%(77%) 포함합니다. 대가는 넓이로, 중앙값 약 6,017 km²(한 변 약 78 km)입니다. 탄도 표적이라면 CEP 원 수 km² 수준이면 충분한 것과 대비됩니다. 포함률이 목표 90%에 조금 못 미치는 것은 영역이 휘어 있어 타원이 잘 맞지 않기 때문입니다.</p>
+  </div>
+  <h3 class="sub" id="sec-6dof"><span class="no">9.15</span>3-DOF 가정은 얼마나 비싼가: 축소 6-DOF 진값</h3>
+  <div class="prose">
+    <p>이 연구의 동역학은 기수가 항상 속도 방향을 향한다고 보는 3-DOF 점질량입니다. 실제 탄두는 분리 때 받음각을 가지고 원뿔 운동을 하며, 비대칭 때문에 작은 트림 받음각이 롤과 함께 돕니다. 이를 축소 6-DOF 진값으로 넣었습니다(<code>trajai/sixdof.py</code>): 받음각 진폭은 동압이 커질수록 줄고(단열 불변량) 공력으로 감쇠하며, 받음각이 만드는 유도 항력과 양력이 궤적을 바꿉니다. 받음각을 0으로 두면 3-DOF와 1 cm 이내로 같습니다. 같은 비행을 두 진값으로 만들고 같은 측정 잡음을 써서 쌍대로 비교했습니다(각 600 트랙). 재현: <code>python scripts/sixdof.py</code>.</p>
+  </div>
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
+    <table>
+      <caption><b>Table R20</b>진값만 3-DOF → 축소 6-DOF로 바꿨을 때 EKF + Monte Carlo의 IP 오차 중앙값 [m], 차이와 95% CI, 포함률, 롤이 느린 트랙(0.3 rev/s 미만)의 차이, RTS 입력 PINN</caption>
+      <thead><tr><th>분할</th><th class="n">EKF</th><th class="n">Δ 중앙값</th><th class="n">포함률</th><th class="n">느린 롤 Δ</th><th class="n">PINN (RTS)</th></tr></thead>
+      <tbody>
+        <tr><td>관측 10%</td><td class="n">301 → 301</td><td class="n">+0 <small class="muted">[-5, +5]</small></td><td class="n">0.69 → 0.69</td><td class="n">+1 <small class="muted">[-13, +24]</small></td><td class="n">447 → 446</td></tr>
+        <tr><td>관측 15%</td><td class="n">244 → 242</td><td class="n">-2 <small class="muted">[-7, +2]</small></td><td class="n">0.85 → 0.84</td><td class="n">-3 <small class="muted">[-27, +11]</small></td><td class="n">336 → 338</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="prose">
+    <p>받음각 운동은 탄착점을 실제로 옮깁니다(중앙값 59 m, 상위 10% 252 m 이상, 롤이 느리면 중앙값 175 m). 그런데 EKF와 PINN의 탄착 오차는 바뀌지 않습니다(Δ의 95% CI가 0을 포함하고 폭이 수 m). 받음각이 가장 클 때는 연소 종료 직후 비교적 짙은 대기 속이라 그 영향이 관측 구간 안에 들어오고, 필터가 이를 상태와 탄도계수 추정으로 흡수하기 때문입니다. 재진입에서는 진폭이 줄고 회전하는 양력이 상쇄됩니다. 이 범위의 비행에서는 3-DOF 가정이 결과를 바꾸지 않는다는 근거이며, 완전 6-DOF가 필요한 경우는 큰 트림이나 기동처럼 관측 이후에 생기는 비대칭 힘입니다(§9.14).</p>
+  </div>
+  <h3 class="sub" id="sec-realdata"><span class="no">9.16</span>공개 실측 궤적으로 본 물리 모델</h3>
+  <div class="prose">
+    <p>탄도 비행체의 레이더 실측 자료는 공개되어 있지 않지만, 2010년 Hayabusa 귀환 캡슐의 재진입은 여러 관측소에서 사진으로 측정되어 시각별 위치(정밀도 약 100 m)가 공개되어 있습니다[17]. 12 km/s로 들어오는 둥근 캡슐이라 이 연구의 추정기를 그대로 시험할 수는 없으므로, 추정기 대신 그 바탕인 물리 모델(항력, 중력, 표준 대기, 탄도계수)을 시험했습니다. 앞쪽 4개 관측점(고도 64.7–50.4 km)에 초기 상태와 ln β를 최소제곱으로 맞추고(잔차 RMS 14 m) 나머지 점을 예측했습니다. 이 속도와 거리에서는 평면 지구 근사가 맞지 않아 같은 항력 식을 지구 중심 회전 좌표계(WGS84, 코리올리·원심력)에서 적분했습니다. 재현: <code>python scripts/realdata_hayabusa.py</code>.</p>
+  </div>
+  <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
+    <table>
+      <caption><b>Table R21</b>Hayabusa 캡슐 관측 위치 예측 오차 [m]. 마지막 점은 원 논문에서 시각이 불확실하다고 표시</caption>
+      <thead><tr><th class="n">시각</th><th class="n">외삽 길이</th><th class="n">이 연구의 항력 모델</th><th class="n">항력 없음</th><th class="n">등속 외삽</th></tr></thead>
+      <tbody>
+        <tr><td class="n">28.0 s</td><td class="n">3 s</td><td class="n">53</td><td class="n">6,459</td><td class="n">3,318</td></tr>
+        <tr><td class="n">32.0 s</td><td class="n">7 s</td><td class="n">350</td><td class="n">20,072</td><td class="n">14,083</td></tr>
+        <tr><td class="n">34.8 s</td><td class="n">10 s</td><td class="n">1,072</td><td class="n">34,313</td><td class="n">26,319</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div class="prose">
+    <p>3 s 앞은 관측 정밀도(100 m)보다 작은 53 m로 맞고, 7 s 앞도 350 m입니다. 항력을 빼거나 등속으로 외삽하면 같은 시점에 수 km–수십 km 틀립니다. 실제 대기 속 강한 감속을 이 연구의 항력·대기 모델이 수 초 단위에서 정확히 따라간다는 정성적 근거입니다. 적합한 β는 마하수 보정을 포함한 유효값이라 캡슐의 실제 탄도계수와 직접 비교하지는 않았습니다.</p>
+  </div>
+
 <!-- EXT:END -->
 </section>
 
@@ -1277,7 +1334,7 @@ footer b{color:var(--ink); font-weight:600}
         <tr><td class="id">tests/</td><td>대기 기준값, RK4 수렴 차수, 레이더 야코비안, EKF/UKF 일관성, 기상 격자, 사용자 대기, RTS 평활, β 사전, 위협 평가 (GitHub Actions CI)</td><td><span class="st ok">21 통과</span></td></tr>
         <tr><td class="id">server/ · web/</td><td>FastAPI + PostgreSQL 백엔드와 React 운용 콘솔 (§12)</td><td><span class="st ok">구현</span></td></tr>
         <tr><td class="id"><a href="prototype/viewer.html">prototype/viewer.html</a></td><td>시험 케이스의 실제 궤적, EKF·PINN 예측, CEP, 위협 평가를 보여주는 Three.js 3D 뷰어</td><td><span class="st ok">구현</span></td></tr>
-        <tr><td class="id">—</td><td>6-DOF 자세 동역학, 추진 구간 학습, IMM, RTS 특징 모델의 콘솔 서빙, TensorRT(GPU), 실제 센서 연동</td><td><span class="st no">미구현</span></td></tr>
+        <tr><td class="id">—</td><td>완전 6-DOF 자세 동역학(축소 6-DOF 진값 시험은 §9.15), 추진 구간 학습, TensorRT(GPU), 실제 센서 연동</td><td><span class="st no">미구현</span></td></tr>
       </tbody>
     </table>
   </div>
@@ -1483,6 +1540,7 @@ python -m pytest -q tests server/tests</code></pre>
     <li>홍동욱, 김주현, “피치선회율을 이용한 저고도 활공기동형 미사일 비행궤적 시뮬레이션 및 탄착지점 예측 분석,” <i>한국산학기술학회논문지</i>, vol. 25, no. 1, pp. 714–724, 2024. doi:10.5762/KAIS.2024.25.1.714</li>
     <li>김영민, “생성형 AI 모델 기반 기동형 탄도미사일 궤적예측 성능 비교,” <i>한국시뮬레이션학회 논문지</i>, vol. 34, no. 1, pp. 13–21, 2025. doi:10.9709/JKSS.2025.34.1.013</li>
     <li>국가정보원, 「암호모듈 시험 및 검증 지침」(KCMVP). 2009년부터 국가·공공기관에 도입되는 정보보호제품에 검증필 암호모듈 탑재 의무화. 개요: 법무법인 법승, “KCMVP: 수립 시점과 보급 확산 과정에 대한 심층 분석,” 2025. <a href="https://www.lawwin.co.kr/knowledge/7272">lawwin.co.kr</a></li>
+    <li>J. Borovička, S. Abe, L. Shrbený, P. Spurný, P. A. Bland, “Photographic and radiometric observations of the HAYABUSA re-entry,” <i>Publ. Astron. Soc. Japan</i>, vol. 63, no. 5, p. 1003, 2011. <a href="https://arxiv.org/abs/1108.6006">arXiv:1108.6006</a></li>
   </ol>
 </section>
 
