@@ -19,6 +19,7 @@ from trajai import dataset, features, filters, hgv, metrics, radar  # noqa: E402
 
 N = 600
 NZ = radar.NOISE_NOMINAL
+CAL = (8815, 0.12)          # separate glide split used only to calibrate the footprint size (split conformal, as in §9.5)
 SPLITS = {"nom_f12": (8811, 0.12, False), "hgv_f12": (8812, 0.12, True),
           "nom_long": (8813, 0.55, False), "hgv_long": (8814, 0.55, True)}
 
@@ -47,7 +48,7 @@ def pinn_rts(d):
 CHI2_90 = 4.605          # chi-square(2 dof) 90 % quantile
 
 
-def footprint(x, P, impact, n_particles=100, seed=3, ld=(0.0, 2.5), bank_deg=45.0):
+def footprint(x, P, impact, n_particles=100, seed=3, ld=(0.0, 2.5), bank_deg=45.0, thr=CHI2_90, return_m2=False):
     """Manoeuvre footprint instead of a point: sample the EKF posterior AND a glide hypothesis per particle
     (L/D ~ U(ld), bank ~ U(+-bank_deg); L/D = 0 is the ballistic case), propagate every particle to the ground and
     report the 90 % ellipse of the impacts. Returns coverage of the true impact and the ellipse area [km^2]."""
@@ -65,8 +66,10 @@ def footprint(x, P, impact, n_particles=100, seed=3, ld=(0.0, 2.5), bank_deg=45.
     C = np.einsum("npi,npj->nij", d, d) / (n_particles - 1) + 1e-6 * np.eye(2)
     e = impact[:, :2] - mu
     m2 = np.einsum("ni,nij,nj->n", e, np.linalg.inv(C), e)
-    area = np.pi * CHI2_90 * np.sqrt(np.linalg.det(C)) / 1e6
-    return dict(coverage90=float(np.mean(m2 <= CHI2_90)), area_median_km2=float(np.median(area)),
+    if return_m2:
+        return m2
+    area = np.pi * thr * np.sqrt(np.linalg.det(C)) / 1e6
+    return dict(coverage90=float(np.mean(m2 <= thr)), area_median_km2=float(np.median(area)),
                 center_miss_median_m=float(np.median(np.linalg.norm(e, axis=1))))
 
 
@@ -80,6 +83,13 @@ def summary(miss, cov=None):
 
 def main():
     res = {}
+    seed, frac = CAL
+    d = dataset.generate(N, seed=seed, frac=frac, truth=lambda m, r: hgv.sample(m, r))
+    x, P, _, _ = filters.ekf(d["meas_pol"].astype(float), d["meas"].astype(float), d["n_meas"], 0.5, NZ["sigma_r"], NZ["sigma_ang"])
+    m2 = footprint(x, P, d["impact"], return_m2=True)
+    thr = float(np.quantile(m2, 0.9 * (1 + 1 / N)))          # conformal 90 % quantile of the Mahalanobis score
+    res["calibration"] = {"threshold_chi2": thr, "nominal_chi2": CHI2_90, "scale_radius": float(np.sqrt(thr / CHI2_90))}
+    print(f"footprint calibration: chi2 threshold {CHI2_90:.2f} -> {thr:.2f} (radius x{np.sqrt(thr / CHI2_90):.2f})", flush=True)
     for name, (seed, frac, glide) in SPLITS.items():
         truth = (lambda m, r: hgv.sample(m, r)) if glide else (lambda m, r: hgv.nominal(m))
         d = dataset.generate(N, seed=seed, frac=frac, truth=truth)
@@ -98,6 +108,7 @@ def main():
         r["imm"]["cep_median_m"] = float(np.median(mc["cep"]))
         x, P, _, _ = filters.ekf(*args)
         r["footprint"] = footprint(x, P, d["impact"])
+        r["footprint_cal"] = footprint(x, P, d["impact"], thr=thr)
         r["ekf"]["area90_median_km2"] = float(np.pi * CHI2_90 / np.log(4) * np.median(r["ekf"]["cep_median_m"]) ** 2 / 1e6)
         if frac < 0.2:
             m = pinn_rts(d)
@@ -108,7 +119,8 @@ def main():
               f"EKF {r['ekf']['miss_median_m']:8.0f} m cov {r['ekf']['coverage']:.2f}  "
               f"IMM {r['imm']['miss_median_m']:8.0f} m cov {r['imm']['coverage']:.2f}"
               + (f"  PINN-RTS {r['pinn_rts']['miss_median_m']:8.0f} m" if "pinn_rts" in r else "")
-              + f"  footprint cov90 {r['footprint']['coverage90']:.2f} area {r['footprint']['area_median_km2']:.0f} km2", flush=True)
+              + f"  footprint cov90 {r['footprint']['coverage90']:.2f} area {r['footprint']['area_median_km2']:.0f} km2"
+              + f"  calibrated {r['footprint_cal']['coverage90']:.2f} / {r['footprint_cal']['area_median_km2']:.0f} km2", flush=True)
     json.dump(res, open("results/hgv.json", "w"), indent=1)
 
 

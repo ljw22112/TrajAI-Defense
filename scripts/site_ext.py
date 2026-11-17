@@ -56,7 +56,7 @@ def ext_block():
       <thead><tr><th>항목</th><th>이번에 한 것</th><th>남은 것</th></tr></thead>
       <tbody>
         <tr><td>다중 레이더</td><td>레이더 2대 같은 시각 EKF 융합 (§9.12)</td><td>서로 다른 갱신 주기의 비동기 융합, 레이더별 정렬 오차 추정, 다표적 연관</td></tr>
-        <tr><td>기동 비행체(HGV)</td><td>활공 기동 진값 모델과 시험 분할, 탄도 추정기 평가, 기동 가능 영역 예측 (§9.14)</td><td>영역의 포함률을 90%로 맞추는 형상(타원 대신 밀도 기반), 기동 중 관측이 있을 때의 추적, 기동 표적으로 학습한 신경망</td></tr>
+        <tr><td>기동 비행체(HGV)</td><td>활공 기동 진값 모델과 시험 분할, 탄도 추정기 평가, 기동 가능 영역 예측 (§9.14)</td><td>관측 길이별 영역 보정, 휘어진 영역을 따르는 밀도 기반 형상, 기동 중 관측이 있을 때의 추적, 기동 표적으로 학습한 신경망</td></tr>
         <tr><td>6-DOF 동역학</td><td>받음각(원뿔 운동·트림)과 롤을 넣은 축소 6-DOF 진값으로 3-DOF 가정의 비용 측정 (§9.15)</td><td>실제 공력 계수표와 관성 자료를 쓰는 완전 6-DOF, 자세 상태를 추정하는 필터</td></tr>
         <tr><td>실측 검증</td><td>공개 관측된 재진입(Hayabusa 캡슐) 궤적으로 항력·중력·대기 모델의 외삽 정확도 확인 (§9.16)</td><td>탄도 비행체의 레이더 실측 자료로 추정기 전체를 검증(비공개 환경에서만 가능)</td></tr>
         <tr><td>추진 구간</td><td>—</td><td>추력·질량 변화 모델과 연소 종료 시점 추정</td></tr>
@@ -75,7 +75,7 @@ def hgv_block():
         pin = f'{f0(v["pinn_rts"]["miss_median_m"])}' if "pinn_rts" in v else "—"
         rows.append(f'        <tr><td>{label}</td><td class="n">{v["flight_median_s"]:.0f} s</td><td class="n">{f0(v["ekf"]["miss_median_m"])} <small class="muted">/ {v["ekf"]["coverage"]:.2f}</small></td>'
                     f'<td class="n">{f0(v["imm"]["miss_median_m"])} <small class="muted">/ {v["imm"]["coverage"]:.2f}</small></td><td class="n">{pin}</td>'
-                    f'<td class="n">{v["footprint"]["coverage90"]:.2f}</td><td class="n">{f0(v["footprint"]["area_median_km2"])}</td></tr>')
+                    f'<td class="n">{v["footprint"]["coverage90"]:.2f} → {v["footprint_cal"]["coverage90"]:.2f}</td><td class="n">{f0(v["footprint_cal"]["area_median_km2"])}</td></tr>')
     g, n = H["hgv_f12"], H["nom_f12"]
     return f"""  <h3 class="sub" id="sec-hgv"><span class="no">9.14</span>기동 비행체: 활공 기동 표적</h3>
   <div class="prose">
@@ -83,7 +83,7 @@ def hgv_block():
   </div>
   <div class="tw" tabindex="0" role="region" aria-label="표 (가로로 스크롤)">
     <table>
-      <caption><b>Table R19</b>활공 기동 표적(각 600 트랙). IP 오차 중앙값 [m] / CEP<sub>50</sub> 포함률, 그리고 기동 가설을 섞은 Monte Carlo 영역의 90% 포함률과 넓이 중앙값 [km²]</caption>
+      <caption><b>Table R19</b>활공 기동 표적(각 600 트랙). IP 오차 중앙값 [m] / CEP<sub>50</sub> 포함률, 그리고 기동 가설을 섞은 Monte Carlo 영역의 90% 포함률(χ² 타원 → 보정 후)과 보정 후 넓이 중앙값 [km²]</caption>
       <thead><tr><th>분할</th><th class="n">비행 시간</th><th class="n">EKF</th><th class="n">IMM</th><th class="n">PINN (RTS)</th><th class="n">영역 포함률</th><th class="n">영역 넓이</th></tr></thead>
       <tbody>
 {chr(10).join(rows)}
@@ -92,7 +92,7 @@ def hgv_block():
   </div>
   <div class="prose">
     <p><b>점 예측은 기동 표적에서 실패합니다.</b> 기동은 레이더 관측 창(최대 100 s)이 끝난 뒤 재진입에서 시작되므로, EKF·IMM·PINN 모두 탄착 오차가 약 {g["ekf"]["miss_median_m"] / 1000:.0f} km이고 CEP 포함률은 0입니다. 기동 가설을 가진 IMM도 기동을 관측하지 못하면 도움이 되지 않습니다. 국내 연구가 활공 구간의 탄착점 예측 오차를 수십 km로 보고한 것과 같은 결과입니다(§2.2).</p>
-    <p><b>대안은 탄착점 대신 기동 가능 영역입니다.</b> EKF 사후 분포에서 뽑은 입자마다 활공 가설(L/D 0–2.5, 뱅크 ±45°, L/D 0은 탄도)을 붙여 지면까지 전파하고 90% 타원을 내면, 기동 표적의 실제 탄착점을 {g["footprint"]["coverage90"] * 100:.0f}%({H["hgv_long"]["footprint"]["coverage90"] * 100:.0f}%) 포함합니다. 대가는 넓이로, 중앙값 약 {f0(g["footprint"]["area_median_km2"])} km²(한 변 약 {np.sqrt(g["footprint"]["area_median_km2"]):.0f} km)입니다. 탄도 표적이라면 CEP 원 수 km² 수준이면 충분한 것과 대비됩니다. 포함률이 목표 90%에 조금 못 미치는 것은 영역이 휘어 있어 타원이 잘 맞지 않기 때문입니다.</p>
+    <p><b>대안은 탄착점 대신 기동 가능 영역입니다.</b> EKF 사후 분포에서 뽑은 입자마다 활공 가설(L/D 0–2.5, 뱅크 ±45°, L/D 0은 탄도)을 붙여 지면까지 전파하고 90% 타원을 내면, 기동 표적의 실제 탄착점을 {g["footprint"]["coverage90"] * 100:.0f}%(장기 관측 {H["hgv_long"]["footprint"]["coverage90"] * 100:.0f}%) 포함합니다. 영역이 휘어 있어 χ² 타원이 작게 나오므로, CEP와 같은 split-conformal 방식(§9.5)으로 별도 활공 분할 600개에서 타원 크기를 정하면(반지름 ×{H["calibration"]["scale_radius"]:.2f}) 포함률이 {g["footprint_cal"]["coverage90"] * 100:.0f}%(장기 관측 {H["hgv_long"]["footprint_cal"]["coverage90"] * 100:.0f}%)로 오릅니다. 보정 분할과 관측 길이가 다른 장기 관측에서는 덜 맞습니다. 대가는 넓이로, 중앙값 약 {f0(g["footprint_cal"]["area_median_km2"])} km²(한 변 약 {np.sqrt(g["footprint_cal"]["area_median_km2"]):.0f} km)입니다. 탄도 표적이라면 CEP 원 수 km² 수준이면 충분한 것과 대비됩니다.</p>
   </div>
 """
 

@@ -1,4 +1,9 @@
 {
+ "calibration": {
+  "threshold_chi2": 5.680553471295786,
+  "nominal_chi2": 4.605,
+  "scale_radius": 1.1106584084104387
+ },
  "nom_f12": {
   "t_c_median_s": 22.0,
   "flight_median_s": 185.49792138995974,
@@ -21,6 +26,11 @@
   "footprint": {
    "coverage90": 1.0,
    "area_median_km2": 6066.507454453573,
+   "center_miss_median_m": 14030.82143652262
+  },
+  "footprint_cal": {
+   "coverage90": 1.0,
+   "area_median_km2": 7483.413676229752,
    "center_miss_median_m": 14030.82143652262
   },
   "pinn_rts": {
@@ -53,6 +63,11 @@
    "area_median_km2": 6016.817485643093,
    "center_miss_median_m": 31987.88281578972
   },
+  "footprint_cal": {
+   "coverage90": 0.8666666666666667,
+   "area_median_km2": 7422.118013946374,
+   "center_miss_median_m": 31987.88281578972
+  },
   "pinn_rts": {
    "miss_median_m": 35026.38619071651,
    "miss_p90_m": 68036.66891577815,
@@ -82,6 +97,11 @@
    "coverage90": 1.0,
    "area_median_km2": 5242.3144359478065,
    "center_miss_median_m": 12622.371214122464
+  },
+  "footprint_cal": {
+   "coverage90": 1.0,
+   "area_median_km2": 6466.720405374011,
+   "center_miss_median_m": 12622.371214122464
   }
  },
  "hgv_long": {
@@ -106,6 +126,11 @@
   "footprint": {
    "coverage90": 0.7683333333333333,
    "area_median_km2": 5422.00352454644,
+   "center_miss_median_m": 30642.05015771283
+  },
+  "footprint_cal": {
+   "coverage90": 0.8266666666666667,
+   "area_median_km2": 6688.3780548838795,
    "center_miss_median_m": 30642.05015771283
   }
  }
