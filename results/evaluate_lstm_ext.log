@@ -1,0 +1,102 @@
+data_lstm_v2       test_id_f05    ADE    4057  miss    6343  ToT  2.57  CEP   1128  cov 0.04  res 0.476 g
+data_lstm_v2       test_id_f10    ADE     725  miss     668  ToT  1.48  CEP    941  cov 0.71  res 0.399 g
+data_lstm_v2       test_id_f15    ADE     684  miss     587  ToT  1.69  CEP    808  cov 0.69  res 0.406 g
+data_lstm_v2       test_id_noise  ADE    1016  miss    1112  ToT  1.78  CEP    915  cov 0.38  res 0.409 g
+data_lstm_v2       test_ood       ADE   19873  miss   10821  ToT 26.65  CEP   6092  cov 0.19  res 0.727 g
+data_lstm_v2 latency {'p50_ms': 2.3214805000009164, 'p99_ms': 4.385823640007089}
+pinn_lstm_v2       test_id_f05    ADE    4869  miss    6982  ToT  3.58  CEP   1080  cov 0.03  res 0.188 g
+pinn_lstm_v2       test_id_f10    ADE     731  miss     584  ToT  1.31  CEP    879  cov 0.74  res 0.095 g
+pinn_lstm_v2       test_id_f15    ADE     591  miss     514  ToT  1.07  CEP    786  cov 0.71  res 0.083 g
+pinn_lstm_v2       test_id_noise  ADE     976  miss    1031  ToT  1.56  CEP    860  cov 0.40  res 0.094 g
+pinn_lstm_v2       test_ood       ADE   21409  miss   10613  ToT 31.07  CEP   4397  cov 0.10  res 0.512 g
+pinn_lstm_v2 latency {'p50_ms': 2.2557389999988686, 'p99_ms': 2.872799199998893}
+data_lstm_v2_s1    test_id_f05    ADE    3921  miss    6150  ToT  5.36  CEP   1030  cov 0.03  res 0.418 g
+data_lstm_v2_s1    test_id_f10    ADE     738  miss     598  ToT  1.30  CEP    868  cov 0.71  res 0.368 g
+data_lstm_v2_s1    test_id_f15    ADE     636  miss     536  ToT  1.32  CEP    767  cov 0.72  res 0.381 g
+data_lstm_v2_s1    test_id_noise  ADE     991  miss    1005  ToT  1.60  CEP    849  cov 0.41  res 0.389 g
+data_lstm_v2_s1    test_ood       ADE   10112  miss   11378  ToT  8.15  CEP   5472  cov 0.16  res 0.710 g
+data_lstm_v2_s1 latency {'p50_ms': 2.31213049999468, 'p99_ms': 2.9061013300004372}
+pinn_lstm_v2_s1    test_id_f05    ADE    3788  miss    5315  ToT  4.57  CEP    935  cov 0.04  res 0.177 g
+pinn_lstm_v2_s1    test_id_f10    ADE     653  miss     571  ToT  0.98  CEP    820  cov 0.71  res 0.100 g
+pinn_lstm_v2_s1    test_id_f15    ADE     530  miss     473  ToT  0.92  CEP    761  cov 0.76  res 0.089 g
+pinn_lstm_v2_s1    test_id_noise  ADE     888  miss     948  ToT  1.42  CEP    817  cov 0.41  res 0.099 g
+pinn_lstm_v2_s1    test_ood       ADE   15526  miss   11238  ToT 16.50  CEP   5514  cov 0.21  res 0.464 g
+pinn_lstm_v2_s1 latency {'p50_ms': 2.3346480000157044, 'p99_ms': 3.0350489299846117}
+data_lstm_v2_s2    test_id_f05    ADE    4471  miss    6339  ToT  5.92  CEP   1099  cov 0.04  res 0.451 g
+data_lstm_v2_s2    test_id_f10    ADE     723  miss     676  ToT  1.56  CEP    900  cov 0.65  res 0.397 g
+data_lstm_v2_s2    test_id_f15    ADE     646  miss     548  ToT  1.69  CEP    790  cov 0.69  res 0.385 g
+data_lstm_v2_s2    test_id_noise  ADE    1018  miss    1012  ToT  1.89  CEP    879  cov 0.40  res 0.397 g
+data_lstm_v2_s2    test_ood       ADE   12958  miss   14134  ToT  7.51  CEP   5287  cov 0.12  res 0.751 g
+data_lstm_v2_s2 latency {'p50_ms': 2.3709409999952413, 'p99_ms': 3.1610255300071777}
+pinn_lstm_v2_s2    test_id_f05    ADE    4534  miss    6058  ToT  6.03  CEP    975  cov 0.04  res 0.196 g
+pinn_lstm_v2_s2    test_id_f10    ADE     704  miss     515  ToT  1.27  CEP    802  cov 0.73  res 0.108 g
+pinn_lstm_v2_s2    test_id_f15    ADE     597  miss     433  ToT  1.35  CEP    725  cov 0.78  res 0.094 g
+pinn_lstm_v2_s2    test_id_noise  ADE     983  miss    1028  ToT  1.56  CEP    788  cov 0.37  res 0.105 g
+pinn_lstm_v2_s2    test_ood       ADE   20482  miss   12749  ToT 23.86  CEP   4051  cov 0.13  res 0.513 g
+pinn_lstm_v2_s2 latency {'p50_ms': 2.2912615000052483, 'p99_ms': 3.009744120007838}
+data_lstm_v2_rts   test_id_f05    ADE    1945  miss    2137  ToT  4.24  CEP    889  cov 0.14  res 0.449 g
+data_lstm_v2_rts   test_id_f10    ADE     662  miss     689  ToT  0.98  CEP    790  cov 0.57  res 0.344 g
+data_lstm_v2_rts   test_id_f15    ADE     588  miss     570  ToT  1.31  CEP    682  cov 0.60  res 0.353 g
+data_lstm_v2_rts   test_id_noise  ADE     752  miss     836  ToT  1.13  CEP    752  cov 0.44  res 0.359 g
+data_lstm_v2_rts   test_ood       ADE   17282  miss    9096  ToT 23.13  CEP   4543  cov 0.31  res 0.789 g
+data_lstm_v2_rts latency {'p50_ms': 2.2439829999996164, 'p99_ms': 2.932612020007354}
+pinn_lstm_v2_rts   test_id_f05    ADE    1865  miss    1858  ToT  6.49  CEP    832  cov 0.17  res 0.176 g
+pinn_lstm_v2_rts   test_id_f10    ADE     689  miss     565  ToT  1.28  CEP    726  cov 0.65  res 0.095 g
+pinn_lstm_v2_rts   test_id_f15    ADE     542  miss     464  ToT  1.25  CEP    639  cov 0.65  res 0.085 g
+pinn_lstm_v2_rts   test_id_noise  ADE     786  miss     726  ToT  1.44  CEP    705  cov 0.48  res 0.092 g
+pinn_lstm_v2_rts   test_ood       ADE   25922  miss   10968  ToT 44.23  CEP   3083  cov 0.10  res 0.497 g
+pinn_lstm_v2_rts latency {'p50_ms': 2.265131999990899, 'p99_ms': 3.256646250014796}
+data_lstm_wide     test_id_f05    ADE    1410  miss    1583  ToT  2.68  CEP   1724  cov 0.48  res 0.450 g
+data_lstm_wide     test_id_f10    ADE     701  miss     578  ToT  1.49  CEP   1127  cov 0.82  res 0.350 g
+data_lstm_wide     test_id_f15    ADE     702  miss     551  ToT  1.65  CEP    845  cov 0.73  res 0.366 g
+data_lstm_wide     test_id_noise  ADE    1032  miss    1084  ToT  1.78  CEP   1042  cov 0.43  res 0.364 g
+data_lstm_wide     test_ood       ADE   18620  miss   12438  ToT 18.59  CEP   5969  cov 0.17  res 0.681 g
+data_lstm_wide latency {'p50_ms': 2.246687500004896, 'p99_ms': 2.950557089994561}
+pinn_lstm_wide     test_id_f05    ADE    1414  miss    1569  ToT  1.86  CEP   1531  cov 0.46  res 0.125 g
+pinn_lstm_wide     test_id_f10    ADE     664  miss     575  ToT  1.05  CEP   1072  cov 0.82  res 0.087 g
+pinn_lstm_wide     test_id_f15    ADE     582  miss     498  ToT  1.27  CEP    846  cov 0.76  res 0.079 g
+pinn_lstm_wide     test_id_noise  ADE     970  miss    1048  ToT  1.51  CEP   1004  cov 0.43  res 0.088 g
+pinn_lstm_wide     test_ood       ADE   14909  miss   11668  ToT 17.46  CEP   4708  cov 0.19  res 0.451 g
+pinn_lstm_wide latency {'p50_ms': 2.267932499989911, 'p99_ms': 2.8684333700471125}
+pinn_lstm_v2_s1 vs data_lstm_v2_s1
+split            miss b   miss a   rmse b   rmse a  phys b  phys a  p_holm
+test_id_f05        6150     5315     7570     6967   0.418   0.177  1.06e-24
+test_id_f10         598      571     1015     1091   0.368   0.100  0.939
+test_id_f15         536      473      908      902   0.381   0.089  0.000363
+test_id_noise      1005      948     1650     1777   0.389   0.099  0.939
+test_ood          11378    11238    36445    33616   0.710   0.464  1.08e-72
+pinn_lstm_v2_s2 vs data_lstm_v2_s2
+split            miss b   miss a   rmse b   rmse a  phys b  phys a  p_holm
+test_id_f05        6339     6058     9880     8415   0.451   0.196  8.07e-20
+test_id_f10         676      515     1091      968   0.397   0.108  1.22e-16
+test_id_f15         548      433      883      726   0.385   0.094  1.43e-19
+test_id_noise      1012     1028     1705     1691   0.397   0.105  0.659
+test_ood          14134    12749    38963    38468   0.751   0.513  9.19e-07
+pinn_lstm_v2_rts vs data_lstm_v2_rts
+split            miss b   miss a   rmse b   rmse a  phys b  phys a  p_holm
+test_id_f05        2137     1858     4284     4341   0.449   0.176  0.0403
+test_id_f10         689      565     1091      933   0.344   0.095  6.57e-20
+test_id_f15         570      464      967      844   0.353   0.085  1.1e-09
+test_id_noise       836      726     1375     1281   0.359   0.092  1.16e-07
+test_ood           9096    10968    25185    25024   0.789   0.497  2.19e-08
+pinn_lstm_wide vs data_lstm_wide
+split            miss b   miss a   rmse b   rmse a  phys b  phys a  p_holm
+test_id_f05        1583     1569     2984     2932   0.450   0.125  0.00657
+test_id_f10         578      575     1000      949   0.350   0.087  0.971
+test_id_f15         551      498      910      906   0.366   0.079  0.063
+test_id_noise      1084     1048     1849     1821   0.364   0.088  0.971
+test_ood          12438    11668    36968    33318   0.681   0.451  3.41e-58
+pinn_lstm_v2_rts vs pinn_lstm_v2
+split            miss b   miss a   rmse b   rmse a  phys b  phys a  p_holm
+test_id_f05        6982     1858     9713     4341   0.188   0.176  1.17e-103
+test_id_f10         584      565     1035      933   0.095   0.095  0.00655
+test_id_f15         514      464      848      844   0.083   0.085  0.00568
+test_id_noise      1031      726     1790     1281   0.094   0.092  1.52e-33
+test_ood          10613    10968    27638    25024   0.512   0.497  7.12e-11
+pinn_lstm_wide vs pinn_lstm_v2
+split            miss b   miss a   rmse b   rmse a  phys b  phys a  p_holm
+test_id_f05        6982     1569     9713     2932   0.188   0.125  7.22e-138
+test_id_f10         584      575     1035      949   0.095   0.087  0.577
+test_id_f15         514      498      848      906   0.083   0.079  0.308
+test_id_noise      1031     1048     1790     1821   0.094   0.088  0.00367
+test_ood          10613    11668    27638    33318   0.512   0.451  2.19e-56
