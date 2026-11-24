@@ -16,8 +16,8 @@ jobs:
     timeout-minutes: 60
     permissions: {contents: write}
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with: {python-version: "3.11"}
       - run: pip install numpy scipy stonesoup
       - run: python scripts/make_dataset.py --only test_id_f05 test_id_f10 test_id_f15 test_id_noise test_ood
@@ -41,9 +41,9 @@ jobs:
           PY
           python stonesoup_example.py test_id_f10
       - run: zip -qr TrajAI-Bench-${{ env.V }}.zip TrajAI-Bench-${{ env.V }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with: {name: "TrajAI-Bench-${{ env.V }}", path: "TrajAI-Bench-${{ env.V }}.zip"}
-      - uses: softprops/action-gh-release@v2
+      - uses: softprops/action-gh-release@v3
         if: startsWith(github.ref, 'refs/tags/benchmark-v') || github.ref == 'refs/heads/benchmark-release'
         with:
           tag_name: benchmark-${{ env.V }}
