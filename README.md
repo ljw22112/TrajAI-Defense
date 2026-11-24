@@ -8,6 +8,9 @@
 - **기술 문서 / 프로젝트 페이지:** https://ljw22112.github.io/TrajAI-Defense/
 - **3D 결과 뷰어:** https://ljw22112.github.io/TrajAI-Defense/prototype/viewer.html
 - **공개 벤치마크:** https://github.com/ljw22112/TrajAI-Defense/releases/tag/benchmark-v2
+- **시연 영상(2분 10초, 자막):** [docs/demo/TrajAI-Defense_시연.mp4](docs/demo/TrajAI-Defense_시연.mp4) · **시연 대본·예상 질문:** [docs/demo/시연_대본.md](docs/demo/시연_대본.md)
+
+**기획서 피드백 대응.** 기획서 평가에서 지적받은 문제 정의·수요 근거·범위·일정을 결과물에서 측정 가능한 형태로 바꿨습니다. 대응표와 증거는 프로젝트 페이지 첫 화면의 "기획서 피드백 대응과 달성 요약"에 있고, 사전에 정한 평가 기준 5개(지연 p99 5.3 ms, 탄착점 RMSE 686 m로 EKF의 0.92배, CEP<sub>50</sub> 포함률 0.50, 물리 잔차 −73~76%, 분포 밖 99.8% 감지)를 모두 충족합니다.
 
 ## 풀스택 운용 콘솔
 

@@ -304,7 +304,7 @@ footer b{color:var(--ink); font-weight:600}
   <p class="sub">탄도 궤적·탄착점 예측 알고리즘(칼만 필터 · 물리 제약 신경망) 비교·평가 플랫폼</p>
   <div class="abstract">
     <p>방공 체계의 모델링·시뮬레이션(M&amp;S) 분석가는 탄착점(IP) 예측 알고리즘을 고를 때 같은 트랙, 같은 지표로 비교한 근거가 필요합니다. 그런데 기준 방식인 EKF + Monte Carlo는 불확실성까지 내는 데 228 ms가 걸리고, 관측이 비행의 5%뿐이면 IP 오차가 1,429 m로 커지면서 CEP 포함률이 0.37로 떨어집니다(과신). 순수 데이터 기반 신경망은 빠르지만 물리 법칙을 덜 지킵니다(운동 방정식 잔차 0.40 g). 탄착점 예측에서 필터와 물리 기반 신경망을 같은 조건으로 비교하는 기능은 상용 도구(STK, MATLAB)나 오픈소스 프레임워크(Stone Soup)가 기본으로 제공하지 않습니다(§2.4).</p>
-    <p>TrajAI-Defense는 분석가가 고른 조건으로 레이더 트랙을 만들고, 같은 트랙에 칼만 필터(EKF·UKF)와 신경망을 실행해 결과를 비교하는 플랫폼입니다. 신경망은 연소 종료 후 비행의 앞 5~15% 구간 트랙을 시계열 인코더(Transformer / Bi-LSTM)로 요약하고, 운동 방정식 잔차를 손실에 포함한 물리 제약 신경망(PINN)으로 잔여 궤적, IP, ToT, CEP를 추론합니다. 평가 기준은 추론 지연 p99 50 ms 이하, ID 10%에서 탄착점 RMSE 1,000 m 이하이면서 EKF의 1.2배 이내, 보정 후 CEP<sub>50</sub> 포함률 0.50 ± 0.05, 같은 인코더에서 물리 손실이 잔차를 50% 이상 줄이는지, 분포 밖 입력을 감지해 EKF로 넘기는지입니다. 처음 세운 목표(CEP 오차 −40%, 판단 시간 +25 s)와 그 판정은 §3에 그대로 남겼습니다. 이 문서는 문제 정의와 서비스 기획, 동역학 모델, 추정 문제 정식화, 학습 설계, 데이터셋, 검증 방법과 <a href="#sec-results">실험 결과</a>를 정리합니다. 현재 결과로는 지연 목표는 충족하지만, 신경망 단독의 정확도는 같은 물리 모델을 쓰는 EKF/UKF에 못 미칩니다. 대신 PINN의 탄도계수 예측을 EKF의 사전정보로 넣으면 모든 시험 조건에서 EKF보다 정확해집니다(<a href="#sec-feedback">§9.6</a>). 선택 일자의 실제 기온·바람을 대기 모델에 반영하면 IP 오차가 크게 줄어(<a href="#sec-weather">§9.3</a>) 이를 기본 설정으로 채택했습니다.</p>
+    <p>TrajAI-Defense는 분석가가 고른 조건으로 레이더 트랙을 만들고, 같은 트랙에 칼만 필터(EKF·UKF)와 신경망을 실행해 결과를 비교하는 플랫폼입니다. 신경망은 연소 종료 후 비행의 앞 5~15% 구간 트랙을 시계열 인코더(Transformer / Bi-LSTM)로 요약하고, 운동 방정식 잔차를 손실에 포함한 물리 제약 신경망(PINN)으로 잔여 궤적, IP, ToT, CEP를 추론합니다. 평가 기준은 추론 지연 p99 50 ms 이하, ID 10%에서 탄착점 RMSE 1,000 m 이하이면서 EKF의 1.2배 이내, 보정 후 CEP<sub>50</sub> 포함률 0.50 ± 0.05, 같은 인코더에서 물리 손실이 잔차를 50% 이상 줄이는지, 분포 밖 입력을 감지해 EKF로 넘기는지입니다. 처음 세운 목표(CEP 오차 −40%, 판단 시간 +25 s)와 그 판정은 §3에 그대로 남겼습니다. 이 문서는 문제 정의와 서비스 기획, 동역학 모델, 추정 문제 정식화, 학습 설계, 데이터셋, 검증 방법과 <a href="#sec-results">실험 결과</a>를 정리합니다. 현재 결과로는 사전에 정한 평가 기준 5개를 모두 충족합니다. 신경망 단독의 IP 오차 중앙값은 같은 물리 모델을 쓰는 EKF/UKF에 못 미치지만, RTS 평활 입력과 충분한 학습을 더한 LSTM-PINN은 RMSE 686 m로 EKF(747 m)보다 낮습니다(<a href="#sec-lstm">§9.11</a>). 대신 PINN의 탄도계수 예측을 EKF의 사전정보로 넣으면 모든 시험 조건에서 EKF보다 정확해집니다(<a href="#sec-feedback">§9.6</a>). 선택 일자의 실제 기온·바람을 대기 모델에 반영하면 IP 오차가 크게 줄어(<a href="#sec-weather">§9.3</a>) 이를 기본 설정으로 채택했습니다.</p>
   </div>
 <!-- KEY:BEGIN -->
   <div class="keys" aria-label="핵심 결과">
@@ -318,6 +318,24 @@ footer b{color:var(--ink); font-weight:600}
     <a class="key no" href="#sec-validity"><span class="label">분포 밖 일반화 실패</span><b>10.4 km</b><span>OOD(고속·고β) 시험에서 하이브리드 IP 오차. 물리 손실만으로는 외삽이 보장되지 않음</span></a>
   </div>
 <!-- KEY:END -->
+<!-- FINAL:BEGIN -->
+  <div class="tw rq">
+    <table>
+      <caption><b>기획서 피드백 대응과 달성 요약</b>기획서 평가(C+)에서 받은 지적을 결과물에서 어떻게 바꿨는지와 그 증거입니다. 시연 영상과 대본은 <a href="docs/demo/TrajAI-Defense_시연.mp4">docs/demo/TrajAI-Defense_시연.mp4</a>, <a href="https://github.com/ljw22112/TrajAI-Defense/blob/main/docs/demo/시연_대본.md">시연_대본.md</a>에 있습니다.</caption>
+      <thead><tr><th>피드백</th><th>바꾼 것</th><th>증거</th></tr></thead>
+      <tbody>
+        <tr><td>문제 정의가 일반론</td><td>기존 방식의 오차를 직접 측정해 제시 (표준 대기 EKF 2,633 m, 관측 5% 1,429 m)</td><td><a href="#sec-problem">§2.1</a></td></tr>
+        <tr><td>실제 수요·사용자 근거 없음</td><td>1차 M&amp;S 분석가·2차 연구실, Dstl Stone Soup와 국내 논문 3편, 사용자 검증 키트</td><td><a href="#sec-users">§2.2</a>, <a href="#sec-scenario">§2.3</a></td></tr>
+        <tr><td>‘연 10% 성장’ 출처 없음</td><td>삭제하고 출처 있는 시장 보고서와 국방혁신 4.0으로 대체</td><td>참고문헌 [10]–[12]</td></tr>
+        <tr><td>유사 서비스 비교 미흡</td><td>STK, MATLAB, Stone Soup와 항목별 비교</td><td><a href="#sec-compare">§2.4</a></td></tr>
+        <tr><td>OpenRocket 타당성 불명확</td><td>자체 3-DOF 시뮬레이터 + 축소 6-DOF 진값, 활공 기동, 공개 실측 재진입으로 보강</td><td><a href="#sec-hgv">§9.14</a>–§9.16</td></tr>
+        <tr><td>PINN+3D 범위 과다, 필수/선택 미흡</td><td>3D를 선택으로 낮추고 LSTM vs PINN에 집중, 필수·선택·범위 밖 3단계 표</td><td><a href="#sec-scope">§2.5</a>, <a href="#sec-lstm">§9.11</a></td></tr>
+        <tr><td>위험 중복, 일정 단순 나열</td><td>서로 다른 위험 5개(징후·대응·실제 결과), 마일스톤 M1–M3 간트와 주차별 산출물</td><td><a href="#sec-plan">§11</a></td></tr>
+        <tr><td>평가 기준(RMSE 목표) 명시</td><td>기준 5개를 실험 전에 고정하고 모두 측정: 지연 p99 5.3 ms, RMSE 686 m(EKF의 0.92배), CEP<sub>50</sub> 0.50, 잔차 −73~76%, 분포 밖 99.8% 감지 → 모두 충족</td><td><a href="#sec-req">§3</a></td></tr>
+      </tbody>
+    </table>
+  </div>
+<!-- FINAL:END -->
 <!-- GUIDE:BEGIN -->
   <div class="tw rq">
     <table>
